@@ -3,6 +3,7 @@
     <RootNamespace>CellScope.Web</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\CellScope.Api\CellScope.Api.csproj" />
     <ProjectReference Include="..\CellScope.Infrastructure\CellScope.Infrastructure.csproj" />
     <ProjectReference Include="..\CellScope.Application\CellScope.Application.csproj" />
     <ProjectReference Include="..\CellScope.Domain\CellScope.Domain.csproj" />

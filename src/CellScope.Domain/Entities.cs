@@ -19,7 +19,7 @@ public class User
 public class UserSettings
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
     public bool LocationCollectionEnabled { get; set; } = true;
     public bool CellularCollectionEnabled { get; set; } = true;
     public bool LocalNetworkDiscoveryEnabled { get; set; } = true;

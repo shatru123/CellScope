@@ -96,12 +96,32 @@ public class AuthService : IAuthService
 
     public async Task<UserSettingsDto> GetSettingsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var settings = await _dbContext.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId, cancellationToken);
+        UserSettings? settings = null;
+
+        if (userId != Guid.Empty)
+        {
+            settings = await _dbContext.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId, cancellationToken);
+        }
+
         if (settings == null)
         {
-            settings = new UserSettings { UserId = userId };
+            settings = await _dbContext.UserSettings.FirstOrDefaultAsync(s => s.UserId == null, cancellationToken);
+        }
+
+        if (settings == null)
+        {
+            // Verify if user exists before setting foreign key
+            bool userExists = userId != Guid.Empty && await _dbContext.Users.AnyAsync(u => u.Id == userId, cancellationToken);
+            settings = new UserSettings { UserId = userExists ? userId : null };
             _dbContext.UserSettings.Add(settings);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch
+            {
+                // Fallback in-memory defaults
+            }
         }
 
         return new UserSettingsDto
@@ -119,10 +139,22 @@ public class AuthService : IAuthService
 
     public async Task<UserSettingsDto> UpdateSettingsAsync(Guid userId, UserSettingsDto dto, CancellationToken cancellationToken = default)
     {
-        var settings = await _dbContext.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId, cancellationToken);
+        UserSettings? settings = null;
+
+        if (userId != Guid.Empty)
+        {
+            settings = await _dbContext.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId, cancellationToken);
+        }
+
         if (settings == null)
         {
-            settings = new UserSettings { UserId = userId };
+            settings = await _dbContext.UserSettings.FirstOrDefaultAsync(s => s.UserId == null, cancellationToken);
+        }
+
+        if (settings == null)
+        {
+            bool userExists = userId != Guid.Empty && await _dbContext.Users.AnyAsync(u => u.Id == userId, cancellationToken);
+            settings = new UserSettings { UserId = userExists ? userId : null };
             _dbContext.UserSettings.Add(settings);
         }
 

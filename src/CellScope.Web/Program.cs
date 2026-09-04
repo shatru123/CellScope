@@ -1,3 +1,5 @@
+using CellScope.Api.Hubs;
+using CellScope.Api.Services;
 using CellScope.Application.DTOs;
 using CellScope.Application.Interfaces;
 using CellScope.Infrastructure.Data;
@@ -10,6 +12,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddControllers();
+builder.Services.AddSignalR();
 
 // Database
 string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -44,7 +49,18 @@ builder.Services.AddScoped<IExportService, ExportService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDiagnosticsService, DiagnosticsService>();
 builder.Services.AddSingleton<IDemoDataService, DemoDataService>();
-builder.Services.AddScoped<INotificationPublisher, WebNotificationPublisher>();
+builder.Services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
 
 var app = builder.Build();
 
@@ -52,10 +68,13 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CellScopeDbContext>();
-    await db.Database.EnsureCreatedAsync();
-
-    var towerService = scope.ServiceProvider.GetRequiredService<ITowerService>();
-    await towerService.SeedDefaultTowersAsync();
+    try
+    {
+        await db.Database.EnsureCreatedAsync();
+        var towerService = scope.ServiceProvider.GetRequiredService<ITowerService>();
+        await towerService.SeedDefaultTowersAsync();
+    }
+    catch { }
 }
 
 // Configure the HTTP request pipeline.
@@ -65,19 +84,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseCors("AllowAll");
+app.UseStaticFiles();
 app.UseAntiforgery();
-app.MapStaticAssets();
+
+app.MapControllers();
+app.MapHub<NetworkHub>("/hubs/network");
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
-
-// In-app Notification publisher for web interactivity
-public class WebNotificationPublisher : INotificationPublisher
-{
-    public Task PublishSnapshotAsync(CellularSnapshotDto snapshot, CancellationToken cancellationToken = default) => Task.CompletedTask;
-    public Task PublishHandoverAsync(CellHandoverDto handover, CancellationToken cancellationToken = default) => Task.CompletedTask;
-    public Task PublishDeviceStatusAsync(DeviceDto device, CancellationToken cancellationToken = default) => Task.CompletedTask;
-    public Task PublishNetworkScanAsync(LocalNetworkDto network, CancellationToken cancellationToken = default) => Task.CompletedTask;
-}

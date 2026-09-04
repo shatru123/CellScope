@@ -44,14 +44,20 @@ public class CellScopeDbContext : DbContext
             }
         }
 
-        // User & Settings
+        // User
         modelBuilder.Entity<User>(b =>
         {
             b.HasKey(u => u.Id);
             b.HasIndex(u => u.Username).IsUnique();
             b.HasIndex(u => u.Email).IsUnique();
-            b.HasOne(u => u.Settings).WithOne().HasForeignKey<UserSettings>(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
-            b.HasMany(u => u.Devices).WithOne().HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.SetNull);
+            b.HasMany(u => u.Devices).WithOne().HasForeignKey(d => d.UserId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // UserSettings (Independent preference store)
+        modelBuilder.Entity<UserSettings>(b =>
+        {
+            b.HasKey(s => s.Id);
+            b.HasIndex(s => s.UserId);
         });
 
         // Device
