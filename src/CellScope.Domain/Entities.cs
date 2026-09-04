@@ -205,6 +205,7 @@ public class NetworkDevice
     public long? ResponseTimeMs { get; set; }
     public bool IsOnline { get; set; } = true;
     public string? SafeServiceSummary { get; set; }
+    public string? PhoneNumber { get; set; }
 }
 
 public class CollectionSession

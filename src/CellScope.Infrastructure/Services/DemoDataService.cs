@@ -251,27 +251,27 @@ public class DemoDataService : IDemoDataService
         var random = new Random(cellId.GetHashCode());
         var devices = new List<TowerConnectedDeviceDto>();
 
-        var sampleSubscribers = new (string Name, string Model, string Type, string Plat, string Band, string Modulation, double Throughput)[]
+        var sampleSubscribers = new (string Name, string Model, string Type, string Plat, string Band, string Phone, string Modulation, double Throughput)[]
         {
-            ("Samsung Galaxy S25 Ultra", "SM-S938B 5G", "Smartphone (5G UE)", "Android 15", "Band n78 (3500 MHz)", "256-QAM", 285.4),
-            ("Apple iPhone 16 Pro Max", "A3296 5G NR", "Smartphone (5G UE)", "iOS 18", "Band n78 (3500 MHz)", "256-QAM", 312.0),
-            ("Google Pixel 9 Pro (Live Collector)", "GC3VE 5G", "Mobile Collector", "Android 15", "Band n78 (3500 MHz)", "256-QAM", 240.5),
-            ("Realme GT 6 5G", "RMX3850", "Smartphone (5G UE)", "Android 14", "Band 3 (1800 MHz)", "64-QAM", 115.0),
-            ("OnePlus 12 5G", "CPH2581", "Smartphone (5G UE)", "Android 14", "Band n78 (3500 MHz)", "256-QAM", 195.2),
-            ("Xiaomi 14 Ultra", "24030PN60G", "Smartphone (5G UE)", "HyperOS / Android", "Band n78 (3500 MHz)", "256-QAM", 270.8),
-            ("Lenovo ThinkPad X1 5G WWAN", "Quectel EM120R 5G", "5G Laptop & Modem", "Windows 11 Pro", "Band n78 (3500 MHz)", "256-QAM", 340.0),
-            ("Dell Latitude 9440 5G", "Snapdragon X75 5G", "5G Laptop & Modem", "Windows 11 Pro", "Band n78 (3500 MHz)", "256-QAM", 295.6),
-            ("Apple MacBook Pro 5G Tether", "iPhone Hotspot Gateway", "5G Laptop & Modem", "macOS Sonoma", "Band n78 (3500 MHz)", "256-QAM", 220.4),
-            ("DJI Matrice 350 RTK Field Drone", "DJI Cellular Dongle 2", "Field Aerial Node", "Embedded Linux", "Band 3 (1800 MHz)", "64-QAM", 48.5),
-            ("Quectel RG500Q-EA 5G Gateway", "Industrial M2M Gateway", "IoT Cellular Gateway", "Embedded Linux", "Band n78 (3500 MHz)", "256-QAM", 185.0),
-            ("Cisco Catalyst Cellular Gateway", "CG522-E 5G Gigabit", "Cellular Router", "Cisco IOS-XE", "Band n78 (3500 MHz)", "256-QAM", 450.0),
-            ("Telit Cinterion FN990A 5G", "Smart Grid Node #402", "IoT Telemetry Node", "Embedded RTOS", "Band 28 (700 MHz)", "16-QAM", 12.4),
-            ("Apple iPhone 15", "A3090 5G", "Smartphone (5G UE)", "iOS 17.5", "Band 3 (1800 MHz)", "64-QAM", 95.0),
-            ("Samsung Galaxy A55 5G", "SM-A556B", "Smartphone (5G UE)", "Android 14", "Band 28 (700 MHz)", "64-QAM", 72.0),
-            ("Vivo X100 Pro", "V2309A 5G", "Smartphone (5G UE)", "OriginOS 4", "Band n78 (3500 MHz)", "256-QAM", 210.0),
-            ("Motorola Edge 50 Ultra", "XT2401-1", "Smartphone (5G UE)", "Android 14", "Band n78 (3500 MHz)", "256-QAM", 180.5),
-            ("JioBharat 4G Companion Node", "Jio-4G-V2", "Field Telemetry Node", "ThreadX", "Band 28 (700 MHz)", "QPSK", 8.2),
-            ("Sierra Wireless AirLink XR90", "5G Mobile Router", "Cellular Router", "AirLink OS", "Band n78 (3500 MHz)", "256-QAM", 380.0)
+            ("Samsung Galaxy S25 Ultra", "SM-S938B 5G", "Smartphone (5G UE)", "Android 15", "Band n78 (3500 MHz)", "+91 96044 66334", "256-QAM", 285.4),
+            ("Apple iPhone 16 Pro Max", "A3296 5G NR", "Smartphone (5G UE)", "iOS 18", "Band n78 (3500 MHz)", "+91 98231 54128", "256-QAM", 312.0),
+            ("Google Pixel 9 Pro (Live Collector)", "GC3VE 5G", "Mobile Collector", "Android 15", "Band n78 (3500 MHz)", "+91 98901 44210", "256-QAM", 240.5),
+            ("Realme GT 6 5G", "RMX3850", "Smartphone (5G UE)", "Android 14", "Band 3 (1800 MHz)", "+91 98224 51920", "64-QAM", 115.0),
+            ("OnePlus 12 5G", "CPH2581", "Smartphone (5G UE)", "Android 14", "Band n78 (3500 MHz)", "+91 97654 32109", "256-QAM", 195.2),
+            ("Xiaomi 14 Ultra", "24030PN60G", "Smartphone (5G UE)", "HyperOS / Android", "Band n78 (3500 MHz)", "+91 94221 88390", "256-QAM", 270.8),
+            ("Lenovo ThinkPad X1 5G WWAN", "Quectel EM120R 5G", "5G Laptop & Modem", "Windows 11 Pro", "Band n78 (3500 MHz)", "+91 70281 99012 (eSIM)", "256-QAM", 340.0),
+            ("Dell Latitude 9440 5G", "Snapdragon X75 5G", "5G Laptop & Modem", "Windows 11 Pro", "Band n78 (3500 MHz)", "+91 70281 99013 (eSIM)", "256-QAM", 295.6),
+            ("Apple MacBook Pro 5G Tether", "iPhone Hotspot Gateway", "5G Laptop & Modem", "macOS Sonoma", "Band n78 (3500 MHz)", "+91 96044 66334 (Tether)", "256-QAM", 220.4),
+            ("DJI Matrice 350 RTK Field Drone", "DJI Cellular Dongle 2", "Field Aerial Node", "Embedded Linux", "Band 3 (1800 MHz)", "+91 80071 44556 (eSIM)", "64-QAM", 48.5),
+            ("Quectel RG500Q-EA 5G Gateway", "Industrial M2M Gateway", "IoT Cellular Gateway", "Embedded Linux", "Band n78 (3500 MHz)", "+91 80071 44557 (M2M)", "256-QAM", 185.0),
+            ("Cisco Catalyst Cellular Gateway", "CG522-E 5G Gigabit", "Cellular Router", "Cisco IOS-XE", "Band n78 (3500 MHz)", "+91 80071 44558 (M2M)", "256-QAM", 450.0),
+            ("Telit Cinterion FN990A 5G", "Smart Grid Node #402", "IoT Telemetry Node", "Embedded RTOS", "Band 28 (700 MHz)", "+91 80071 44559 (M2M)", "16-QAM", 12.4),
+            ("Apple iPhone 15", "A3090 5G", "Smartphone (5G UE)", "iOS 17.5", "Band 3 (1800 MHz)", "+91 98235 66789", "64-QAM", 95.0),
+            ("Samsung Galaxy A55 5G", "SM-A556B", "Smartphone (5G UE)", "Android 14", "Band 28 (700 MHz)", "+91 98908 77654", "64-QAM", 72.0),
+            ("Vivo X100 Pro", "V2309A 5G", "Smartphone (5G UE)", "OriginOS 4", "Band n78 (3500 MHz)", "+91 97645 11223", "256-QAM", 210.0),
+            ("Motorola Edge 50 Ultra", "XT2401-1", "Smartphone (5G UE)", "Android 14", "Band n78 (3500 MHz)", "+91 98220 99887", "256-QAM", 180.5),
+            ("JioBharat 4G Companion Node", "Jio-4G-V2", "Field Telemetry Node", "ThreadX", "Band 28 (700 MHz)", "+91 94200 33445", "QPSK", 8.2),
+            ("Sierra Wireless AirLink XR90", "5G Mobile Router", "Cellular Router", "AirLink OS", "Band n78 (3500 MHz)", "+91 80071 44560 (M2M)", "256-QAM", 380.0)
         };
 
         for (int i = 0; i < sampleSubscribers.Length; i++)
@@ -291,6 +291,7 @@ public class DemoDataService : IDemoDataService
                 Platform = s.Plat,
                 RadioTechnology = cellId.Contains("LTE", StringComparison.OrdinalIgnoreCase) ? "LTE" : "5G NR",
                 Band = s.Band,
+                PhoneNumber = s.Phone,
                 MaskedImei = $"86{random.Next(10, 99)}4005****{maskedSuffix}",
                 Modulation = s.Modulation,
                 ThroughputMbps = Math.Round(s.Throughput * (0.8 + random.NextDouble() * 0.4), 1),
@@ -452,6 +453,7 @@ public class DemoDataService : IDemoDataService
             ResponseTimeMs = 6,
             IsOnline = true,
             SafeServiceSummary = "Android Telemetry Collector Node (SignalR Connected)",
+            PhoneNumber = "+91 98231 54128",
             ConnectionBand = "5 GHz Wi-Fi 6 (1200 Mbps)",
             LinkSpeedMbps = 1200,
             IpAssignment = "DHCP Dynamic"
@@ -469,6 +471,7 @@ public class DemoDataService : IDemoDataService
             ResponseTimeMs = 8,
             IsOnline = true,
             SafeServiceSummary = "SmartThings Node, Wi-Fi 6 Client Telemetry",
+            PhoneNumber = "+91 96044 66334",
             ConnectionBand = "5 GHz Wi-Fi 6 (1200 Mbps)",
             LinkSpeedMbps = 1200,
             IpAssignment = "DHCP Dynamic"
@@ -486,6 +489,7 @@ public class DemoDataService : IDemoDataService
             ResponseTimeMs = 5,
             IsOnline = true,
             SafeServiceSummary = "AirDrop, Apple Push Telemetry, iCloud Sync",
+            PhoneNumber = "+91 98224 51920",
             ConnectionBand = "5 GHz Wi-Fi 6 (1200 Mbps)",
             LinkSpeedMbps = 1200,
             IpAssignment = "DHCP Dynamic"
@@ -669,6 +673,7 @@ public class DemoDataService : IDemoDataService
                 ResponseTimeMs = d.ResponseTimeMs,
                 IsOnline = IsDemoAdapterConnected ? d.IsOnline : false,
                 SafeServiceSummary = d.SafeServiceSummary,
+                PhoneNumber = d.PhoneNumber,
                 ConnectionBand = d.ConnectionBand,
                 LinkSpeedMbps = d.LinkSpeedMbps,
                 IpAssignment = d.IpAssignment

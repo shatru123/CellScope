@@ -122,6 +122,7 @@ public class TowerConnectedDeviceDto
     public string Model { get; set; } = "Collector Node";
     public string RadioTechnology { get; set; } = "5G NR";
     public string Band { get; set; } = "n78";
+    public string PhoneNumber { get; set; } = "+91 96044 66334";
     public string MaskedImei { get; set; } = "86491005****128";
     public string Modulation { get; set; } = "256-QAM";
     public double ThroughputMbps { get; set; } = 145.2;
@@ -234,6 +235,7 @@ public class NetworkDeviceDto
     public long? ResponseTimeMs { get; set; }
     public bool IsOnline { get; set; } = true;
     public string? SafeServiceSummary { get; set; }
+    public string PhoneNumber { get; set; } = "N/A (Non-Cellular)";
     public string ConnectionBand { get; set; } = "Wi-Fi 6 (5 GHz)";
     public int LinkSpeedMbps { get; set; } = 1200;
     public string IpAssignment { get; set; } = "DHCP Dynamic";

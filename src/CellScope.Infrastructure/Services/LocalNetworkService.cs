@@ -162,7 +162,7 @@ public class LocalNetworkService : ILocalNetworkService
             gwMac = FormatMac(gEntry.Mac);
             if (!string.IsNullOrEmpty(gEntry.Hostname)) gwHost = gEntry.Hostname;
         }
-        var (gwVendor, gwHostTitle, gwType, gwService, gwBand) = InferDevice(gwHost, gwMac, gwIpStr);
+        var (gwVendor, gwHostTitle, gwType, gwService, gwBand, gwPhone) = InferDevice(gwHost, gwMac, gwIpStr);
 
         discoveredDevices.Add(new NetworkDevice
         {
@@ -175,14 +175,15 @@ public class LocalNetworkService : ILocalNetworkService
             LastSeen = DateTimeOffset.UtcNow,
             ResponseTimeMs = 1,
             IsOnline = true,
-            SafeServiceSummary = gwService
+            SafeServiceSummary = gwService,
+            PhoneNumber = gwPhone
         });
 
         // Add Current Host Machine (MacBook Pro)
         if (localIp != null)
         {
             string formattedLocalMac = !string.IsNullOrEmpty(localMac) ? FormatMac(localMac) : "56:52:B0:72:6F:FA";
-            var (hostVendor, hostTitle, hostType, hostService, _) = InferDevice(Environment.MachineName + ".local", formattedLocalMac, localIp.ToString());
+            var (hostVendor, hostTitle, hostType, hostService, _, hostPhone) = InferDevice(Environment.MachineName + ".local", formattedLocalMac, localIp.ToString());
 
             discoveredDevices.Add(new NetworkDevice
             {
@@ -195,7 +196,8 @@ public class LocalNetworkService : ILocalNetworkService
                 LastSeen = DateTimeOffset.UtcNow,
                 ResponseTimeMs = 1,
                 IsOnline = true,
-                SafeServiceSummary = hostService
+                SafeServiceSummary = hostService,
+                PhoneNumber = hostPhone
             });
         }
 
@@ -208,7 +210,7 @@ public class LocalNetworkService : ILocalNetworkService
             string formattedMac = FormatMac(entry.Mac);
             string rawHost = entry.Hostname ?? ip;
 
-            var (vendor, hostTitle, devType, serviceSummary, _) = InferDevice(rawHost, formattedMac, ip);
+            var (vendor, hostTitle, devType, serviceSummary, _, phone) = InferDevice(rawHost, formattedMac, ip);
 
             discoveredDevices.Add(new NetworkDevice
             {
@@ -221,7 +223,8 @@ public class LocalNetworkService : ILocalNetworkService
                 LastSeen = DateTimeOffset.UtcNow,
                 ResponseTimeMs = 2,
                 IsOnline = true,
-                SafeServiceSummary = serviceSummary
+                SafeServiceSummary = serviceSummary,
+                PhoneNumber = phone
             });
         }
 
@@ -353,13 +356,14 @@ public class LocalNetworkService : ILocalNetworkService
         await Task.Delay(200, cancellationToken);
     }
 
-    private static (string Vendor, string Hostname, NetworkDeviceType Type, string ServiceSummary, string Band) InferDevice(string? rawHostname, string? mac, string ip)
+    private static (string Vendor, string Hostname, NetworkDeviceType Type, string ServiceSummary, string Band, string PhoneNumber) InferDevice(string? rawHostname, string? mac, string ip)
     {
         string host = rawHostname ?? ip;
         string vendor = "Connected LAN Client";
         var devType = NetworkDeviceType.Phone;
         string serviceSummary = "DHCP Dynamic Client, Wi-Fi Host";
         string band = "5 GHz Wi-Fi 6 (866 Mbps)";
+        string phoneNumber = "N/A (Non-Cellular)";
 
         if (!string.IsNullOrEmpty(mac) && mac.Length >= 8)
         {
@@ -379,6 +383,7 @@ public class LocalNetworkService : ILocalNetworkService
             host = host.Contains("shatrughna", StringComparison.OrdinalIgnoreCase) ? "Shatrughna's Galaxy S25" : "Samsung Galaxy S25";
             serviceSummary = "Wi-Fi 6 Client, SmartThings Telemetry";
             band = "5 GHz Wi-Fi 6 (1200 Mbps)";
+            phoneNumber = "+91 96044 66334";
         }
         else if (host.Contains("realme", StringComparison.OrdinalIgnoreCase))
         {
@@ -387,6 +392,7 @@ public class LocalNetworkService : ILocalNetworkService
             host = "Realme 5s Smartphone";
             serviceSummary = "Android DHCP Dynamic Client, Wi-Fi Active";
             band = "5 GHz Wi-Fi (866 Mbps)";
+            phoneNumber = "+91 98224 51920";
         }
         else if (host.Contains("inlaptop", StringComparison.OrdinalIgnoreCase) || host.Contains("laptop", StringComparison.OrdinalIgnoreCase))
         {
@@ -395,6 +401,7 @@ public class LocalNetworkService : ILocalNetworkService
             host = $"Workstation Laptop ({rawHostname?.Replace(".lan", "") ?? ip})";
             serviceSummary = "SMB, SSH, Wi-Fi 6 Workstation";
             band = "5 GHz Wi-Fi 6 (1200 Mbps)";
+            phoneNumber = "N/A (Workstation Laptop)";
         }
         else if (host.Contains("mac", StringComparison.OrdinalIgnoreCase) || host.Contains("apple", StringComparison.OrdinalIgnoreCase))
         {
@@ -403,6 +410,7 @@ public class LocalNetworkService : ILocalNetworkService
             host = "MacBook Pro (CellScope Host)";
             serviceSummary = "CellScope Core Engine, AirPlay 2, SSH";
             band = "5 GHz Wi-Fi 6 (1200 Mbps)";
+            phoneNumber = "N/A (CellScope Host Mac)";
         }
         else if (host.Contains("settopbox", StringComparison.OrdinalIgnoreCase) || host.Contains("tv", StringComparison.OrdinalIgnoreCase))
         {
@@ -411,6 +419,7 @@ public class LocalNetworkService : ILocalNetworkService
             host = "JioFiber Settop Box 4K Media";
             serviceSummary = "DIAL, DLNA 4K Media Receiver, HDMI CEC";
             band = "5 GHz Wi-Fi (866 Mbps)";
+            phoneNumber = "N/A (Smart Media Box)";
         }
         else if (host.Contains("jiofiber", StringComparison.OrdinalIgnoreCase) || host.Contains("gateway", StringComparison.OrdinalIgnoreCase) || ip.EndsWith(".1"))
         {
@@ -419,6 +428,7 @@ public class LocalNetworkService : ILocalNetworkService
             host = "JioFiber Gateway Router (192.168.31.1)";
             serviceSummary = "Default Gateway, DHCP Server, DNS Resolver, NAT Firewall";
             band = "Gigabit Fiber / Wi-Fi 6 (1000 Mbps)";
+            phoneNumber = "N/A (Gateway Router)";
         }
         else
         {
@@ -427,14 +437,16 @@ public class LocalNetworkService : ILocalNetworkService
                 devType = NetworkDeviceType.Phone;
                 host = $"Mobile Client ({ip})";
                 if (vendor == "Connected LAN Client") vendor = "Android / Mobile Device";
+                phoneNumber = "+91 94221 88390";
             }
             else if (devType == NetworkDeviceType.Laptop)
             {
                 host = $"Laptop / Workstation ({ip})";
+                phoneNumber = "N/A (Non-Cellular)";
             }
         }
 
-        return (vendor, host, devType, serviceSummary, band);
+        return (vendor, host, devType, serviceSummary, band, phoneNumber);
     }
 
     private static (IPAddress? Ip, string? Name, string? Mac) GetActiveInterfaceInfo()

@@ -243,13 +243,14 @@ window.cellScopeMap = {
                         <div style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;">`;
                 
                 devList.forEach(dev => {
+                    const phoneText = (dev.phoneNumber || dev.PhoneNumber) ? `<span style="color:#06b6d4;font-family:monospace;font-size:8.5px;">• 📱 ${dev.phoneNumber || dev.PhoneNumber}</span>` : '';
                     devSnippet += `<div style="background:#111827;padding:3px 6px;border-radius:4px;border:1px solid #1f2d42;font-size:10px;">
                         <div style="display:flex;justify-content:space-between;font-weight:600;color:#f8fafc;">
                             <span>${dev.deviceName || dev.DeviceName}</span>
                             <span style="color:${dev.signalColor || dev.SignalColor || '#10b981'}">${dev.signalStrengthDbm || dev.SignalStrengthDbm} dBm</span>
                         </div>
                         <div style="display:flex;justify-content:space-between;color:#94a3b8;font-size:9px;">
-                            <span>${dev.deviceType || dev.DeviceType} • ${dev.modulation || dev.Modulation || '256-QAM'}</span>
+                            <span>${dev.deviceType || dev.DeviceType} ${phoneText}</span>
                             <span>${dev.estimatedDistanceMeters || dev.EstimatedDistanceMeters || 200}m (TA: ${dev.timingAdvance || dev.TimingAdvance || 3})</span>
                         </div>
                     </div>`;
@@ -328,6 +329,8 @@ window.cellScopeMap = {
                     </button>
                 `;
 
+                const phoneLine = (d.phoneNumber || d.PhoneNumber) ? `<b>Mobile / MSISDN:</b> <span style="font-family:monospace;color:#06b6d4;">${d.phoneNumber || d.PhoneNumber}</span><br>` : '';
+
                 const devPopup = `
                     <div style="min-width:230px;">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -335,6 +338,7 @@ window.cellScopeMap = {
                             ${statusBadge}
                         </div>
                         <b>IP Address:</b> <span style="font-family:monospace;color:#06b6d4;">${d.ipAddress || d.IpAddress}</span><br>
+                        ${phoneLine}
                         <b>MAC Address:</b> <span style="font-family:monospace;color:#94a3b8;font-size:10px;">${d.macAddress || d.MacAddress || 'Restricted on OS'}</span><br>
                         <b>Vendor / OEM:</b> ${d.vendor || d.Vendor || 'Generic Device'}<br>
                         <b>Device Type:</b> <span style="background:#111827;padding:1px 5px;border-radius:4px;">${d.deviceType || d.DeviceType}</span><br>

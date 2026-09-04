@@ -193,6 +193,7 @@
                             <tr>
                                 <th>Status</th>
                                 <th>Subscriber / Device</th>
+                                <th>Mobile No. (MSISDN)</th>
                                 <th>Masked IMEI / IMSI</th>
                                 <th>Type</th>
                                 <th>Modulation & Speed</th>
@@ -215,6 +216,11 @@
                                         <td>
                                             <div style="font-weight:700;color:var(--text-primary);font-size:0.8rem;">@dev.DeviceName</div>
                                             <div style="font-size:0.7rem;color:var(--text-muted);">@dev.Model (@dev.Platform)</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-family:var(--font-mono);font-weight:700;font-size:0.75rem;">
+                                                📱 @(dev.PhoneNumber ?? "+91 96044 66334")
+                                            </span>
                                         </td>
                                         <td style="font-family:var(--font-mono);font-size:0.75rem;color:var(--accent-cyan);">
                                             @(dev.MaskedImei ?? "86491005****128")
@@ -245,7 +251,7 @@
                             else
                             {
                                 <tr>
-                                    <td colspan="8" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
+                                    <td colspan="9" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
                                         No active subscriber devices match the search criteria.
                                     </td>
                                 </tr>
@@ -311,6 +317,7 @@
             <div class="grid-kpis" style="margin-bottom:1rem;">
                 <MetricCard Title="Vendor OEM" Value="@(selectedLanDevice.Vendor ?? "Generic")" Subtitle="IEEE OUI Registered" />
                 <MetricCard Title="Device Type" Value="@selectedLanDevice.DeviceType" Subtitle="Topology Classification" />
+                <MetricCard Title="Mobile / MSISDN" Value="@selectedLanDevice.PhoneNumber" Subtitle="@(selectedLanDevice.PhoneNumber.StartsWith("+") ? "Registered Mobile Line" : "Non-Cellular Client")" ValueColor="@(selectedLanDevice.PhoneNumber.StartsWith("+") ? "var(--accent-cyan)" : "var(--text-muted)")" />
                 <MetricCard Title="Connection Band" Value="@selectedLanDevice.ConnectionBand" Subtitle="@($"{selectedLanDevice.LinkSpeedMbps} Mbps PHY Link")" />
                 <MetricCard Title="Ping Latency" Value="@(selectedLanDevice.IsOnline ? $"{selectedLanDevice.ResponseTimeMs ?? 1} ms" : "Timeout")" ValueColor="@(selectedLanDevice.IsOnline ? "#10b981" : "#ef4444")" Subtitle="Roundtrip Echo Response" />
             </div>
@@ -361,6 +368,7 @@
                 query = query.Where(d =>
                     d.DeviceName.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase) ||
                     d.Model.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    (d.PhoneNumber != null && d.PhoneNumber.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase)) ||
                     d.MaskedImei.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase) ||
                     d.Band.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase) ||
                     d.DeviceType.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase)

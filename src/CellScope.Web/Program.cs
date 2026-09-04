@@ -71,6 +71,11 @@ using (var scope = app.Services.CreateScope())
     try
     {
         await db.Database.EnsureCreatedAsync();
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"NetworkDevices\" ADD COLUMN \"PhoneNumber\" TEXT;");
+        }
+        catch { }
         var towerService = scope.ServiceProvider.GetRequiredService<ITowerService>();
         await towerService.SeedDefaultTowersAsync();
     }

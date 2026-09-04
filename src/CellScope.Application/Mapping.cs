@@ -190,6 +190,7 @@ public static class DtoMapper
             ResponseTimeMs = entity.ResponseTimeMs,
             IsOnline = entity.IsOnline,
             SafeServiceSummary = entity.SafeServiceSummary,
+            PhoneNumber = entity.PhoneNumber ?? "N/A (Non-Cellular)",
             ConnectionBand = band,
             LinkSpeedMbps = speed,
             IpAssignment = ipType

@@ -93,6 +93,7 @@
                     <th>Connection State</th>
                     <th>Device Hostname</th>
                     <th>IP Address</th>
+                    <th>Mobile / MSISDN</th>
                     <th>MAC Address</th>
                     <th>Vendor / Manufacturer</th>
                     <th>Type</th>
@@ -133,6 +134,20 @@
                                     @dev.IpAddress
                                 </div>
                                 <div style="font-size:0.7rem;color:var(--text-muted);">@dev.IpAssignment</div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(dev.PhoneNumber) && dev.PhoneNumber.StartsWith("+"))
+                                {
+                                    <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-family:var(--font-mono);font-weight:700;font-size:0.75rem;">
+                                        📱 @dev.PhoneNumber
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--text-muted);font-size:0.75rem;">
+                                        @(dev.PhoneNumber ?? "N/A")
+                                    </span>
+                                }
                             </td>
                             <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-muted);">
                                 @(dev.MacAddress ?? "Restricted on OS")
@@ -178,7 +193,7 @@
                 else
                 {
                     <tr>
-                        <td colspan="10" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+                        <td colspan="11" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
                             No network devices match the active filter criteria. Click "Scan Local Subnet" to discover clients.
                         </td>
                     </tr>
@@ -240,6 +255,7 @@
 
         <div class="grid-kpis" style="margin-bottom:1rem;">
             <MetricCard Title="IP Address" Value="@selectedDevice.IpAddress" Subtitle="@selectedDevice.IpAssignment" />
+            <MetricCard Title="Mobile Number / MSISDN" Value="@selectedDevice.PhoneNumber" Subtitle="@(selectedDevice.PhoneNumber.StartsWith("+") ? "Registered Mobile Line" : "Non-Cellular Client")" ValueColor="@(selectedDevice.PhoneNumber.StartsWith("+") ? "var(--accent-cyan)" : "var(--text-muted)")" />
             <MetricCard Title="Hardware MAC" Value="@(selectedDevice.MacAddress ?? "Restricted on OS")" Subtitle="Physical Layer Address" />
             <MetricCard Title="Connection Band" Value="@selectedDevice.ConnectionBand" Subtitle="@($"{selectedDevice.LinkSpeedMbps} Mbps PHY Link")" />
             <MetricCard Title="Ping Roundtrip" Value="@(selectedDevice.IsOnline ? $"{selectedDevice.ResponseTimeMs ?? 1} ms" : "Timeout")" ValueColor="@(selectedDevice.IsOnline ? "#10b981" : "#ef4444")" Subtitle="ICMP Response Latency" />
@@ -290,6 +306,7 @@
                 query = query.Where(d =>
                     (d.Hostname != null && d.Hostname.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
                     d.IpAddress.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    (d.PhoneNumber != null && d.PhoneNumber.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
                     (d.Vendor != null && d.Vendor.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
                     (d.SafeServiceSummary != null && d.SafeServiceSummary.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
                     d.ConnectionBand.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
