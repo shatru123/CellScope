@@ -11,7 +11,20 @@
         <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">GIS Cell, Tower & LAN Map</h1>
         <p style="font-size:0.875rem;color:var(--text-secondary);">Click any cellular tower to view its connected subscriber devices, or inspect local network clients</p>
     </div>
-    <div style="display:flex;gap:0.5rem;">
+    <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+        <!-- Segmented Mode Switcher -->
+        <div style="display:inline-flex;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:20px;padding:3px;gap:3px;">
+            <button class="btn btn-sm" 
+                    style="border-radius:16px;font-size:0.75rem;padding:3px 9px;font-weight:700;@(!DemoService.IsDemoModeActive ? "background:#10b981;color:#0b0f19;border:none;box-shadow:0 0 10px rgba(16,185,129,0.5);" : "background:transparent;color:var(--text-secondary);border:none;")"
+                    @onclick="@(() => ToggleMode(false))">
+                🔒 Strict Real-Only Mode
+            </button>
+            <button class="btn btn-sm" 
+                    style="border-radius:16px;font-size:0.75rem;padding:3px 9px;font-weight:700;@(DemoService.IsDemoModeActive ? "background:#f59e0b;color:#0b0f19;border:none;box-shadow:0 0 10px rgba(245,158,11,0.5);" : "background:transparent;color:var(--text-secondary);border:none;")"
+                    @onclick="@(() => ToggleMode(true))">
+                📡 NOC Simulation Mode
+            </button>
+        </div>
         <button class="btn btn-outline btn-sm" @onclick="LocateMe">📍 Locate Me</button>
         <button class="btn btn-primary btn-sm" @onclick="ReloadMap">🔄 Refresh Map</button>
     </div>
@@ -30,7 +43,18 @@
             <span class="badge" style="background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);cursor:pointer;" @onclick="@(() => activeTab = "devices")">
                 💻 LAN Devices (@(localNetwork?.Devices?.Count ?? 0))
             </span>
-            <span class="badge" style="background:rgba(139,92,246,0.15);color:#8b5cf6;border:1px solid rgba(139,92,246,0.3);">〰️ GPS Trail</span>
+            @if (!DemoService.IsDemoModeActive)
+            {
+                <span class="badge" style="background:rgba(16,185,129,0.2);color:#10b981;border:1px solid rgba(16,185,129,0.5);font-weight:700;">
+                    🔒 Strict Real-Only Mode
+                </span>
+            }
+            else
+            {
+                <span class="badge" style="background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.5);font-weight:700;">
+                    📡 NOC Simulation Mode
+                </span>
+            }
         </div>
         <div style="font-size:0.8rem;color:var(--text-secondary);">
             Coordinates: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@(currentLat.ToString("F5")), @(currentLon.ToString("F5"))</span>
@@ -189,6 +213,25 @@
             <!-- SUB-TAB 1: Connected Subscriber Devices (50+ UEs) -->
             @if (towerModalTab == "subscribers")
             {
+                @if (!DemoService.IsDemoModeActive)
+                {
+                    <div style="margin-bottom:0.75rem;padding:0.75rem 1rem;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                        <div style="display:flex;align-items:center;gap:0.6rem;">
+                            <span style="font-size:1.2rem;">🔒</span>
+                            <div>
+                                <strong style="color:#10b981;font-size:0.85rem;">Strict Real-Only Hardware Mode Active</strong>
+                                <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">
+                                    Showing 100% verified hardware telemetry from paired Android collectors attached to this physical base station. Under 3GPP 5G-AKA & AES-128 security architecture, third-party subscriber numbers (MSISDN) are cryptographically shielded over-the-air.
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm" style="background:#f59e0b;color:#0b0f19;font-weight:700;border:none;font-size:0.75rem;padding:4px 10px;border-radius:6px;"
+                                @onclick="@(() => ToggleMode(true))">
+                            📡 Enable NOC Simulation
+                        </button>
+                    </div>
+                }
+
                 <!-- Subscriber Filter & Search -->
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
                     <div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;">
@@ -305,158 +348,189 @@
             <!-- SUB-TAB 2: Ongoing Voice & Video Calls (VoNR / VoLTE Sessions) -->
             @if (towerModalTab == "calls")
             {
-                <!-- Carrier Base Station Telemetry Notice -->
-                <div style="margin-bottom:0.75rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.25);display:flex;align-items:center;justify-content:space-between;font-size:0.725rem;color:var(--text-secondary);">
-                    <div>
-                        <strong style="color:var(--accent-cyan);">📡 Sector Call Telemetry:</strong> Showing carrier SIP/IMS & VoNR voice sessions active on this macro base station. Your personal device is in <strong>Idle Standby (DRX)</strong> mode.
-                    </div>
-                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.65rem;">● Sector NOC Feed</span>
-                </div>
-
-                <!-- Ongoing Call KPIs -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));gap:0.75rem;margin-bottom:0.75rem;">
-                    <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
-                        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Ongoing Voice Calls</div>
-                        <div style="font-size:1.25rem;font-weight:800;color:#10b981;">@(selectedTower.ActiveCalls?.Count ?? 0) Active</div>
-                    </div>
-                    <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
-                        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">5G VoNR Ultra-HD</div>
-                        <div style="font-size:1.25rem;font-weight:800;color:var(--accent-cyan);">@(selectedTower.ActiveCalls?.Count(c => c.CallType.Contains("VoNR")) ?? 0) Calls</div>
-                    </div>
-                    <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
-                        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">4G VoLTE / VoWiFi</div>
-                        <div style="font-size:1.25rem;font-weight:800;color:#f59e0b;">@(selectedTower.ActiveCalls?.Count(c => c.CallType.Contains("VoLTE") || c.CallType.Contains("VoWiFi")) ?? 0) Calls</div>
-                    </div>
-                    <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
-                        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Avg Audio Quality (MOS)</div>
-                        <div style="font-size:1.25rem;font-weight:800;color:#8b5cf6;">@(selectedTower.ActiveCalls != null && selectedTower.ActiveCalls.Any() ? selectedTower.ActiveCalls.Average(c => c.MosScore).ToString("F1") : "4.4") / 5.0 ⭐</div>
-                    </div>
-                </div>
-
-                <!-- Call Search & Filter -->
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
-                    <div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;">
-                        <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-right:2px;">Call Type:</span>
-                        @foreach (var type in new[] { "All", "VoNR", "VoLTE", "VoWiFi", "Video", "MCPTT" })
-                        {
-                            <button class="btn btn-sm @(towerCallTypeFilter == type ? "btn-primary" : "btn-outline")"
-                                    style="font-size:0.725rem;padding:2px 7px;"
-                                    @onclick="@(() => towerCallTypeFilter = type)">
-                                @type
+                @if (!DemoService.IsDemoModeActive)
+                {
+                    <div style="padding:1.5rem;background:var(--bg-secondary);border-radius:8px;border:1px solid rgba(16,185,129,0.3);text-align:center;display:flex;flex-direction:column;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+                        <div style="width:48px;height:48px;background:rgba(16,185,129,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#10b981;">
+                            🔒
+                        </div>
+                        <h3 style="margin:0;font-size:1.1rem;font-weight:800;color:var(--text-primary);">
+                            3GPP Voice Privacy Protection Active
+                        </h3>
+                        <p style="margin:0;max-width:640px;font-size:0.8rem;color:var(--text-secondary);line-height:1.5;">
+                            Your paired device is in <strong>Idle Standby (DRX)</strong> mode with zero active voice calls. Under 3GPP LTE and 5G-AKA specifications, public cellular base stations encrypt air-interface voice and signaling packets with AES-128 / 5G-AKA, preventing third-party wiretapping or public eavesdropping of active subscriber numbers.
+                        </p>
+                        <div style="display:flex;gap:0.6rem;align-items:center;margin-top:0.25rem;">
+                            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-weight:700;">
+                                ● Your Device: Standby / Idle (DRX)
+                            </span>
+                            <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-weight:700;">
+                                ● 3GPP 5G-AKA Encrypted
+                            </span>
+                        </div>
+                        <div style="margin-top:0.5rem;">
+                            <button class="btn btn-sm" style="background:#f59e0b;color:#0b0f19;font-weight:800;border:none;padding:6px 14px;border-radius:6px;font-size:0.8rem;"
+                                    @onclick="@(() => ToggleMode(true))">
+                                📡 Switch to Carrier NOC Simulation Mode to Inspect Live Sector Sessions
                             </button>
-                        }
+                        </div>
                     </div>
-                    <div style="min-width:240px;">
-                        <input type="text" class="input-field" style="width:100%;font-size:0.75rem;padding:3px 8px;"
-                               placeholder="🔎 Search caller, recipient, phone #, codec..."
-                               @bind="towerCallSearchTerm" @bind:event="oninput" />
+                }
+                else
+                {
+                    <!-- Carrier Base Station Telemetry Notice -->
+                    <div style="margin-bottom:0.75rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.25);display:flex;align-items:center;justify-content:space-between;font-size:0.725rem;color:var(--text-secondary);">
+                        <div>
+                            <strong style="color:var(--accent-cyan);">📡 Sector Call Telemetry:</strong> Showing carrier SIP/IMS & VoNR voice sessions active on this macro base station. Your personal device is in <strong>Idle Standby (DRX)</strong> mode.
+                        </div>
+                        <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.65rem;">● Sector NOC Feed</span>
                     </div>
-                </div>
 
-                <!-- Ongoing Calls Table -->
-                <div style="margin-bottom:1rem;flex:1;">
-                    <div class="noc-table-container" style="max-height:360px;overflow-y:auto;">
-                        <table class="noc-table">
-                            <thead>
-                                <tr>
-                                    <th>Status</th>
-                                    <th>Caller (From MSISDN)</th>
-                                    <th style="text-align:center;">Route</th>
-                                    <th>Recipient (To MSISDN)</th>
-                                    <th>Call Protocol / Type</th>
-                                    <th>Duration</th>
-                                    <th>Audio Codec</th>
-                                    <th>MOS Quality</th>
-                                    <th>Radio Bearer</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @if (FilteredTowerCalls.Any())
-                                {
-                                    @foreach (var call in FilteredTowerCalls)
+                    <!-- Ongoing Call KPIs -->
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));gap:0.75rem;margin-bottom:0.75rem;">
+                        <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
+                            <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Ongoing Voice Calls</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:#10b981;">@(selectedTower.ActiveCalls?.Count ?? 0) Active</div>
+                        </div>
+                        <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
+                            <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">5G VoNR Ultra-HD</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:var(--accent-cyan);">@(selectedTower.ActiveCalls?.Count(c => c.CallType.Contains("VoNR")) ?? 0) Calls</div>
+                        </div>
+                        <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
+                            <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">4G VoLTE / VoWiFi</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:#f59e0b;">@(selectedTower.ActiveCalls?.Count(c => c.CallType.Contains("VoLTE") || c.CallType.Contains("VoWiFi")) ?? 0) Calls</div>
+                        </div>
+                        <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
+                            <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Avg Audio Quality (MOS)</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:#8b5cf6;">@(selectedTower.ActiveCalls != null && selectedTower.ActiveCalls.Any() ? selectedTower.ActiveCalls.Average(c => c.MosScore).ToString("F1") : "4.4") / 5.0 ⭐</div>
+                        </div>
+                    </div>
+
+                    <!-- Call Search & Filter -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+                        <div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;">
+                            <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-right:2px;">Call Type:</span>
+                            @foreach (var type in new[] { "All", "VoNR", "VoLTE", "VoWiFi", "Video", "MCPTT" })
+                            {
+                                <button class="btn btn-sm @(towerCallTypeFilter == type ? "btn-primary" : "btn-outline")"
+                                        style="font-size:0.725rem;padding:2px 7px;"
+                                        @onclick="@(() => towerCallTypeFilter = type)">
+                                    @type
+                                </button>
+                            }
+                        </div>
+                        <div style="min-width:240px;">
+                            <input type="text" class="input-field" style="width:100%;font-size:0.75rem;padding:3px 8px;"
+                                   placeholder="🔎 Search caller, recipient, phone #, codec..."
+                                   @bind="towerCallSearchTerm" @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    <!-- Ongoing Calls Table -->
+                    <div style="margin-bottom:1rem;flex:1;">
+                        <div class="noc-table-container" style="max-height:360px;overflow-y:auto;">
+                            <table class="noc-table">
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Caller (From MSISDN)</th>
+                                        <th style="text-align:center;">Route</th>
+                                        <th>Recipient (To MSISDN)</th>
+                                        <th>Call Protocol / Type</th>
+                                        <th>Duration</th>
+                                        <th>Audio Codec</th>
+                                        <th>MOS Quality</th>
+                                        <th>Radio Bearer</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (FilteredTowerCalls.Any())
+                                    {
+                                        @foreach (var call in FilteredTowerCalls)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    @if (call.Status.Contains("Active"))
+                                                    {
+                                                        <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;font-weight:700;white-space:nowrap;">
+                                                            ● Active In-Call
+                                                        </span>
+                                                    }
+                                                    else if (call.Status.Contains("Ringing"))
+                                                    {
+                                                        <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-size:0.7rem;font-weight:700;white-space:nowrap;">
+                                                            🔔 Ringing
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-size:0.7rem;font-weight:700;white-space:nowrap;">
+                                                            ⚡ @call.Status
+                                                        </span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <div style="font-family:var(--font-mono);font-weight:800;color:var(--accent-cyan);font-size:0.8rem;">
+                                                        📞 @call.CallerNumber
+                                                    </div>
+                                                    <div style="font-size:0.7rem;color:var(--text-secondary);">@call.CallerName</div>
+                                                </td>
+                                                <td style="text-align:center;font-size:1.1rem;color:var(--accent-amber);font-weight:800;">
+                                                    ➔
+                                                </td>
+                                                <td>
+                                                    <div style="font-family:var(--font-mono);font-weight:800;color:#10b981;font-size:0.8rem;">
+                                                        📱 @call.ReceiverNumber
+                                                    </div>
+                                                    <div style="font-size:0.7rem;color:var(--text-secondary);">@call.ReceiverName</div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-weight:700;font-size:0.7rem;">
+                                                        @call.CallType
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span style="font-family:var(--font-mono);font-weight:700;color:var(--text-primary);font-size:0.75rem;">
+                                                        ⏱️ @call.Duration
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div style="font-weight:600;color:var(--text-primary);font-size:0.75rem;">@call.Codec</div>
+                                                    <div style="font-size:0.65rem;color:var(--text-muted);">SIP/IMS Voice Profile</div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-weight:800;font-size:0.75rem;">
+                                                        ★ @call.MosScore / 5.0
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span style="font-size:0.7rem;color:var(--text-muted);font-family:var(--font-mono);">
+                                                        @call.RadioBearer
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
                                     {
                                         <tr>
-                                            <td>
-                                                @if (call.Status.Contains("Active"))
-                                                {
-                                                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;font-weight:700;white-space:nowrap;">
-                                                        ● Active In-Call
-                                                    </span>
-                                                }
-                                                else if (call.Status.Contains("Ringing"))
-                                                {
-                                                    <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-size:0.7rem;font-weight:700;white-space:nowrap;">
-                                                        🔔 Ringing
-                                                    </span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-size:0.7rem;font-weight:700;white-space:nowrap;">
-                                                        ⚡ @call.Status
-                                                    </span>
-                                                }
-                                            </td>
-                                            <td>
-                                                <div style="font-family:var(--font-mono);font-weight:800;color:var(--accent-cyan);font-size:0.8rem;">
-                                                    📞 @call.CallerNumber
-                                                </div>
-                                                <div style="font-size:0.7rem;color:var(--text-secondary);">@call.CallerName</div>
-                                            </td>
-                                            <td style="text-align:center;font-size:1.1rem;color:var(--accent-amber);font-weight:800;">
-                                                ➔
-                                            </td>
-                                            <td>
-                                                <div style="font-family:var(--font-mono);font-weight:800;color:#10b981;font-size:0.8rem;">
-                                                    📱 @call.ReceiverNumber
-                                                </div>
-                                                <div style="font-size:0.7rem;color:var(--text-secondary);">@call.ReceiverName</div>
-                                            </td>
-                                            <td>
-                                                <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-weight:700;font-size:0.7rem;">
-                                                    @call.CallType
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span style="font-family:var(--font-mono);font-weight:700;color:var(--text-primary);font-size:0.75rem;">
-                                                    ⏱️ @call.Duration
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div style="font-weight:600;color:var(--text-primary);font-size:0.75rem;">@call.Codec</div>
-                                                <div style="font-size:0.65rem;color:var(--text-muted);">SIP/IMS Voice Profile</div>
-                                            </td>
-                                            <td>
-                                                <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-weight:800;font-size:0.75rem;">
-                                                    ★ @call.MosScore / 5.0
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span style="font-size:0.7rem;color:var(--text-muted);font-family:var(--font-mono);">
-                                                    @call.RadioBearer
-                                                </span>
+                                            <td colspan="9" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
+                                                No active voice or video call sessions match the search filter.
                                             </td>
                                         </tr>
                                     }
-                                }
-                                else
-                                {
-                                    <tr>
-                                        <td colspan="9" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
-                                            No active voice or video call sessions match the search filter.
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
 
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
-                    <span style="font-size:0.75rem;color:var(--text-muted);">
-                        Showing @FilteredTowerCalls.Count() ongoing voice/video calls on Sector Base Station @selectedTower.CellId
-                    </span>
-                    <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
-                </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                        <span style="font-size:0.75rem;color:var(--text-muted);">
+                            Showing @FilteredTowerCalls.Count() ongoing voice/video calls on Sector Base Station @selectedTower.CellId
+                        </span>
+                        <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
+                    </div>
+                }
             }
 
             <!-- SUB-TAB 3: 5G Bearers & 5QI/QCI Policies -->
@@ -687,7 +761,27 @@
     protected override async Task OnInitializedAsync()
     {
         dotNetRef = DotNetObjectReference.Create(this);
+        DemoService.OnModeChanged += HandleModeChanged;
         await LoadDataAsync();
+    }
+
+    private void ToggleMode(bool isDemo)
+    {
+        DemoService.SetMode(isDemo);
+    }
+
+    private async void HandleModeChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadDataAsync();
+            if (selectedTower != null)
+            {
+                await SelectTowerAsync(selectedTower.CellId);
+            }
+            await UpdateMapAsync();
+            StateHasChanged();
+        });
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -835,7 +929,8 @@
             servingCell = snapshot,
             towers = towersList,
             devices = localNetwork?.Devices,
-            trail = trail
+            trail = trail,
+            isDemoActive = DemoService.IsDemoModeActive
         });
     }
 
@@ -854,6 +949,7 @@
 
     public void Dispose()
     {
+        DemoService.OnModeChanged -= HandleModeChanged;
         dotNetRef?.Dispose();
     }
 }

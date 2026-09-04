@@ -1,4 +1,5 @@
 @page "/"
+@implements IDisposable
 @inject ICellularService CellularService
 @inject ITowerService TowerService
 @inject ILocalNetworkService NetworkService
@@ -202,7 +203,18 @@
 
     protected override async Task OnInitializedAsync()
     {
+        DemoService.OnModeChanged += HandleModeChanged;
         await LoadDataAsync();
+    }
+
+    private async void HandleModeChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadDataAsync();
+            await RenderChartAndMapAsync();
+            StateHasChanged();
+        });
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -254,8 +266,14 @@
                 servingCell = currentSnapshot,
                 towers = towers,
                 devices = localNetwork?.Devices,
-                trail = trail
+                trail = trail,
+                isDemoActive = DemoService.IsDemoModeActive
             });
         }
+    }
+
+    public void Dispose()
+    {
+        DemoService.OnModeChanged -= HandleModeChanged;
     }
 }

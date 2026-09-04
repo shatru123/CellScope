@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using CellScope.Application.DTOs;
+using CellScope.Application.Interfaces;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace CellScope.ApiTests;
@@ -9,15 +11,26 @@ namespace CellScope.ApiTests;
 public class CellularApiTests : IClassFixture<CellScopeTestFactory>
 {
     private readonly HttpClient _client;
+    private readonly IDemoDataService _demoService;
 
     public CellularApiTests(CellScopeTestFactory factory)
     {
         _client = factory.CreateClient();
+        _demoService = factory.Services.GetRequiredService<IDemoDataService>();
     }
 
     [Fact]
-    public async Task GetCurrent_ReturnsSuccessOrDemoSnapshot()
+    public async Task GetCurrent_InStrictRealMode_ReturnsNotFoundWhenNoHardwareIngested()
     {
+        _demoService.SetMode(false);
+        var response = await _client.GetAsync("/api/cellular/current");
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetCurrent_InSimulationMode_ReturnsGeneratedTelemetry()
+    {
+        _demoService.SetMode(true);
         var response = await _client.GetAsync("/api/cellular/current");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -53,8 +66,9 @@ public class CellularApiTests : IClassFixture<CellScopeTestFactory>
     }
 
     [Fact]
-    public async Task GetTowers_ReturnsTowerLocationsWithConnectedDevices()
+    public async Task GetTowers_ReturnsTowerLocations()
     {
+        _demoService.SetMode(true);
         var response = await _client.GetAsync("/api/towers?lat=37.7749&lon=-122.4194&radiusMeters=5000");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -65,8 +79,9 @@ public class CellularApiTests : IClassFixture<CellScopeTestFactory>
     }
 
     [Fact]
-    public async Task GetTowerConnectedDevices_ReturnsDeviceList()
+    public async Task GetTowerConnectedDevices_InSimulationMode_ReturnsSubscribers()
     {
+        _demoService.SetMode(true);
         var response = await _client.GetAsync("/api/towers/310410_12345/devices");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -77,8 +92,9 @@ public class CellularApiTests : IClassFixture<CellScopeTestFactory>
     }
 
     [Fact]
-    public async Task GetTowerCalls_ReturnsActiveCallSessions()
+    public async Task GetTowerCalls_InSimulationMode_ReturnsActiveCallSessions()
     {
+        _demoService.SetMode(true);
         var response = await _client.GetAsync("/api/towers/310410_12345/calls");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -89,6 +105,18 @@ public class CellularApiTests : IClassFixture<CellScopeTestFactory>
         calls![0].CallerNumber.Should().NotBeNullOrWhiteSpace();
         calls![0].ReceiverNumber.Should().NotBeNullOrWhiteSpace();
         calls![0].CallType.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task ModeSwitch_StrictRealOnly_HidesSimulatedCalls()
+    {
+        _demoService.SetMode(false);
+        var response = await _client.GetAsync("/api/towers/310410_12345/calls");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var calls = await response.Content.ReadFromJsonAsync<List<ActiveCallSessionDto>>();
+        calls.Should().NotBeNull();
+        calls.Should().BeEmpty();
     }
 }
 

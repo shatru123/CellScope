@@ -12,10 +12,12 @@ namespace CellScope.Infrastructure.Services;
 public class TowerService : ITowerService
 {
     private readonly CellScopeDbContext _dbContext;
+    private readonly IDemoDataService? _demoDataService;
 
-    public TowerService(CellScopeDbContext dbContext)
+    public TowerService(CellScopeDbContext dbContext, IDemoDataService? demoDataService = null)
     {
         _dbContext = dbContext;
+        _demoDataService = demoDataService;
     }
 
     public async Task<IReadOnlyList<TowerLocationDto>> GetNearbyTowersAsync(
@@ -59,20 +61,38 @@ public class TowerService : ITowerService
         }
 
         var list = result.OrderBy(t => t.DistanceMeters).ToList();
+        bool isDemoActive = _demoDataService == null || _demoDataService.IsDemoModeActive;
+
         foreach (var tower in list)
         {
-            var seedRandom = new Random(tower.CellId.GetHashCode());
-            tower.TotalConnectedDevices = seedRandom.Next(1850, 4200);
-            tower.ActiveDataSessions = (int)(tower.TotalConnectedDevices * 0.84);
-            tower.VoLteVoiceChannels = (int)(tower.TotalConnectedDevices * 0.12);
-            tower.IoTTelemetryNodes = tower.TotalConnectedDevices - tower.ActiveDataSessions - tower.VoLteVoiceChannels;
-            tower.AggregateThroughputMbps = Math.Round(420.0 + seedRandom.NextDouble() * 460.0, 1);
-            tower.PrbUtilizationPercent = Math.Round(68.0 + seedRandom.NextDouble() * 24.0, 1);
+            if (isDemoActive)
+            {
+                var seedRandom = new Random(tower.CellId.GetHashCode());
+                tower.TotalConnectedDevices = seedRandom.Next(1850, 4200);
+                tower.ActiveDataSessions = (int)(tower.TotalConnectedDevices * 0.84);
+                tower.VoLteVoiceChannels = (int)(tower.TotalConnectedDevices * 0.12);
+                tower.IoTTelemetryNodes = tower.TotalConnectedDevices - tower.ActiveDataSessions - tower.VoLteVoiceChannels;
+                tower.AggregateThroughputMbps = Math.Round(420.0 + seedRandom.NextDouble() * 460.0, 1);
+                tower.PrbUtilizationPercent = Math.Round(68.0 + seedRandom.NextDouble() * 24.0, 1);
 
-            var devList = await GetConnectedDevicesForTowerAsync(tower.CellId, cancellationToken);
-            tower.ConnectedDevices = devList.ToList();
-            var callList = await GetActiveCallsForTowerAsync(tower.CellId, cancellationToken);
-            tower.ActiveCalls = callList.ToList();
+                var devList = await GetConnectedDevicesForTowerAsync(tower.CellId, cancellationToken);
+                tower.ConnectedDevices = devList.ToList();
+                var callList = await GetActiveCallsForTowerAsync(tower.CellId, cancellationToken);
+                tower.ActiveCalls = callList.ToList();
+            }
+            else
+            {
+                // Strict Real-Only Mode: strictly only real verified telemetry nodes
+                var devList = await GetConnectedDevicesForTowerAsync(tower.CellId, cancellationToken);
+                tower.ConnectedDevices = devList.ToList();
+                tower.TotalConnectedDevices = devList.Count;
+                tower.ActiveDataSessions = devList.Count;
+                tower.VoLteVoiceChannels = 0;
+                tower.IoTTelemetryNodes = 0;
+                tower.AggregateThroughputMbps = devList.Sum(d => d.ThroughputMbps);
+                tower.PrbUtilizationPercent = devList.Count > 0 ? 12.5 : 0.0;
+                tower.ActiveCalls = new List<ActiveCallSessionDto>();
+            }
         }
 
         return list;
@@ -192,7 +212,13 @@ public class TowerService : ITowerService
             });
         }
 
-        // 2. Synthesize comprehensive active cellular subscriber roster across the macro sector (50+ UEs)
+        // 2. Synthesize comprehensive active cellular subscriber roster across the macro sector (50+ UEs) only in Demo/Simulator mode
+        bool isDemoActive = _demoDataService == null || _demoDataService.IsDemoModeActive;
+        if (!isDemoActive)
+        {
+            return devices;
+        }
+
         var random = new Random(cellId.GetHashCode());
         var fullSubscribers = new (string Name, string Model, string Type, string Plat, string Band, string Phone, string Modulation, double Throughput)[]
         {
@@ -278,6 +304,12 @@ public class TowerService : ITowerService
     public async Task<IReadOnlyList<ActiveCallSessionDto>> GetActiveCallsForTowerAsync(string cellId, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
+        bool isDemoActive = _demoDataService == null || _demoDataService.IsDemoModeActive;
+        if (!isDemoActive)
+        {
+            return new List<ActiveCallSessionDto>();
+        }
+
         var random = new Random(cellId.GetHashCode() + 999);
         var calls = new List<ActiveCallSessionDto>();
 

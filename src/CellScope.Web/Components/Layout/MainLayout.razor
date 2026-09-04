@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject IDemoDataService DemoService
 @inject NavigationManager NavManager
 
@@ -7,18 +8,36 @@
 
     <div class="main-content">
         <header class="top-navbar">
-            <div style="display:flex;align-items:center;gap:1rem;">
-                <StatusIndicator Text="@(DemoService.IsDemoModeActive ? "Demo Mode Active" : "Live Stream")" IsWarning="@DemoService.IsDemoModeActive" />
-                @if (DemoService.IsDemoModeActive)
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                <!-- Modern Segmented Mode Switcher -->
+                <div style="display:inline-flex;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:20px;padding:3px;gap:3px;box-shadow:inset 0 2px 4px rgba(0,0,0,0.3);">
+                    <button class="btn btn-sm" 
+                            style="border-radius:16px;font-size:0.75rem;padding:4px 10px;font-weight:700;transition:all 0.2s ease;@(!DemoService.IsDemoModeActive ? "background:#10b981;color:#0b0f19;border:none;box-shadow:0 0 10px rgba(16,185,129,0.5);" : "background:transparent;color:var(--text-secondary);border:none;")"
+                            @onclick="@(() => SetMode(false))">
+                        🔒 Strict Real-Only Mode
+                    </button>
+                    <button class="btn btn-sm" 
+                            style="border-radius:16px;font-size:0.75rem;padding:4px 10px;font-weight:700;transition:all 0.2s ease;@(DemoService.IsDemoModeActive ? "background:#f59e0b;color:#0b0f19;border:none;box-shadow:0 0 10px rgba(245,158,11,0.5);" : "background:transparent;color:var(--text-secondary);border:none;")"
+                            @onclick="@(() => SetMode(true))">
+                        📡 NOC Simulation Mode
+                    </button>
+                </div>
+
+                @if (!DemoService.IsDemoModeActive)
                 {
-                    <span class="badge badge-demo">DEMO DATA</span>
+                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4);font-size:0.7rem;font-weight:700;">
+                        ● 100% VERIFIED HARDWARE DATA
+                    </span>
+                }
+                else
+                {
+                    <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.4);font-size:0.7rem;font-weight:700;">
+                        ● CARRIER NOC SIMULATOR
+                    </span>
                 }
             </div>
 
             <div style="display:flex;align-items:center;gap:0.75rem;">
-                <button class="btn btn-outline btn-sm" @onclick="ToggleDemoMode">
-                    @(DemoService.IsDemoModeActive ? "🔴 Live Mode" : "🟡 Demo Mode")
-                </button>
                 <button class="btn btn-outline btn-sm" @onclick="ToggleTheme">
                     🌓 @(isDarkTheme ? "Dark" : "Light")
                 </button>
@@ -39,18 +58,29 @@
 @code {
     private bool isDarkTheme = true;
 
-    private void ToggleDemoMode()
+    protected override void OnInitialized()
     {
-        DemoService.IsDemoModeActive = !DemoService.IsDemoModeActive;
-        if (DemoService.IsDemoModeActive)
-        {
-            DemoService.InitializeDemoState();
-        }
-        StateHasChanged();
+        DemoService.OnModeChanged += HandleModeChanged;
+    }
+
+    private void HandleModeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SetMode(bool isDemoMode)
+    {
+        DemoService.SetMode(isDemoMode);
     }
 
     private void ToggleTheme()
     {
         isDarkTheme = !isDarkTheme;
     }
+
+    public void Dispose()
+    {
+        DemoService.OnModeChanged -= HandleModeChanged;
+    }
 }
+

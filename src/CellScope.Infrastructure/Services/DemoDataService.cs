@@ -7,11 +7,35 @@ namespace CellScope.Infrastructure.Services;
 
 public class DemoDataService : IDemoDataService
 {
-    public bool IsDemoModeActive { get; set; } = true;
+    private bool _isDemoModeActive = false; // Default to Strict Real-Only Mode
+    public bool IsDemoModeActive
+    {
+        get => _isDemoModeActive;
+        set
+        {
+            if (_isDemoModeActive != value)
+            {
+                _isDemoModeActive = value;
+                if (_isDemoModeActive)
+                {
+                    InitializeDemoState();
+                }
+                OnModeChanged?.Invoke();
+            }
+        }
+    }
+
+    public event Action? OnModeChanged;
+
+    public void SetMode(bool isDemoMode)
+    {
+        IsDemoModeActive = isDemoMode;
+    }
 
     private readonly Random _random = new(42);
     private int _stepIndex = 0;
     private static readonly Guid DemoDeviceId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
 
     private readonly (double Lat, double Lon, string CellId, string Pci, string Band, string Tech, string Operator, int BaseDbm)[] _simulationRoute = new[]
     {

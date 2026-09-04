@@ -155,6 +155,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        DemoService.OnModeChanged += HandleModeChanged;
         await LoadSnapshotAsync();
         pollTimer = new System.Threading.Timer(async _ =>
         {
@@ -164,6 +165,15 @@
                 StateHasChanged();
             });
         }, null, 3000, 3000);
+    }
+
+    private async void HandleModeChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadSnapshotAsync();
+            StateHasChanged();
+        });
     }
 
     private async Task LoadSnapshotAsync()
@@ -186,6 +196,7 @@
 
     public void Dispose()
     {
+        DemoService.OnModeChanged -= HandleModeChanged;
         pollTimer?.Dispose();
     }
 }

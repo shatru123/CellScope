@@ -74,11 +74,14 @@ public interface IDemoDataService
 {
     bool IsDemoModeActive { get; set; }
     bool IsDemoAdapterConnected { get; set; }
+    event Action? OnModeChanged;
+    void SetMode(bool isDemoMode);
     void InitializeDemoState();
     CellularSnapshotDto GenerateNextTick();
     IReadOnlyList<TowerLocationDto> GetDemoTowers();
     IReadOnlyList<TowerConnectedDeviceDto> GetDemoConnectedDevicesForTower(string cellId);
     IReadOnlyList<ActiveCallSessionDto> GetDemoActiveCallsForTower(string cellId);
+
     IReadOnlyList<LocationPointDto> GetDemoTrail();
     IReadOnlyList<CellHandoverDto> GetDemoHandovers();
     LocalNetworkDto GetDemoLocalNetwork();

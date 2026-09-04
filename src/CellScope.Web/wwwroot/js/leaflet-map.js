@@ -213,84 +213,110 @@ window.cellScopeMap = {
             entry.towerMarkers.forEach(m => m.remove());
             entry.towerMarkers = [];
 
+            const isDemo = data.isDemoActive !== undefined ? data.isDemoActive : true;
+
             data.towers.forEach(t => {
-                const totalUes = (t.totalConnectedDevices || t.TotalConnectedDevices || 2480).toLocaleString();
-                const activeSessions = (t.activeDataSessions || t.ActiveDataSessions || 2120).toLocaleString();
-                const voLteChannels = (t.voLteVoiceChannels || t.VoLteVoiceChannels || 310).toLocaleString();
-                const throughput = (t.aggregateThroughputMbps || t.AggregateThroughputMbps || 540);
+                const totalUes = (t.totalConnectedDevices || t.TotalConnectedDevices || (isDemo ? 2480 : 0)).toLocaleString();
+                const activeSessions = (t.activeDataSessions || t.ActiveDataSessions || (isDemo ? 2120 : 0)).toLocaleString();
+                const voLteChannels = (t.voLteVoiceChannels || t.VoLteVoiceChannels || (isDemo ? 310 : 0)).toLocaleString();
+                const throughput = (t.aggregateThroughputMbps || t.AggregateThroughputMbps || (isDemo ? 540 : 0));
                 const devList = t.connectedDevices || t.ConnectedDevices || [];
                 const callList = t.activeCalls || t.ActiveCalls || [];
                 const distText = t.distanceMeters ? ` • ${Math.round(t.distanceMeters)}m` : '';
 
+                const badgeHtml = isDemo 
+                    ? `<span style="background:#0b0f19;color:#fbbf24;padding:1px 6px;border-radius:10px;font-size:9.5px;font-weight:800;">${totalUes} UEs</span>`
+                    : `<span style="background:#0b0f19;color:#10b981;padding:1px 6px;border-radius:10px;font-size:9.5px;font-weight:800;">🔒 Real Cell</span>`;
+
                 const towerIcon = L.divIcon({
                     className: 'tower-marker',
-                    html: `<div style="background:#f59e0b;color:#0b0f19;padding:3px 8px;border-radius:6px;font-size:10.5px;font-weight:700;border:1px solid #ffffff;box-shadow:0 0 14px rgba(245,158,11,0.7);white-space:nowrap;display:inline-flex;align-items:center;gap:4px;">🗼 ${t.radioTechnology}${distText} <span style="background:#0b0f19;color:#fbbf24;padding:1px 6px;border-radius:10px;font-size:9.5px;font-weight:800;">${totalUes} UEs</span></div>`,
+                    html: `<div style="background:${isDemo ? '#f59e0b' : '#10b981'};color:#0b0f19;padding:3px 8px;border-radius:6px;font-size:10.5px;font-weight:700;border:1px solid #ffffff;box-shadow:0 0 14px ${isDemo ? 'rgba(245,158,11,0.7)' : 'rgba(16,185,129,0.7)'};white-space:nowrap;display:inline-flex;align-items:center;gap:4px;">🗼 ${t.radioTechnology}${distText} ${badgeHtml}</div>`,
                     iconAnchor: [50, 13]
                 });
 
                 // Build connected devices & active calls HTML snippet
-                let callSnippet = '';
-                if (callList.length > 0) {
-                    callSnippet = `
-                        <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);padding:6px;border-radius:6px;margin-bottom:6px;font-size:10px;">
-                            <div style="font-weight:800;color:#10b981;display:flex;justify-content:space-between;">
-                                <span>📞 Ongoing Calls (${callList.length} Active):</span>
-                                <span>VoNR / VoLTE</span>
+                let devSnippet = '';
+                if (isDemo) {
+                    let callSnippet = '';
+                    if (callList.length > 0) {
+                        callSnippet = `
+                            <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);padding:6px;border-radius:6px;margin-bottom:6px;font-size:10px;">
+                                <div style="font-weight:800;color:#10b981;display:flex;justify-content:space-between;">
+                                    <span>📞 Ongoing Calls (${callList.length} Active):</span>
+                                    <span>VoNR / VoLTE</span>
+                                </div>
+                                <div style="margin-top:3px;display:flex;flex-direction:column;gap:2px;">
+                                    ${callList.slice(0, 2).map(c => `
+                                        <div style="font-size:9px;color:#f8fafc;display:flex;justify-content:space-between;">
+                                            <span><b>${c.callerNumber || c.CallerNumber}</b> ➔ <b>${c.receiverNumber || c.ReceiverNumber}</b></span>
+                                            <span style="color:#fbbf24;">${c.callType || c.CallType}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
-                            <div style="margin-top:3px;display:flex;flex-direction:column;gap:2px;">
-                                ${callList.slice(0, 2).map(c => `
-                                    <div style="font-size:9px;color:#f8fafc;display:flex;justify-content:space-between;">
-                                        <span><b>${c.callerNumber || c.CallerNumber}</b> ➔ <b>${c.receiverNumber || c.ReceiverNumber}</b></span>
-                                        <span style="color:#fbbf24;">${c.callType || c.CallType}</span>
+                        `;
+                    }
+
+                    devSnippet = `
+                        <div style="margin-top:8px;padding-top:6px;border-top:1px solid #1f2d42;">
+                            ${callSnippet}
+                            <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);padding:6px;border-radius:6px;margin-bottom:6px;font-size:10px;">
+                                <div style="font-weight:800;color:#fbbf24;display:flex;justify-content:space-between;">
+                                    <span>📱 Attached Sector Load:</span>
+                                    <span>${totalUes} Connected UEs</span>
+                                </div>
+                                <div style="color:#94a3b8;font-size:9.5px;margin-top:2px;">
+                                    Data Bearers: <b>${activeSessions}</b> • Voice: <b>${voLteChannels}</b> • <b>${throughput} Mbps</b> DL
+                                </div>
+                            </div>
+                            <div style="font-size:10px;font-weight:700;color:#f59e0b;text-transform:uppercase;margin-bottom:4px;">Sample Subscribers (${devList.length} Nodes):</div>
+                            <div style="display:flex;flex-direction:column;gap:4px;max-height:100px;overflow-y:auto;">
+                                ${devList.slice(0, 4).map(dev => `
+                                    <div style="background:#111827;padding:3px 6px;border-radius:4px;border:1px solid #1f2d42;font-size:10px;">
+                                        <div style="display:flex;justify-content:space-between;font-weight:600;color:#f8fafc;">
+                                            <span>${dev.deviceName || dev.DeviceName}</span>
+                                            <span style="color:${dev.signalColor || dev.SignalColor || '#10b981'}">${dev.signalStrengthDbm || dev.SignalStrengthDbm} dBm</span>
+                                        </div>
+                                        <div style="display:flex;justify-content:space-between;color:#94a3b8;font-size:9px;">
+                                            <span>${dev.deviceType || dev.DeviceType} ${dev.phoneNumber ? `• 📱 ${dev.phoneNumber}` : ''}</span>
+                                            <span>${dev.estimatedDistanceMeters || 200}m</span>
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
                     `;
+                } else {
+                    // Strict Real-Only Mode
+                    devSnippet = `
+                        <div style="margin-top:8px;padding-top:6px;border-top:1px solid #1f2d42;">
+                            <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);padding:6px;border-radius:6px;margin-bottom:6px;font-size:10px;">
+                                <div style="font-weight:800;color:#10b981;">🔒 Strict Real-Only Mode Active</div>
+                                <div style="color:#94a3b8;font-size:9px;margin-top:2px;">
+                                    Public telecom base station registered on OpenCellID/MLS. 3GPP air encryption prevents public eavesdropping.
+                                </div>
+                            </div>
+                            <div style="font-size:10px;font-weight:700;color:#10b981;margin-bottom:4px;">
+                                Paired Hardware Collectors: <b>${devList.length}</b> Node(s)
+                            </div>
+                        </div>
+                    `;
                 }
 
-                let devSnippet = `
-                    <div style="margin-top:8px;padding-top:6px;border-top:1px solid #1f2d42;">
-                        ${callSnippet}
-                        <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);padding:6px;border-radius:6px;margin-bottom:6px;font-size:10px;">
-                            <div style="font-weight:800;color:#fbbf24;display:flex;justify-content:space-between;">
-                                <span>📱 Attached Sector Load:</span>
-                                <span>${totalUes} Connected UEs</span>
-                            </div>
-                            <div style="color:#94a3b8;font-size:9.5px;margin-top:2px;">
-                                Data Bearers: <b>${activeSessions}</b> • Voice: <b>${voLteChannels}</b> • <b>${throughput} Mbps</b> DL
-                            </div>
-                        </div>
-                        <div style="font-size:10px;font-weight:700;color:#f59e0b;text-transform:uppercase;margin-bottom:4px;">Sample Subscribers (${devList.length} Nodes):</div>
-                        <div style="display:flex;flex-direction:column;gap:4px;max-height:100px;overflow-y:auto;">`;
-                
-                devList.slice(0, 4).forEach(dev => {
-                    const phoneText = (dev.phoneNumber || dev.PhoneNumber) ? `<span style="color:#06b6d4;font-family:monospace;font-size:8.5px;">• 📱 ${dev.phoneNumber || dev.PhoneNumber}</span>` : '';
-                    devSnippet += `<div style="background:#111827;padding:3px 6px;border-radius:4px;border:1px solid #1f2d42;font-size:10px;">
-                        <div style="display:flex;justify-content:space-between;font-weight:600;color:#f8fafc;">
-                            <span>${dev.deviceName || dev.DeviceName}</span>
-                            <span style="color:${dev.signalColor || dev.SignalColor || '#10b981'}">${dev.signalStrengthDbm || dev.SignalStrengthDbm} dBm</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;color:#94a3b8;font-size:9px;">
-                            <span>${dev.deviceType || dev.DeviceType} ${phoneText}</span>
-                            <span>${dev.estimatedDistanceMeters || dev.EstimatedDistanceMeters || 200}m (TA: ${dev.timingAdvance || dev.TimingAdvance || 3})</span>
-                        </div>
-                    </div>`;
-                });
-
-                devSnippet += `</div></div>`;
+                const buttonText = isDemo ? `⚡ Inspect All ${totalUes} UEs & Ongoing Calls` : `🔍 Inspect Base Station Telemetry`;
+                const buttonBg = isDemo ? '#f59e0b' : '#10b981';
 
                 const popupHtml = `
                     <div style="min-width:250px;">
                         <b>🗼 Macro Base Station / Cellular Tower</b><br>
                         <b>Cell ID:</b> <span style="font-family:monospace;color:#06b6d4;">${t.cellId}</span><br>
                         <b>Operator:</b> ${t.operatorName || 'Telecom Carrier'}<br>
-                        <b>Radio Technology:</b> <span style="color:#f59e0b;font-weight:700;">${t.radioTechnology}</span><br>
+                        <b>Radio Technology:</b> <span style="color:${isDemo ? '#f59e0b' : '#10b981'};font-weight:700;">${t.radioTechnology}</span><br>
                         <b>Physical Cell ID (PCI):</b> ${t.physicalCellId || 'N/A'}<br>
                         <b>Distance:</b> ${t.distanceMeters ? Math.round(t.distanceMeters) + ' meters' : 'Nearby'}<br>
                         ${devSnippet}
-                        <button onclick="window.cellScopeMap.selectTower('${elementId}', '${t.cellId}')" style="margin-top:8px;width:100%;background:#f59e0b;color:#0b0f19;border:none;border-radius:5px;padding:6px 8px;font-weight:800;font-size:11px;cursor:pointer;">
-                            ⚡ Inspect All ${totalUes} UEs & Ongoing Calls
+                        <button onclick="window.cellScopeMap.selectTower('${elementId}', '${t.cellId}')" style="margin-top:8px;width:100%;background:${buttonBg};color:#0b0f19;border:none;border-radius:5px;padding:6px 8px;font-weight:800;font-size:11px;cursor:pointer;">
+                            ${buttonText}
                         </button>
                     </div>
                 `;
