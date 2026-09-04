@@ -436,7 +436,7 @@ a {
   transition: width 0.4s ease, background-color 0.4s ease;
 }
 
-/* Map Containers */
+/* Map Containers & Free Dark OSM Filter (Zero API Key Needed) */
 .leaflet-map-host {
   width: 100%;
   height: 480px;
@@ -450,6 +450,38 @@ a {
   height: calc(100vh - 180px);
   border-radius: 12px;
   border: 1px solid var(--border-color);
+}
+
+/* 100% Free OpenStreetMap Dark Mode Tile Filter */
+.noc-dark-tiles {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%) !important;
+}
+
+.leaflet-tile-pane {
+  background-color: #0b0f19;
+}
+
+.leaflet-popup-content-wrapper {
+  background-color: #162032 !important;
+  color: #f8fafc !important;
+  border: 1px solid #1f2d42 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.6) !important;
+}
+
+.leaflet-popup-tip {
+  background-color: #162032 !important;
+}
+
+.leaflet-popup-content {
+  font-family: var(--font-sans) !important;
+  font-size: 0.85rem !important;
+  line-height: 1.4 !important;
+  margin: 12px 14px !important;
+}
+
+.leaflet-popup-content b {
+  color: var(--accent-cyan) !important;
 }
 
 /* Mobile Responsiveness */

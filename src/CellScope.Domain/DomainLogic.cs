@@ -93,6 +93,29 @@ public static class GeodesyUtils
         return (lat - latDelta, lat + latDelta, lon - lonDelta, lon + lonDelta);
     }
 
+    /// <summary>
+    /// Computes destination coordinates given a starting coordinate, distance in meters, and bearing in degrees.
+    /// </summary>
+    public static (double Latitude, double Longitude) CalculateOffsetCoordinates(double lat, double lon, double distanceMeters, double bearingDegrees)
+    {
+        double angularDistance = distanceMeters / EarthRadiusMeters;
+        double bearingRad = ToRadians(bearingDegrees);
+        double latRad = ToRadians(lat);
+        double lonRad = ToRadians(lon);
+
+        double outLatRad = Math.Asin(
+            Math.Sin(latRad) * Math.Cos(angularDistance) +
+            Math.Cos(latRad) * Math.Sin(angularDistance) * Math.Cos(bearingRad));
+
+        double outLonRad = lonRad + Math.Atan2(
+            Math.Sin(bearingRad) * Math.Sin(angularDistance) * Math.Cos(latRad),
+            Math.Cos(angularDistance) - Math.Sin(latRad) * Math.Sin(outLatRad));
+
+        double outLat = outLatRad * (180.0 / Math.PI);
+        double outLon = ((outLonRad * (180.0 / Math.PI) + 540.0) % 360.0) - 180.0;
+        return (outLat, outLon);
+    }
+
     private static double ToRadians(double degrees) => degrees * (Math.PI / 180.0);
 }
 

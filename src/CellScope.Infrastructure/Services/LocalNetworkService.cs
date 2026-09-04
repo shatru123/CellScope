@@ -274,7 +274,12 @@ public class LocalNetworkService : ILocalNetworkService
             .OrderByDescending(n => n.ScannedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
-        return network != null ? DtoMapper.ToDto(network) : null;
+        if (network == null || network.Devices.Count == 0)
+        {
+            return await ScanLocalSubnetAsync(null, cancellationToken);
+        }
+
+        return DtoMapper.ToDto(network);
     }
 
     public async Task<NetworkDeviceDto?> GetDeviceByIdAsync(Guid id, CancellationToken cancellationToken = default)

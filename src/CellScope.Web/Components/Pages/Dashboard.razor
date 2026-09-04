@@ -1,17 +1,19 @@
 @page "/"
 @inject ICellularService CellularService
 @inject ITowerService TowerService
+@inject ILocalNetworkService NetworkService
 @inject IDemoDataService DemoService
 @inject IJSRuntime JS
 
-<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:0.75rem;">
     <div>
-        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">Network Overview</h1>
-        <p style="font-size:0.875rem;color:var(--text-secondary);">Real-time cellular metrics, serving cell details, and telemetry map</p>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">Network Intelligence Overview</h1>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">Real-time cellular metrics, serving base station, nearby towers, and LAN connected devices</p>
     </div>
     <div style="display:flex;gap:0.5rem;">
-        <button class="btn btn-outline btn-sm" @onclick="RefreshSnapshot">🔄 Refresh</button>
-        <a href="/map" class="btn btn-primary btn-sm">🗺️ Full Map</a>
+        <button class="btn btn-outline btn-sm" @onclick="RefreshSnapshot">🔄 Refresh All</button>
+        <a href="/network" class="btn btn-outline btn-sm">🌐 Local LAN</a>
+        <a href="/map" class="btn btn-primary btn-sm">🗺️ Full GIS Map</a>
     </div>
 </div>
 
@@ -34,14 +36,15 @@
                 ProgressBarColor="@(currentSnapshot?.SignalColor ?? "#06B6D4")"
                 Subtitle="@($"Level {currentSnapshot?.SignalLevel ?? 3}/4 • Quality: {currentSnapshot?.SignalQuality ?? -9.5} dB")" />
 
-    <MetricCard Title="Operator" 
+    <MetricCard Title="Operator & Network" 
                 Value="@(currentSnapshot?.OperatorName ?? "Airtel / Global")" 
                 Subtitle="@($"MCC: {currentSnapshot?.Mcc ?? 310} • MNC: {currentSnapshot?.Mnc ?? 410}")" />
 
-    <MetricCard Title="Neighboring Cells" 
-                Value="@((currentSnapshot?.NeighborCells?.Count ?? 3).ToString())" 
-                Unit="Visible" 
-                Subtitle="3GPP Candidate Cells" />
+    <MetricCard Title="Connected LAN Devices" 
+                Value="@((localNetwork?.Devices?.Count ?? 5).ToString())" 
+                Unit="Online" 
+                ValueColor="#10b981"
+                Subtitle="@($"Subnet: {localNetwork?.Subnet ?? "192.168.1.0/24"}")" />
 </div>
 
 <!-- Middle Section: Serving Cell & Mini Map -->
@@ -49,7 +52,7 @@
     <!-- Mini Map -->
     <MapPanel @ref="mapPanel" 
               MapElementId="dashboard-mini-map" 
-              Title="Active Cell Geolocation & Nearby Towers" 
+              Title="Cell Geolocation, Towers & Connected Devices" 
               InitialLat="@(currentSnapshot?.Latitude ?? 37.7749)" 
               InitialLon="@(currentSnapshot?.Longitude ?? -122.4194)" />
 
@@ -87,27 +90,72 @@
             </div>
             <div style="display:flex;justify-content:space-between;">
                 <span style="color:var(--text-muted);">Data Source</span>
-                <span style="font-size:0.75rem;background:var(--bg-secondary);padding:2px 6px;border-radius:4px;color:var(--text-secondary);">@(currentSnapshot?.DataSource ?? "Demo Generator")</span>
+                <span style="font-size:0.75rem;background:var(--bg-secondary);padding:2px 6px;border-radius:4px;color:var(--text-secondary);">@(currentSnapshot?.DataSource ?? "Direct Telemetry")</span>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Bottom Section: Signal Trend & Neighbor Cells -->
+<!-- Bottom Section: Connected Network Devices & Visible Neighbor Cells -->
 <div class="grid-equal-2col">
-    <!-- Signal Trend Card -->
+    <!-- Discovered Local Network Devices -->
     <div class="noc-card">
         <div class="noc-card-header">
-            <span class="noc-card-title">Live Signal Trend (Last 60 Minutes)</span>
-            <span style="font-size:0.75rem;color:var(--text-muted);">Sampling: 1 min</span>
+            <span class="noc-card-title">Connected Local Network Devices (@(localNetwork?.Devices?.Count ?? 0))</span>
+            <a href="/network" class="btn btn-outline btn-sm">Full Scan</a>
         </div>
-        <div id="dashboard-signal-chart" style="width:100%;height:180px;"></div>
+        <div class="noc-table-container">
+            <table class="noc-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Device Hostname</th>
+                        <th>IP Address</th>
+                        <th>Vendor</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (localNetwork?.Devices != null && localNetwork.Devices.Count > 0)
+                    {
+                        @foreach (var dev in localNetwork.Devices.Take(6))
+                        {
+                            <tr>
+                                <td>
+                                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">● Online</span>
+                                </td>
+                                <td style="font-weight:600;color:var(--text-primary);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                    @(dev.Hostname ?? "LAN Host")
+                                </td>
+                                <td style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">
+                                    @dev.IpAddress
+                                </td>
+                                <td style="font-size:0.8rem;color:var(--text-secondary);">
+                                    @dev.Vendor
+                                </td>
+                                <td>
+                                    <span class="badge" style="background:var(--bg-secondary);color:var(--text-secondary);font-size:0.7rem;">
+                                        @dev.DeviceType
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" style="text-align:center;color:var(--text-muted);">No LAN devices discovered.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Neighbor Cells Table -->
     <div class="noc-card">
         <div class="noc-card-header">
-            <span class="noc-card-title">Visible Neighbor Cells</span>
+            <span class="noc-card-title">Visible Neighbor Cells (@(currentSnapshot?.NeighborCells?.Count ?? 0))</span>
             <a href="/live" class="btn btn-outline btn-sm">Inspect</a>
         </div>
         <div class="noc-table-container">
@@ -149,6 +197,7 @@
 
 @code {
     private CellularSnapshotDto? currentSnapshot;
+    private LocalNetworkDto? localNetwork;
     private MapPanel? mapPanel;
 
     protected override async Task OnInitializedAsync()
@@ -169,10 +218,12 @@
         if (DemoService.IsDemoModeActive)
         {
             currentSnapshot = DemoService.GenerateNextTick();
+            localNetwork = DemoService.GetDemoLocalNetwork();
         }
         else
         {
             currentSnapshot = await CellularService.GetCurrentSnapshotAsync();
+            localNetwork = await NetworkService.GetLatestNetworkScanAsync();
         }
     }
 
@@ -187,27 +238,24 @@
     {
         if (currentSnapshot == null) return;
 
-        // Render Map
-        var towers = DemoService.IsDemoModeActive ? DemoService.GetDemoTowers() : await TowerService.GetNearbyTowersAsync(currentSnapshot.Latitude ?? 37.7749, currentSnapshot.Longitude ?? -122.4194);
+        double lat = currentSnapshot.Latitude ?? 37.7749;
+        double lon = currentSnapshot.Longitude ?? -122.4194;
+
+        // Render Map with towers and discovered devices
+        var towers = DemoService.IsDemoModeActive ? DemoService.GetDemoTowers() : await TowerService.GetNearbyTowersAsync(lat, lon);
         var trail = DemoService.IsDemoModeActive ? DemoService.GetDemoTrail() : await CellularService.GetLocationTrailAsync();
 
         if (mapPanel != null)
         {
             await mapPanel.UpdateMapDataAsync(new
             {
-                userLat = currentSnapshot.Latitude ?? 37.7749,
-                userLon = currentSnapshot.Longitude ?? -122.4194,
+                userLat = lat,
+                userLon = lon,
                 servingCell = currentSnapshot,
                 towers = towers,
+                devices = localNetwork?.Devices,
                 trail = trail
             });
-        }
-
-        // Render Chart
-        var analytics = DemoService.IsDemoModeActive ? DemoService.GetDemoAnalytics("1h") : null;
-        if (analytics != null && analytics.SignalStrengthTrend.Count > 0)
-        {
-            await JS.InvokeVoidAsync("cellScopeCharts.renderSignalTrend", "dashboard-signal-chart", analytics.SignalStrengthTrend, "Signal (dBm)", "#06b6d4");
         }
     }
 }
