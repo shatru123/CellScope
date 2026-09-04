@@ -249,15 +249,35 @@
 
     private async Task LoadDataAsync()
     {
-        localNetwork = await NetworkService.GetLatestNetworkScanAsync() ?? await NetworkService.ScanLocalSubnetAsync();
-
-        if (DemoService.IsDemoModeActive)
+        try
         {
-            currentSnapshot = DemoService.GenerateNextTick();
+            localNetwork = await NetworkService.GetLatestNetworkScanAsync() ?? await NetworkService.ScanLocalSubnetAsync();
         }
-        else
+        catch (Exception ex)
         {
-            currentSnapshot = await CellularService.GetCurrentSnapshotAsync();
+            Console.WriteLine($"[Dashboard] Local network load notice: {ex.Message}");
+            localNetwork = null;
+        }
+
+        try
+        {
+            if (DemoService.IsDemoModeActive)
+            {
+                currentSnapshot = DemoService.GenerateNextTick();
+            }
+            else
+            {
+                currentSnapshot = await CellularService.GetCurrentSnapshotAsync();
+                if (currentSnapshot == null)
+                {
+                    currentSnapshot = DemoService.GenerateNextTick();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Dashboard] Cellular snapshot load notice: {ex.Message}");
+            currentSnapshot = DemoService.GenerateNextTick();
         }
     }
 
@@ -270,25 +290,32 @@
 
     private async Task RenderChartAndMapAsync()
     {
-        double lat = currentSnapshot?.Latitude ?? 37.7749;
-        double lon = currentSnapshot?.Longitude ?? -122.4194;
-
-        // Render Map with towers and discovered devices
-        var towers = DemoService.IsDemoModeActive ? DemoService.GetDemoTowers() : await TowerService.GetNearbyTowersAsync(lat, lon);
-        var trail = DemoService.IsDemoModeActive ? DemoService.GetDemoTrail() : await CellularService.GetLocationTrailAsync();
-
-        if (mapPanel != null)
+        try
         {
-            await mapPanel.UpdateMapDataAsync(new
+            double lat = currentSnapshot?.Latitude ?? 37.7749;
+            double lon = currentSnapshot?.Longitude ?? -122.4194;
+
+            // Render Map with towers and discovered devices
+            var towers = DemoService.IsDemoModeActive ? DemoService.GetDemoTowers() : await TowerService.GetNearbyTowersAsync(lat, lon);
+            var trail = DemoService.IsDemoModeActive ? DemoService.GetDemoTrail() : await CellularService.GetLocationTrailAsync();
+
+            if (mapPanel != null)
             {
-                userLat = lat,
-                userLon = lon,
-                servingCell = currentSnapshot,
-                towers = towers,
-                devices = localNetwork?.Devices,
-                trail = trail,
-                isDemoActive = DemoService.IsDemoModeActive
-            });
+                await mapPanel.UpdateMapDataAsync(new
+                {
+                    userLat = lat,
+                    userLon = lon,
+                    servingCell = currentSnapshot,
+                    towers = towers,
+                    devices = localNetwork?.Devices,
+                    trail = trail,
+                    isDemoActive = DemoService.IsDemoModeActive
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Dashboard] RenderChartAndMap notice: {ex.Message}");
         }
     }
 

@@ -1335,41 +1335,66 @@
 
     private async Task LoadDataAsync()
     {
-        localNetwork = await NetworkService.GetLatestNetworkScanAsync() ?? await NetworkService.ScanLocalSubnetAsync();
-
-        if (DemoService.IsDemoModeActive)
+        try
         {
-            snapshot = DemoService.GenerateNextTick();
-            currentLat = snapshot.Latitude ?? 37.7749;
-            currentLon = snapshot.Longitude ?? -122.4194;
-            currentCenterLat = currentLat;
-            currentCenterLon = currentLon;
-            await LoadTowersForAreaAsync(currentCenterLat, currentCenterLon, currentRadiusMeters);
+            localNetwork = await NetworkService.GetLatestNetworkScanAsync() ?? await NetworkService.ScanLocalSubnetAsync();
         }
-        else
+        catch (Exception ex)
         {
-            snapshot = await CellularService.GetCurrentSnapshotAsync();
-            if (snapshot?.Latitude != null && snapshot?.Longitude != null)
+            Console.WriteLine($"[CellMap] Local network load notice: {ex.Message}");
+            localNetwork = null;
+        }
+
+        try
+        {
+            if (DemoService.IsDemoModeActive)
             {
-                currentLat = snapshot.Latitude.Value;
-                currentLon = snapshot.Longitude.Value;
+                snapshot = DemoService.GenerateNextTick();
+                currentLat = snapshot.Latitude ?? 37.7749;
+                currentLon = snapshot.Longitude ?? -122.4194;
                 currentCenterLat = currentLat;
                 currentCenterLon = currentLon;
+                await LoadTowersForAreaAsync(currentCenterLat, currentCenterLon, currentRadiusMeters);
             }
+            else
+            {
+                snapshot = await CellularService.GetCurrentSnapshotAsync();
+                if (snapshot?.Latitude != null && snapshot?.Longitude != null)
+                {
+                    currentLat = snapshot.Latitude.Value;
+                    currentLon = snapshot.Longitude.Value;
+                    currentCenterLat = currentLat;
+                    currentCenterLon = currentLon;
+                }
+                await LoadTowersForAreaAsync(currentCenterLat, currentCenterLon, currentRadiusMeters);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CellMap] Cellular snapshot load notice: {ex.Message}");
+            snapshot = DemoService.GenerateNextTick();
             await LoadTowersForAreaAsync(currentCenterLat, currentCenterLon, currentRadiusMeters);
         }
     }
 
     private async Task LoadTowersForAreaAsync(double lat, double lon, double radiusMeters)
     {
-        if (DemoService.IsDemoModeActive)
+        try
         {
-            towersList = DemoService.GetDemoTowers(lat, lon, radiusMeters).ToList();
+            if (DemoService.IsDemoModeActive)
+            {
+                towersList = DemoService.GetDemoTowers(lat, lon, radiusMeters).ToList();
+            }
+            else
+            {
+                var towers = await TowerService.GetNearbyTowersAsync(lat, lon, radiusMeters);
+                towersList = towers.ToList();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            var towers = await TowerService.GetNearbyTowersAsync(lat, lon, radiusMeters);
-            towersList = towers.ToList();
+            Console.WriteLine($"[CellMap] LoadTowersForArea notice: {ex.Message}");
+            towersList = DemoService.GetDemoTowers(lat, lon, radiusMeters).ToList();
         }
     }
 

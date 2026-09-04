@@ -18,25 +18,26 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Configure Database
-string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+string? rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+
+string? npgsqlConn = DatabaseConfig.FormatPostgreSqlConnectionString(rawConnectionString);
 
 builder.Services.AddDbContext<CellScopeDbContext>(options =>
 {
-    if (!string.IsNullOrEmpty(connectionString) && (connectionString.StartsWith("Host=") || connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://")))
+    if (DatabaseConfig.IsPostgreSql(rawConnectionString) && !string.IsNullOrEmpty(npgsqlConn))
     {
-        string npgsqlConn = connectionString;
-        if (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://"))
+        options.UseNpgsql(npgsqlConn, npgsqlOptions =>
         {
-            var uri = new Uri(connectionString);
-            var userInfo = uri.UserInfo.Split(':');
-            npgsqlConn = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={(userInfo.Length > 1 ? userInfo[1] : "")};SSL Mode=Prefer;";
-        }
-        options.UseNpgsql(npgsqlConn);
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(5),
+                errorCodesToAdd: null);
+        });
     }
     else
     {
-        options.UseSqlite(connectionString ?? "Data Source=cellscope.db");
+        options.UseSqlite(rawConnectionString ?? "Data Source=cellscope.db");
     }
 });
 
@@ -79,12 +80,21 @@ var app = builder.Build();
 // Auto-migrate & Seed Database on startup
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<CellScopeDbContext>();
     try
     {
+        var db = scope.ServiceProvider.GetRequiredService<CellScopeDbContext>();
         await db.Database.EnsureCreatedAsync();
         
-        var schemaMigrations = new[]
+        bool isPostgres = db.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true;
+        
+        var schemaMigrations = isPostgres ? new[]
+        {
+            "ALTER TABLE \"NetworkDevices\" ADD COLUMN IF NOT EXISTS \"PhoneNumber\" TEXT;",
+            "ALTER TABLE \"TowerLocations\" ADD COLUMN IF NOT EXISTS \"Area\" TEXT;",
+            "ALTER TABLE \"TowerLocations\" ADD COLUMN IF NOT EXISTS \"StreetAddress\" TEXT;",
+            "ALTER TABLE \"TowerLocations\" ADD COLUMN IF NOT EXISTS \"City\" TEXT;",
+            "ALTER TABLE \"TowerLocations\" ADD COLUMN IF NOT EXISTS \"PostalCode\" TEXT;"
+        } : new[]
         {
             "ALTER TABLE \"NetworkDevices\" ADD COLUMN \"PhoneNumber\" TEXT;",
             "ALTER TABLE \"TowerLocations\" ADD COLUMN \"Area\" TEXT;",
@@ -105,7 +115,10 @@ using (var scope = app.Services.CreateScope())
         var towerService = scope.ServiceProvider.GetRequiredService<ITowerService>();
         await towerService.SeedDefaultTowersAsync();
     }
-    catch { }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Database Initialization Notice] {ex.Message}");
+    }
 }
 
 app.UseSerilogRequestLogging();

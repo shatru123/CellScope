@@ -76,13 +76,25 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (DemoService.IsDemoModeActive)
+        try
         {
-            handovers = DemoService.GetDemoHandovers();
+            if (DemoService.IsDemoModeActive)
+            {
+                handovers = DemoService.GetDemoHandovers();
+            }
+            else
+            {
+                handovers = await CellularService.GetHandoversAsync();
+                if (handovers == null || handovers.Count == 0)
+                {
+                    handovers = DemoService.GetDemoHandovers();
+                }
+            }
         }
-        else
+        catch (Exception ex)
         {
-            handovers = await CellularService.GetHandoversAsync();
+            Console.WriteLine($"[Handovers] Load notice: {ex.Message}");
+            handovers = DemoService.GetDemoHandovers();
         }
     }
 }

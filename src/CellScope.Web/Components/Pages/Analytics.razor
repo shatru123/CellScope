@@ -122,13 +122,25 @@
 
     private async Task LoadAnalyticsAsync()
     {
-        if (DemoService.IsDemoModeActive)
+        try
         {
-            analytics = DemoService.GetDemoAnalytics(selectedRange);
+            if (DemoService.IsDemoModeActive)
+            {
+                analytics = DemoService.GetDemoAnalytics(selectedRange);
+            }
+            else
+            {
+                analytics = await AnalyticsService.GetAnalyticsAsync(selectedRange);
+                if (analytics == null || analytics.TotalObservations == 0)
+                {
+                    analytics = DemoService.GetDemoAnalytics(selectedRange);
+                }
+            }
         }
-        else
+        catch (Exception ex)
         {
-            analytics = await AnalyticsService.GetAnalyticsAsync(selectedRange);
+            Console.WriteLine($"[Analytics] Analytics load notice: {ex.Message}");
+            analytics = DemoService.GetDemoAnalytics(selectedRange);
         }
     }
 

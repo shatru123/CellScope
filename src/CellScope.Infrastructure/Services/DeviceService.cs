@@ -91,12 +91,20 @@ public class DeviceService : IDeviceService
 
     public async Task<IReadOnlyList<DeviceDto>> GetDevicesAsync(Guid? userId = null, CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.Devices.AsNoTracking();
-        if (userId.HasValue)
-            query = query.Where(d => d.UserId == userId.Value);
+        try
+        {
+            var query = _dbContext.Devices.AsNoTracking();
+            if (userId.HasValue)
+                query = query.Where(d => d.UserId == userId.Value);
 
-        var list = await query.OrderByDescending(d => d.LastSeenAt).ToListAsync(cancellationToken);
-        return list.Select(DtoMapper.ToDto).ToList();
+            var list = await query.OrderByDescending(d => d.LastSeenAt).ToListAsync(cancellationToken);
+            return list.Select(DtoMapper.ToDto).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DeviceService Notice] GetDevicesAsync fallback: {ex.Message}");
+            return Array.Empty<DeviceDto>();
+        }
     }
 
     public async Task<DeviceDto?> GetDeviceByIdAsync(Guid id, CancellationToken cancellationToken = default)

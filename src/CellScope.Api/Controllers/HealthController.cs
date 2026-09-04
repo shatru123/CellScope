@@ -57,7 +57,13 @@ public class HealthController : ControllerBase
     [HttpHead("cron/keepalive")]
     public async Task<IActionResult> KeepAlive(CancellationToken cancellationToken)
     {
-        var dbConnected = await _dbContext.Database.CanConnectAsync(cancellationToken);
+        bool dbConnected = false;
+        try
+        {
+            dbConnected = await _dbContext.Database.CanConnectAsync(cancellationToken);
+        }
+        catch { }
+
         var uptime = DateTimeOffset.UtcNow - StartTime;
 
         return Ok(new
@@ -75,10 +81,16 @@ public class HealthController : ControllerBase
     [HttpGet("health/ready")]
     public async Task<IActionResult> GetReady(CancellationToken cancellationToken)
     {
-        bool canConnect = await _dbContext.Database.CanConnectAsync(cancellationToken);
+        bool canConnect = false;
+        try
+        {
+            canConnect = await _dbContext.Database.CanConnectAsync(cancellationToken);
+        }
+        catch { }
+
         if (!canConnect)
         {
-            return StatusCode(503, new { status = "Degraded", error = "Database connection failed" });
+            return StatusCode(503, new { status = "Degraded", error = "Database connection failed", timestamp = DateTimeOffset.UtcNow });
         }
 
         return Ok(new { status = "Ready", database = "Connected", timestamp = DateTimeOffset.UtcNow });

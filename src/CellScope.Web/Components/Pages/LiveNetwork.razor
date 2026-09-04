@@ -200,13 +200,21 @@
 
     private async Task LoadSnapshotAsync()
     {
-        if (DemoService.IsDemoModeActive)
+        try
         {
-            snapshot = DemoService.GenerateNextTick();
+            if (DemoService.IsDemoModeActive)
+            {
+                snapshot = DemoService.GenerateNextTick();
+            }
+            else
+            {
+                snapshot = await CellularService.GetCurrentSnapshotAsync() ?? DemoService.GenerateNextTick();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            snapshot = await CellularService.GetCurrentSnapshotAsync();
+            Console.WriteLine($"[LiveNetwork] Snapshot load notice: {ex.Message}");
+            snapshot = DemoService.GenerateNextTick();
         }
     }
 

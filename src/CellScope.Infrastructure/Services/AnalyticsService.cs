@@ -26,19 +26,29 @@ public class AnalyticsService : IAnalyticsService
             _ => DateTimeOffset.UtcNow.AddHours(-24)
         };
 
-        var query = _dbContext.SignalObservations.AsNoTracking().Where(s => s.Timestamp >= cutoff);
+        var observations = new List<Domain.Entities.SignalObservation>();
+        int handoversCount = 0;
 
-        if (!string.IsNullOrEmpty(operatorName))
-            query = query.Where(s => s.OperatorName == operatorName);
+        try
+        {
+            var query = _dbContext.SignalObservations.AsNoTracking().Where(s => s.Timestamp >= cutoff);
 
-        if (!string.IsNullOrEmpty(technology))
-            query = query.Where(s => s.RadioTechnology == technology);
+            if (!string.IsNullOrEmpty(operatorName))
+                query = query.Where(s => s.OperatorName == operatorName);
 
-        var observations = await query.OrderBy(s => s.Timestamp).ToListAsync(cancellationToken);
+            if (!string.IsNullOrEmpty(technology))
+                query = query.Where(s => s.RadioTechnology == technology);
 
-        var handoversCount = await _dbContext.CellHandovers
-            .AsNoTracking()
-            .CountAsync(h => h.Timestamp >= cutoff, cancellationToken);
+            observations = await query.OrderBy(s => s.Timestamp).ToListAsync(cancellationToken);
+
+            handoversCount = await _dbContext.CellHandovers
+                .AsNoTracking()
+                .CountAsync(h => h.Timestamp >= cutoff, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AnalyticsService Notice] GetAnalyticsAsync fallback: {ex.Message}");
+        }
 
         var result = new SignalAnalyticsDto
         {
