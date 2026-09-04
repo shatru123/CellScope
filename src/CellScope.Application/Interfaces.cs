@@ -111,3 +111,20 @@ public interface ISecurityAnalysisService
     IReadOnlyList<AuthFlowMessageDto> GetAuthenticationFlowMessages();
 }
 
+public interface ICellularRadioAnalysisService
+{
+    CellCapacityDto CalculateCellLoad(CellularSnapshotDto? snapshot, TowerLocationDto? tower);
+    CellThreatAnalysisDto AnalyzeCellThreats(CellularSnapshotDto? snapshot, TowerLocationDto? tower, IReadOnlyList<NeighborCellDto>? neighbors);
+    SibAnalysisDto DecodeSibAndChannel(CellularSnapshotDto? snapshot, TowerLocationDto? tower);
+    RfPropagationModelDto CalculateRfPropagation(TowerLocationDto tower, double carrierFrequencyMhz = 3500.0);
+    IReadOnlyList<RfPropagationModelDto> GetMultiTowerPropagation(IReadOnlyList<TowerLocationDto> towers);
+}
+
+public interface IPrivate5gCoreService
+{
+    Task<Private5gCoreStatusDto> GetCoreStatusAsync(string? endpointUrl = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Private5gSubscriberDto>> GetConnectedSubscribersAsync(string? endpointUrl = null, CancellationToken cancellationToken = default);
+    Task<Private5gSubscriberDto?> GetSubscriberBySupiAsync(string supi, CancellationToken cancellationToken = default);
+}
+
+

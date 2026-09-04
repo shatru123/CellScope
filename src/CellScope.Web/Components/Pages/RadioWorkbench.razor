@@ -1,0 +1,1035 @@
+@page "/radio"
+@inject ICellularRadioAnalysisService RadioService
+@inject IPrivate5gCoreService Private5gService
+@inject ICellularService CellularService
+@inject ITowerService TowerService
+@inject IDemoDataService DemoService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Radio Workbench — CellScope</PageTitle>
+
+<div class="radio-workbench-page">
+    <div class="page-header">
+        <div class="header-left">
+            <div class="title-with-badge">
+                <h1>📡 3GPP Radio Workbench & Advanced Analytics</h1>
+                <span class="badge badge-cyan">3GPP Rel-17 Spec</span>
+                @if (isDemoMode)
+                {
+                    <span class="badge badge-amber">📡 NOC Simulation</span>
+                }
+                else
+                {
+                    <span class="badge badge-emerald">🔒 Strict Real-Only</span>
+                }
+            </div>
+            <p class="subtitle">
+                Comprehensive cellular engineering suite: Cell Load Modeling, Rogue Base Station Defense, SIB Broadcast Decoding, Antenna Propagation, and Private 5G Core Telemetry.
+            </p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary btn-sm" @onclick="RefreshAllDataAsync">
+                🔄 Refresh Telemetry
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-nav">
+        <button class="tab-btn @(activeTab == "load" ? "active" : "")" @onclick='() => activeTab = "load"'>
+            ⚡ Cell Load & Congestion
+        </button>
+        <button class="tab-btn @(activeTab == "threat" ? "active" : "")" @onclick='() => activeTab = "threat"'>
+            🛡️ Rogue Base Station Shield
+        </button>
+        <button class="tab-btn @(activeTab == "sib" ? "active" : "")" @onclick='() => activeTab = "sib"'>
+            📡 SIB & Frequency Inspector
+        </button>
+        <button class="tab-btn @(activeTab == "propagation" ? "active" : "")" @onclick='() => activeTab = "propagation"'>
+            🗺️ RF Propagation & Antennas
+        </button>
+        <button class="tab-btn @(activeTab == "private5g" ? "active" : "")" @onclick='() => activeTab = "private5g"'>
+            🏢 Private 5G / O-RAN Core
+        </button>
+    </div>
+
+    <!-- TAB 1: CELL LOAD & CONGESTION -->
+    @if (activeTab == "load")
+    {
+        @if (capacity == null)
+        {
+            <div class="loading-state">⏳ Analyzing cell capacity and load index...</div>
+        }
+        else
+        {
+            <div class="tab-content">
+                <!-- Summary Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Estimated Cell Load</div>
+                        <div class="metric-value" style="color: @capacity.CongestionColor">
+                            @capacity.EstimatedLoadPercent.ToString("0.0")%
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: @capacity.EstimatedLoadPercent%; background: @capacity.CongestionColor;"></div>
+                        </div>
+                        <div class="metric-sub">@capacity.CongestionLevel</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">PRB Utilization</div>
+                        <div class="metric-value text-cyan">
+                            @capacity.PrbUtilizationPercent.ToString("0.0")%
+                        </div>
+                        <div class="metric-sub">Physical Resource Blocks in use</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Channel Quality (CQI)</div>
+                        <div class="metric-value text-amber">
+                            @capacity.ChannelQualityIndicator <span class="unit">/ 15</span>
+                        </div>
+                        <div class="metric-sub">Modulation: <b>@capacity.ModulationScheme</b></div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Available Capacity</div>
+                        <div class="metric-value text-emerald">
+                            @capacity.EstimatedAvailableThroughputMbps <span class="unit">Mbps</span>
+                        </div>
+                        <div class="metric-sub">Peak Max: @capacity.EstimatedMaxThroughputMbps Mbps</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Active Subscriber Density</div>
+                        <div class="metric-value text-purple">
+                            @capacity.EstimatedActiveUeDensity <span class="unit">UEs/km²</span>
+                        </div>
+                        <div class="metric-sub">Macro sector traffic density</div>
+                    </div>
+                </div>
+
+                <!-- Signal Metrics & Radio Quality Analysis -->
+                <div class="two-col-grid">
+                    <div class="panel-card">
+                        <h3>📊 Radio Channel Quality Breakdown</h3>
+                        <p class="panel-desc">Cell load is derived directly from the mathematical relation $RSRQ = \frac{N \times RSRP}{RSSI}$.</p>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>Measured Value</th>
+                                        <th>Evaluation</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><b>RSRP (Reference Signal Power)</b></td>
+                                        <td class="font-mono text-cyan">@capacity.RsrpDbm dBm</td>
+                                        <td>@(capacity.RsrpDbm >= -90 ? "🟢 Strong Signal" : "🟡 Moderate")</td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>RSRQ (Reference Signal Quality)</b></td>
+                                        <td class="font-mono text-amber">@capacity.RsrqDb dB</td>
+                                        <td>@(capacity.RsrqDb >= -10 ? "🟢 Light Load" : (capacity.RsrqDb >= -14 ? "🟡 Moderate Load" : "🔴 Heavy Traffic"))</td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>SINR (Signal to Interference Ratio)</b></td>
+                                        <td class="font-mono text-emerald">@capacity.SinrDb dB</td>
+                                        <td>@(capacity.SinrDb >= 15 ? "🟢 High Spectral Efficiency" : "🟡 Fair Quality")</td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Serving Cell ID & Band</b></td>
+                                        <td class="font-mono text-purple">@capacity.CellId</td>
+                                        <td><b>@capacity.RadioTechnology</b> (@capacity.Band)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="panel-card">
+                        <h3>💡 Radio Network Recommendations</h3>
+                        <p class="panel-desc">Algorithmic suggestions for network optimization and device QoS:</p>
+                        <div class="recommendations-list">
+                            @foreach (var rec in capacity.OptimizationRecommendations)
+                            {
+                                <div class="rec-item">
+                                    <span class="rec-icon">⚡</span>
+                                    <span class="rec-text">@rec</span>
+                                </div>
+                            }
+                            <div class="rec-item">
+                                <span class="rec-icon">📡</span>
+                                <span class="rec-text">Timing Advance suggests stable radio link. 256-QAM modulation enabled on downlink data streams.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+    <!-- TAB 2: ROGUE BASE STATION SHIELD -->
+    @if (activeTab == "threat")
+    {
+        @if (threat == null)
+        {
+            <div class="loading-state">⏳ Executing cellular security audit & threat heuristics...</div>
+        }
+        else
+        {
+            <div class="tab-content">
+                <!-- Threat Summary Banner -->
+                <div class="threat-banner" style="border-left: 5px solid @threat.StatusColor;">
+                    <div class="threat-header-left">
+                        <div class="threat-status-title" style="color: @threat.StatusColor">
+                            @(threat.IsRogueBaseStationSuspected ? "⚠️ THREAT DETECTED" : "🛡️ CELLULAR AIR-INTERFACE SECURE")
+                        </div>
+                        <div class="threat-status-desc">@threat.SecurityStatus</div>
+                    </div>
+                    <div class="threat-score-box">
+                        <div class="score-label">Threat Risk Index</div>
+                        <div class="score-num" style="color: @threat.StatusColor">@threat.ThreatScore <span class="score-max">/ 100</span></div>
+                    </div>
+                </div>
+
+                <!-- Defense Heuristics Checklist -->
+                <div class="panel-card">
+                    <h3>🔍 Multi-Factor Base Station Verification Checklist</h3>
+                    <p class="panel-desc">CellScope continuously analyzes incoming broadcast parameters against 3GPP security anomaly signatures:</p>
+
+                    <div class="anomalies-grid">
+                        @foreach (var a in threat.Anomalies)
+                        {
+                            <div class="anomaly-card @(a.IsTriggered ? "anomaly-triggered" : "anomaly-passed")">
+                                <div class="anomaly-header">
+                                    <span class="anomaly-title">@a.RuleName</span>
+                                    <span class="badge" style="background: @a.SeverityColor; color: #0b0f19;">@a.Severity</span>
+                                </div>
+                                <div class="anomaly-desc">@a.Description</div>
+                                <div class="anomaly-impact"><b>Impact:</b> @a.TechnicalImpact</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Active Security Parameters -->
+                <div class="two-col-grid">
+                    <div class="panel-card">
+                        <h3>🔒 Active Radio Encryption Profile</h3>
+                        <table class="data-table">
+                            <tbody>
+                                <tr>
+                                    <td><b>Ciphering Algorithm</b></td>
+                                    <td class="font-mono text-cyan">@threat.CipheringAlgorithm</td>
+                                </tr>
+                                <tr>
+                                    <td><b>Integrity Protection</b></td>
+                                    <td class="text-emerald">@(threat.IsIntegrityActive ? "✅ Active (128-NIA2)" : "❌ Disabled")</td>
+                                </tr>
+                                <tr>
+                                    <td><b>Neighbor Relations Count</b></td>
+                                    <td class="text-amber">@threat.NeighborCellCount verified cell(s)</td>
+                                </tr>
+                                <tr>
+                                    <td><b>Tracking Area Stability</b></td>
+                                    <td class="text-emerald">@(threat.IsTacConsistent ? "✅ Stable TAC" : "⚠️ TAC Swapped")</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="panel-card">
+                        <h3>🛡️ Defense Advisory & Guidelines</h3>
+                        <div class="advisory-box">
+                            <p>@threat.DefenseRecommendation</p>
+                            <ul class="advisory-list">
+                                <li>Always ensure <b>5G Standalone (SA)</b> or <b>LTE Advanced</b> is preferred over legacy 2G/3G networks.</li>
+                                <li>5G-AKA with <b>SUCI (ECIES encryption)</b> prevents IMSI catchers from reading the permanent subscriber ID over the air.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+    <!-- TAB 3: SIB & FREQUENCY INSPECTOR -->
+    @if (activeTab == "sib")
+    {
+        @if (sib == null)
+        {
+            <div class="loading-state">⏳ Decoding System Information Blocks (SIB1/SIB2/SIB3)...</div>
+        }
+        else
+        {
+            <div class="tab-content">
+                <!-- Channel Quick Info Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">3GPP Operating Band</div>
+                        <div class="metric-value text-cyan">@sib.OperatingBand</div>
+                        <div class="metric-sub">@sib.BandDescription</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Downlink Center Freq</div>
+                        <div class="metric-value text-emerald">
+                            @sib.DownlinkFrequencyMhz <span class="unit">MHz</span>
+                        </div>
+                        <div class="metric-sub">@sib.DuplexMode</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Channel Number (@sib.ChannelType)</div>
+                        <div class="metric-value text-amber">@sib.ChannelNumber</div>
+                        <div class="metric-sub">Bandwidth: @sib.ChannelBandwidthMhz MHz</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Timing Advance Distance</div>
+                        <div class="metric-value text-purple">
+                            @sib.TimingAdvanceDistanceMeters <span class="unit">m</span>
+                        </div>
+                        <div class="metric-sub">Delay: @sib.PropagationDelayMicroseconds µs (@sib.TimingAdvanceSteps steps)</div>
+                    </div>
+                </div>
+
+                <!-- Decoded SIB Messages Table -->
+                <div class="panel-card">
+                    <h3>📜 Decoded 3GPP System Information Blocks (SIBs)</h3>
+                    <p class="panel-desc">Broadcast parameters parsed from Master and System Information Blocks:</p>
+
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 250px;">SIB Type</th>
+                                    <th>Decoded Information Elements (IEs)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var kvp in sib.DecodedSibBlocks)
+                                {
+                                    <tr>
+                                        <td class="font-bold text-cyan">@kvp.Key</td>
+                                        <td class="font-mono text-sm">@kvp.Value</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Cell Selection S-Criteria Evaluation -->
+                <div class="panel-card">
+                    <h3>📐 3GPP Cell Selection Criteria ($S_{\text{rxlev}}$ Evaluation)</h3>
+                    <div class="s-criteria-box">
+                        <div class="s-formula">
+                            $$S_{\text{rxlev}} = Q_{\text{rxlevmeas}} - (Q_{\text{rxlevmin}} + Q_{\text{rxlevminoffset}}) - P_{\text{compensation}}$$
+                        </div>
+                        <div class="s-eval-row">
+                            <span>$Q_{\text{rxlevmeas}}$ (Measured RSRP): <b>@sib.ActualRsrpDbm dBm</b></span>
+                            <span>$Q_{\text{rxlevmin}}$ (Minimum Required): <b>@sib.QRxLevMinDbm dBm</b></span>
+                            <span>Result: <b class="text-emerald">@(sib.IsCellSelectionCriteriaMet ? "✅ Cell Suitable (S_rxlev > 0 dB)" : "❌ Unsuitable")</b></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+    <!-- TAB 4: RF PROPAGATION & ANTENNAS -->
+    @if (activeTab == "propagation")
+    {
+        @if (propagation == null)
+        {
+            <div class="loading-state">⏳ Calculating COST-231 RF propagation and sector antenna polygons...</div>
+        }
+        else
+        {
+            <div class="tab-content">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Antenna Height</div>
+                        <div class="metric-value text-cyan">@propagation.AntennaHeightMeters <span class="unit">m</span></div>
+                        <div class="metric-sub">Macro Tower Mast</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Max Coverage Radius</div>
+                        <div class="metric-value text-emerald">@propagation.MaxCoverageRadiusMeters <span class="unit">m</span></div>
+                        <div class="metric-sub">Urban COST-231 Model</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Total EIRP</div>
+                        <div class="metric-value text-amber">@propagation.TotalEffectiveIsotropicRadiatedPowerDbm <span class="unit">dBm</span></div>
+                        <div class="metric-sub">~40 Watts Transmission</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Path Loss Exponent</div>
+                        <div class="metric-value text-purple">@propagation.UrbanPathLossExponent</div>
+                        <div class="metric-sub">Dense Urban Clutter</div>
+                    </div>
+                </div>
+
+                <div class="two-col-grid">
+                    <!-- Sectors Table -->
+                    <div class="panel-card">
+                        <h3>🗼 Sector Antenna Azimuth Breakdown (3 Sectors)</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Sector</th>
+                                    <th>Azimuth</th>
+                                    <th>Beamwidth</th>
+                                    <th>Gain</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sec in propagation.Sectors)
+                                {
+                                    <tr>
+                                        <td class="font-bold text-cyan">@sec.SectorName</td>
+                                        <td class="font-mono text-amber">@sec.AzimuthDegrees°</td>
+                                        <td>@sec.HorizontalBeamwidthDegrees° Horiz</td>
+                                        <td class="text-emerald">@sec.MainLobeGainDbi dBi</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Contour Rings Table -->
+                    <div class="panel-card">
+                        <h3>📡 RSRP Signal Attenuation Contour Rings</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Signal Quality</th>
+                                    <th>Threshold</th>
+                                    <th>Coverage Radius</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var ring in propagation.ContourRings)
+                                {
+                                    <tr>
+                                        <td><span class="ring-dot" style="background: @ring.ColorHex;"></span> <b>@ring.Rating</b></td>
+                                        <td class="font-mono">@ring.RsrpThresholdDbm dBm</td>
+                                        <td class="font-mono text-cyan">@ring.RadiusMeters m</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+    <!-- TAB 5: PRIVATE 5G / O-RAN CORE -->
+    @if (activeTab == "private5g")
+    {
+        @if (p5gStatus == null)
+        {
+            <div class="loading-state">⏳ Polling Private 5G Core Network Functions (AMF / UPF / SMF)...</div>
+        }
+        else
+        {
+            <div class="tab-content">
+                <!-- Core Status Header -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Private 5G Core</div>
+                        <div class="metric-value text-cyan" style="font-size: 1.1rem;">@p5gStatus.CoreName</div>
+                        <div class="metric-sub">@p5gStatus.CoreVersion • PLMN @p5gStatus.Plmn</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Connected RRC UEs</div>
+                        <div class="metric-value text-emerald">
+                            @p5gSubscribers.Count <span class="unit">Active</span>
+                        </div>
+                        <div class="metric-sub">Total Registered: @p5gStatus.TotalRegisteredSubscribers</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Active PDU Sessions</div>
+                        <div class="metric-value text-amber">@p5gStatus.ActivePduSessions</div>
+                        <div class="metric-sub">eMBB & URLLC Slices</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Aggregate Core Throughput</div>
+                        <div class="metric-value text-purple">
+                            @p5gStatus.AggregateThroughputMbps <span class="unit">Mbps</span>
+                        </div>
+                        <div class="metric-sub">N3 / N6 User Plane</div>
+                    </div>
+                </div>
+
+                <!-- Network Functions Status Grid -->
+                <div class="panel-card">
+                    <h3>⚙️ 3GPP Service-Based Architecture (SBA) Network Functions</h3>
+                    <div class="nf-grid">
+                        @foreach (var nf in p5gStatus.NetworkFunctions)
+                        {
+                            <div class="nf-card">
+                                <div class="nf-header">
+                                    <span class="nf-name">@nf.Name</span>
+                                    <span class="badge" style="background: @nf.StatusColor; color: #0b0f19;">@nf.Status</span>
+                                </div>
+                                <div class="nf-role">@nf.Role</div>
+                                <div class="nf-footer">
+                                    <span class="font-mono text-xs">@nf.IpAddress</span>
+                                    <span class="text-xs text-slate-400">@nf.ProcessedMessagesCount.ToString("N0") msgs</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Connected Subscribers Table -->
+                <div class="panel-card">
+                    <div class="panel-header-with-action">
+                        <div>
+                            <h3>📱 Live Connected RRC Subscribers Table</h3>
+                            <p class="panel-desc">Real-time device sessions connected to private gNodeB base stations:</p>
+                        </div>
+                        <span class="badge badge-emerald">@p5gSubscribers.Count UEs Online</span>
+                    </div>
+
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>SUPI (IMSI)</th>
+                                    <th>Allocated IP</th>
+                                    <th>Device Name</th>
+                                    <th>Network Slice</th>
+                                    <th>5QI</th>
+                                    <th>Throughput (DL/UL)</th>
+                                    <th>Latency</th>
+                                    <th>Serving gNB</th>
+                                    <th>State</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sub in p5gSubscribers)
+                                {
+                                    <tr>
+                                        <td class="font-mono text-cyan">@sub.Supi</td>
+                                        <td class="font-mono text-amber">@sub.AllocatedIpAddress</td>
+                                        <td><b>@sub.DeviceType</b></td>
+                                        <td><span class="badge badge-purple">@sub.SstSdSlice</span></td>
+                                        <td class="font-mono">5QI-@sub.Qfi5Qi</td>
+                                        <td class="font-mono text-emerald">@sub.DownlinkRateMbps / @sub.UplinkRateMbps Mbps</td>
+                                        <td class="font-mono">@sub.PingLatencyMs ms</td>
+                                        <td>@sub.GNodeBId</td>
+                                        <td><span class="badge badge-emerald">@sub.ConnectionState</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .radio-workbench-page {
+        padding: 1.5rem;
+        max-width: 1400px;
+        margin: 0 auto;
+        color: #f8fafc;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .title-with-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .title-with-badge h1 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin: 0;
+        color: #f8fafc;
+    }
+
+    .subtitle {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        margin-top: 0.4rem;
+        max-width: 900px;
+    }
+
+    .tabs-nav {
+        display: flex;
+        gap: 0.5rem;
+        border-bottom: 1px solid #1e293b;
+        margin-bottom: 1.5rem;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+
+    .tab-btn {
+        background: transparent;
+        border: 1px solid #1e293b;
+        color: #94a3b8;
+        padding: 0.6rem 1.1rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+        background: #1e293b;
+        color: #f8fafc;
+    }
+
+    .tab-btn.active {
+        background: #0284c7;
+        color: #ffffff;
+        border-color: #38bdf8;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .metric-card {
+        background: #111827;
+        border: 1px solid #1f2d42;
+        border-radius: 10px;
+        padding: 1.1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .metric-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+        margin-bottom: 0.4rem;
+    }
+
+    .metric-value {
+        font-size: 1.7rem;
+        font-weight: 800;
+        margin-bottom: 0.4rem;
+    }
+
+    .unit {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #94a3b8;
+    }
+
+    .metric-sub {
+        font-size: 0.8rem;
+        color: #64748b;
+    }
+
+    .progress-bar-bg {
+        background: #1f2937;
+        height: 6px;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 0.4rem 0;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        transition: width 0.4s ease;
+    }
+
+    .two-col-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    @@media (max-width: 900px) {
+        .two-col-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .panel-card {
+        background: #111827;
+        border: 1px solid #1f2d42;
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .panel-card h3 {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #f8fafc;
+        margin: 0 0 0.3rem 0;
+    }
+
+    .panel-desc {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+    }
+
+    .data-table-container {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .data-table th, .data-table td {
+        padding: 0.65rem 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #1e293b;
+    }
+
+    .data-table th {
+        background: #1e293b;
+        color: #cbd5e1;
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .data-table tr:hover td {
+        background: rgba(30, 41, 59, 0.5);
+    }
+
+    .recommendations-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .rec-item {
+        background: #1e293b;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .threat-banner {
+        background: #111827;
+        border: 1px solid #1f2d42;
+        border-radius: 10px;
+        padding: 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .threat-status-title {
+        font-size: 1.3rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+    }
+
+    .threat-status-desc {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        margin-top: 0.2rem;
+    }
+
+    .threat-score-box {
+        text-align: right;
+    }
+
+    .score-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #94a3b8;
+        font-weight: 700;
+    }
+
+    .score-num {
+        font-size: 1.8rem;
+        font-weight: 900;
+    }
+
+    .score-max {
+        font-size: 0.9rem;
+        color: #64748b;
+    }
+
+    .anomalies-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .anomaly-card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .anomaly-triggered {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.08);
+    }
+
+    .anomaly-passed {
+        border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    .anomaly-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .anomaly-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #f8fafc;
+    }
+
+    .anomaly-desc {
+        font-size: 0.85rem;
+        color: #cbd5e1;
+        margin-bottom: 0.5rem;
+    }
+
+    .anomaly-impact {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        background: #0f172a;
+        padding: 0.4rem 0.6rem;
+        border-radius: 5px;
+    }
+
+    .advisory-box {
+        background: #1e293b;
+        border-radius: 8px;
+        padding: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .advisory-list {
+        margin-top: 0.6rem;
+        padding-left: 1.2rem;
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+
+    .s-criteria-box {
+        background: #1e293b;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .s-eval-row {
+        display: flex;
+        gap: 2rem;
+        margin-top: 0.75rem;
+        font-size: 0.9rem;
+        flex-wrap: wrap;
+    }
+
+    .ring-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 6px;
+    }
+
+    .nf-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
+    }
+
+    .nf-card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 0.9rem;
+    }
+
+    .nf-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.3rem;
+    }
+
+    .nf-name {
+        font-weight: 800;
+        font-size: 1rem;
+        color: #38bdf8;
+    }
+
+    .nf-role {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-bottom: 0.5rem;
+    }
+
+    .nf-footer {
+        display: flex;
+        justify-content: space-between;
+        border-top: 1px solid #334155;
+        padding-top: 0.4rem;
+    }
+
+    .panel-header-with-action {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .badge {
+        padding: 0.2rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .badge-cyan { background: rgba(6, 182, 212, 0.2); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.4); }
+    .badge-amber { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .badge-emerald { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-purple { background: rgba(168, 85, 247, 0.2); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.4); }
+
+    .text-cyan { color: #06b6d4; }
+    .text-emerald { color: #10b981; }
+    .text-amber { color: #f59e0b; }
+    .text-purple { color: #a855f7; }
+    .font-mono { font-family: monospace; }
+    .loading-state { padding: 3rem; text-align: center; color: #94a3b8; font-size: 1.1rem; }
+</style>
+
+@code {
+    private string activeTab = "load";
+    private bool isDemoMode = true;
+
+    private CellCapacityDto? capacity;
+    private CellThreatAnalysisDto? threat;
+    private SibAnalysisDto? sib;
+    private RfPropagationModelDto? propagation;
+    private Private5gCoreStatusDto? p5gStatus;
+    private IReadOnlyList<Private5gSubscriberDto> p5gSubscribers = new List<Private5gSubscriberDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        isDemoMode = DemoService.IsDemoModeActive;
+        DemoService.OnModeChanged += HandleModeChanged;
+        await LoadAllAnalysisDataAsync();
+    }
+
+    private void HandleModeChanged()
+    {
+        isDemoMode = DemoService.IsDemoModeActive;
+        InvokeAsync(async () =>
+        {
+            await LoadAllAnalysisDataAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task RefreshAllDataAsync()
+    {
+        await LoadAllAnalysisDataAsync();
+    }
+
+    private async Task LoadAllAnalysisDataAsync()
+    {
+        try
+        {
+            var snapshot = await CellularService.GetCurrentSnapshotAsync();
+            var neighbors = await CellularService.GetCurrentNeighborsAsync();
+            TowerLocationDto? tower = null;
+
+            if (snapshot != null && !string.IsNullOrEmpty(snapshot.CellId))
+            {
+                tower = await TowerService.GetTowerForCellAsync(snapshot.CellId, snapshot.RadioTechnology);
+            }
+
+            if (tower == null)
+            {
+                var nearby = await TowerService.GetNearbyTowersAsync(37.7749, -122.4194, 5000);
+                tower = nearby.FirstOrDefault() ?? new TowerLocationDto
+                {
+                    CellId = "410-01-382910",
+                    RadioTechnology = "5G NR",
+                    OperatorName = "AT&T 5G",
+                    Latitude = 37.7749,
+                    Longitude = -122.4194,
+                    RangeMeters = 2400
+                };
+            }
+
+            capacity = RadioService.CalculateCellLoad(snapshot, tower);
+            threat = RadioService.AnalyzeCellThreats(snapshot, tower, neighbors);
+            sib = RadioService.DecodeSibAndChannel(snapshot, tower);
+            propagation = RadioService.CalculateRfPropagation(tower);
+            p5gStatus = await Private5gService.GetCoreStatusAsync();
+            p5gSubscribers = await Private5gService.GetConnectedSubscribersAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading radio analysis data: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        DemoService.OnModeChanged -= HandleModeChanged;
+    }
+}

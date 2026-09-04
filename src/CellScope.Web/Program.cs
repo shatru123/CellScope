@@ -50,6 +50,8 @@ builder.Services.AddScoped<IExportService, ExportService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDiagnosticsService, DiagnosticsService>();
 builder.Services.AddScoped<ISecurityAnalysisService, SecurityAnalysisService>();
+builder.Services.AddScoped<ICellularRadioAnalysisService, CellularRadioAnalysisService>();
+builder.Services.AddScoped<IPrivate5gCoreService, Private5gCoreService>();
 builder.Services.AddSingleton<IDemoDataService, DemoDataService>();
 builder.Services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
 

@@ -147,6 +147,7 @@ window.cellScopeMap = {
             servingMarker: null,
             towerMarkers: [],
             deviceMarkers: [],
+            propagationLayers: [],
             trailPolyline: null
         };
 
@@ -486,5 +487,74 @@ window.cellScopeMap = {
                 }).addTo(map);
             }
         }
+    },
+
+    renderPropagationLayers: function (elementId, propData) {
+        const entry = this.mapInstances[elementId];
+        if (!entry || !entry.map || !propData) return;
+        const map = entry.map;
+
+        // Clear existing propagation layers
+        if (entry.propagationLayers) {
+            entry.propagationLayers.forEach(l => l.remove());
+            entry.propagationLayers = [];
+        } else {
+            entry.propagationLayers = [];
+        }
+
+        const centerLat = propData.centerLatitude || propData.CenterLatitude;
+        const centerLon = propData.centerLongitude || propData.CenterLongitude;
+        if (!centerLat || !centerLon) return;
+
+        // 1. Draw Concentric RSRP Decay Contour Rings
+        const rings = propData.contourRings || propData.ContourRings || [];
+        // Draw in reverse order so larger outer rings don't mask smaller inner rings
+        rings.slice().reverse().forEach(ring => {
+            const radius = ring.radiusMeters || ring.RadiusMeters;
+            const color = ring.colorHex || ring.ColorHex || '#10b981';
+            const opacity = ring.fillOpacity || ring.FillOpacity || 0.15;
+            const rating = ring.rating || ring.Rating || '';
+
+            const circle = L.circle([centerLat, centerLon], {
+                radius: radius,
+                color: color,
+                weight: 1.5,
+                opacity: 0.7,
+                fillColor: color,
+                fillOpacity: opacity,
+                dashArray: '3, 6'
+            }).addTo(map).bindPopup(`<b>📡 Signal Coverage Contour</b><br><b>Rating:</b> ${rating}<br><b>Radius:</b> ${radius}m`);
+
+            entry.propagationLayers.push(circle);
+        });
+
+        // 2. Draw 3 Sector Antenna Beam Polygons (65-degree horizontal beamwidth)
+        const sectors = propData.sectors || propData.Sectors || [];
+        sectors.forEach(sec => {
+            const coords = sec.polygonGeoJsonCoordinates || sec.PolygonGeoJsonCoordinates || [];
+            const secName = sec.sectorName || sec.SectorName || 'Sector';
+            const azimuth = sec.azimuthDegrees || sec.AzimuthDegrees || 0;
+            const gain = sec.mainLobeGainDbi || sec.MainLobeGainDbi || 18;
+
+            if (coords && coords.length > 2) {
+                const poly = L.polygon(coords, {
+                    color: '#38bdf8',
+                    weight: 2,
+                    opacity: 0.9,
+                    fillColor: '#0284c7',
+                    fillOpacity: 0.22
+                }).addTo(map).bindPopup(`<b>🗼 Antenna Sector Pattern</b><br><b>Name:</b> ${secName}<br><b>Azimuth:</b> ${azimuth}°<br><b>Beamwidth:</b> 65° Horizontal<br><b>Gain:</b> ${gain} dBi`);
+
+                entry.propagationLayers.push(poly);
+            }
+        });
+    },
+
+    clearPropagationLayers: function (elementId) {
+        const entry = this.mapInstances[elementId];
+        if (!entry || !entry.propagationLayers) return;
+        entry.propagationLayers.forEach(l => l.remove());
+        entry.propagationLayers = [];
     }
 };
+
