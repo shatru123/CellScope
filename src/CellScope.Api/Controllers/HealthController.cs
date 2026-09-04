@@ -7,6 +7,7 @@ namespace CellScope.Api.Controllers;
 [Route("")]
 public class HealthController : ControllerBase
 {
+    private static readonly DateTimeOffset StartTime = DateTimeOffset.UtcNow;
     private readonly CellScopeDbContext _dbContext;
 
     public HealthController(CellScopeDbContext dbContext)
@@ -15,10 +16,60 @@ public class HealthController : ControllerBase
     }
 
     [HttpGet("health")]
+    [HttpGet("healthz")]
     [HttpGet("api/health")]
+    [HttpHead("health")]
+    [HttpHead("healthz")]
+    [HttpHead("api/health")]
     public IActionResult GetHealth()
     {
-        return Ok(new { status = "Healthy", timestamp = DateTimeOffset.UtcNow });
+        var uptime = DateTimeOffset.UtcNow - StartTime;
+        return Ok(new
+        {
+            status = "Healthy",
+            service = "CellScope Carrier Cellular & Network Intelligence",
+            version = "1.0.0",
+            author = "Shatrughna Ambhore",
+            uptime = $"{uptime.Days}d {uptime.Hours}h {uptime.Minutes}m {uptime.Seconds}s",
+            timestamp = DateTimeOffset.UtcNow
+        });
+    }
+
+    [HttpGet("ping")]
+    [HttpGet("api/ping")]
+    [HttpHead("ping")]
+    [HttpHead("api/ping")]
+    public IActionResult Ping()
+    {
+        return Ok(new
+        {
+            status = "pong",
+            message = "CellScope is active and responding.",
+            timestamp = DateTimeOffset.UtcNow
+        });
+    }
+
+    [HttpGet("keepalive")]
+    [HttpGet("api/keepalive")]
+    [HttpGet("cron/keepalive")]
+    [HttpHead("keepalive")]
+    [HttpHead("api/keepalive")]
+    [HttpHead("cron/keepalive")]
+    public async Task<IActionResult> KeepAlive(CancellationToken cancellationToken)
+    {
+        var dbConnected = await _dbContext.Database.CanConnectAsync(cancellationToken);
+        var uptime = DateTimeOffset.UtcNow - StartTime;
+
+        return Ok(new
+        {
+            status = "Active",
+            cronKeepAlive = true,
+            message = "Render free tier instance kept awake successfully.",
+            database = dbConnected ? "Connected" : "Degraded",
+            provider = _dbContext.Database.ProviderName,
+            uptime = $"{uptime.Days}d {uptime.Hours}h {uptime.Minutes}m {uptime.Seconds}s",
+            timestamp = DateTimeOffset.UtcNow
+        });
     }
 
     [HttpGet("health/ready")]
