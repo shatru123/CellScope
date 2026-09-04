@@ -4,45 +4,64 @@
 @inject NavigationManager NavManager
 
 <div class="app-container">
-    <NavMenu />
+    @if (isMobileMenuOpen)
+    {
+        <div class="sidebar-backdrop" @onclick="CloseMobileMenu"></div>
+    }
+
+    <NavMenu IsOpen="@isMobileMenuOpen" OnClose="CloseMobileMenu" />
 
     <div class="main-content">
         <header class="top-navbar">
-            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+                <!-- Mobile Hamburger Menu Button -->
+                <button type="button" class="mobile-hamburger-btn" @onclick="ToggleMobileMenu" aria-label="Toggle Navigation Drawer">
+                    ☰
+                </button>
+
+                <!-- Mobile Brand Header (Visible only on mobile) -->
+                <a href="/" class="mobile-brand-title">
+                    <span class="brand-icon" style="width:28px;height:28px;font-size:0.9rem;border-radius:6px;">📡</span>
+                    <span>CellScope</span>
+                </a>
+
                 <!-- Modern Segmented Mode Switcher -->
-                <div style="display:inline-flex;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:20px;padding:3px;gap:3px;box-shadow:inset 0 2px 4px rgba(0,0,0,0.3);">
-                    <button class="btn btn-sm" 
+                <div class="mode-switcher-container" style="display:inline-flex;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:20px;padding:3px;gap:3px;box-shadow:inset 0 2px 4px rgba(0,0,0,0.3);">
+                    <button class="btn btn-sm mode-switcher-btn" 
                             style="border-radius:16px;font-size:0.75rem;padding:4px 10px;font-weight:700;transition:all 0.2s ease;@(!DemoService.IsDemoModeActive ? "background:#10b981;color:#0b0f19;border:none;box-shadow:0 0 10px rgba(16,185,129,0.5);" : "background:transparent;color:var(--text-secondary);border:none;")"
                             @onclick="@(() => SetMode(false))">
-                        🔒 Strict Real-Only Mode
+                        <span class="desktop-mode-text">🔒 Strict Real-Only Mode</span>
+                        <span class="mobile-mode-text">🔒 Real</span>
                     </button>
-                    <button class="btn btn-sm" 
+                    <button class="btn btn-sm mode-switcher-btn" 
                             style="border-radius:16px;font-size:0.75rem;padding:4px 10px;font-weight:700;transition:all 0.2s ease;@(DemoService.IsDemoModeActive ? "background:#f59e0b;color:#0b0f19;border:none;box-shadow:0 0 10px rgba(245,158,11,0.5);" : "background:transparent;color:var(--text-secondary);border:none;")"
                             @onclick="@(() => SetMode(true))">
-                        📡 NOC Simulation Mode
+                        <span class="desktop-mode-text">📡 NOC Simulation Mode</span>
+                        <span class="mobile-mode-text">📡 NOC Sim</span>
                     </button>
                 </div>
 
                 @if (!DemoService.IsDemoModeActive)
                 {
-                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4);font-size:0.7rem;font-weight:700;">
+                    <span class="badge header-status-badge" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4);font-size:0.7rem;font-weight:700;">
                         ● 100% VERIFIED HARDWARE DATA
                     </span>
                 }
                 else
                 {
-                    <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.4);font-size:0.7rem;font-weight:700;">
+                    <span class="badge header-status-badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.4);font-size:0.7rem;font-weight:700;">
                         ● CARRIER NOC SIMULATOR
                     </span>
                 }
             </div>
 
-            <div style="display:flex;align-items:center;gap:0.75rem;">
-                <button class="btn btn-outline btn-sm" @onclick="ToggleTheme">
-                    🌓 @(isDarkTheme ? "Dark" : "Light")
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+                <button class="btn btn-outline btn-sm" @onclick="ToggleTheme" style="font-size:0.75rem;padding:4px 8px;">
+                    🌓 <span class="desktop-text">@(isDarkTheme ? "Dark" : "Light")</span>
                 </button>
-                <a href="/devices" class="btn btn-primary btn-sm">
-                    + Pair Android
+                <a href="/devices" class="btn btn-primary btn-sm" style="font-size:0.75rem;padding:4px 10px;">
+                    <span class="desktop-text">+ Pair Android</span>
+                    <span class="mobile-text">+ Pair</span>
                 </a>
             </div>
         </header>
@@ -52,20 +71,31 @@
         </main>
     </div>
 
-    <MobileBottomNavigation />
+    <MobileBottomNavigation OnToggleMenu="ToggleMobileMenu" />
 </div>
 
 @code {
     private bool isDarkTheme = true;
+    private bool isMobileMenuOpen = false;
 
     protected override void OnInitialized()
     {
         DemoService.OnModeChanged += HandleModeChanged;
+        NavManager.LocationChanged += HandleLocationChanged;
     }
 
     private void HandleModeChanged()
     {
         InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (isMobileMenuOpen)
+        {
+            isMobileMenuOpen = false;
+            InvokeAsync(StateHasChanged);
+        }
     }
 
     private void SetMode(bool isDemoMode)
@@ -78,9 +108,19 @@
         isDarkTheme = !isDarkTheme;
     }
 
+    private void ToggleMobileMenu()
+    {
+        isMobileMenuOpen = !isMobileMenuOpen;
+    }
+
+    private void CloseMobileMenu()
+    {
+        isMobileMenuOpen = false;
+    }
+
     public void Dispose()
     {
         DemoService.OnModeChanged -= HandleModeChanged;
+        NavManager.LocationChanged -= HandleLocationChanged;
     }
 }
-

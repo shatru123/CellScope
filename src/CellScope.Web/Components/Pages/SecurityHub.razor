@@ -20,7 +20,7 @@
 </div>
 
 <!-- Tab Navigation Bar -->
-<div style="display:flex;gap:0.4rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;margin-bottom:1.25rem;overflow-x:auto;white-space:nowrap;">
+<div class="mobile-scroll-tabs" style="display:flex;gap:0.4rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;margin-bottom:1.25rem;overflow-x:auto;white-space:nowrap;">
     <button type="button" class="btn btn-sm @(activeTab == "aes" ? "btn-primary" : "btn-outline")"
             style="font-size:0.775rem;font-weight:700;padding:5px 11px;"
             @onclick="@(() => activeTab = "aes")">
