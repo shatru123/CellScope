@@ -22,17 +22,75 @@ window.cellScopeMap = {
         });
     },
 
-    getUserCoordinates: async function () {
-        if (!navigator.geolocation) {
-            return null;
+    resolveCoordinates: async function (timeoutMs = 5000) {
+        // 1. Try High Accuracy Browser Geolocation (GPS / Wi-Fi)
+        if (navigator.geolocation) {
+            try {
+                const pos = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(
+                        (p) => resolve(p),
+                        (err) => reject(err),
+                        { timeout: timeoutMs, enableHighAccuracy: true, maximumAge: 30000 }
+                    );
+                });
+                if (pos && pos.coords && pos.coords.latitude && pos.coords.longitude) {
+                    return {
+                        lat: pos.coords.latitude,
+                        lon: pos.coords.longitude,
+                        source: 'GPS / Wi-Fi Geolocation',
+                        accuracy: pos.coords.accuracy || 10
+                    };
+                }
+            } catch (err) {
+                console.warn("Browser GPS geolocation unavailable or timed out, checking IP Geolocation fallback...", err);
+            }
         }
-        return new Promise((resolve) => {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-                (err) => resolve(null),
-                { timeout: 4000, enableHighAccuracy: true }
-            );
-        });
+
+        // 2. Fast IP Geolocation Fallback (free public providers)
+        try {
+            const resp = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.latitude && data.longitude) {
+                    return {
+                        lat: parseFloat(data.latitude),
+                        lon: parseFloat(data.longitude),
+                        city: data.city,
+                        country: data.country_name,
+                        source: `IP Geolocation (${data.city || 'Local Area'})`,
+                        accuracy: 2500
+                    };
+                }
+            }
+        } catch (ipErr) {
+            console.warn("ipapi.co fallback unreachable, trying secondary provider...", ipErr);
+        }
+
+        try {
+            const resp2 = await fetch('https://ipwhois.app/json/', { signal: AbortSignal.timeout(4000) });
+            if (resp2.ok) {
+                const data2 = await resp2.json();
+                if (data2.latitude && data2.longitude) {
+                    return {
+                        lat: parseFloat(data2.latitude),
+                        lon: parseFloat(data2.longitude),
+                        city: data2.city,
+                        country: data2.country,
+                        source: `IP Geolocation (${data2.city || 'Local Area'})`,
+                        accuracy: 3000
+                    };
+                }
+            }
+        } catch (ipErr2) {
+            console.warn("Secondary IP provider unreachable:", ipErr2);
+        }
+
+        return null;
+    },
+
+    getUserCoordinates: async function () {
+        const loc = await this.resolveCoordinates(4000);
+        return loc ? { latitude: loc.lat, longitude: loc.lon } : null;
     },
 
     initMap: async function (elementId, initialLat, initialLon, zoom = 14, dotNetHelper = null) {
@@ -92,33 +150,25 @@ window.cellScopeMap = {
             trailPolyline: null
         };
 
-        // Try getting real browser location
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                async (pos) => {
-                    const realLat = pos.coords.latitude;
-                    const realLon = pos.coords.longitude;
-                    map.setView([realLat, realLon], 14);
+        setTimeout(() => map.invalidateSize(), 250);
 
-                    const entry = window.cellScopeMap.mapInstances[elementId];
-                    if (entry && entry.userMarker) {
-                        entry.userMarker.setLatLng([realLat, realLon]);
+        // Auto-locate real user position in background (GPS first, then IP fallback)
+        this.resolveCoordinates(4000).then(async (loc) => {
+            if (loc) {
+                const curEntry = window.cellScopeMap.mapInstances[elementId];
+                if (curEntry && curEntry.map) {
+                    curEntry.map.setView([loc.lat, loc.lon], 14);
+                    if (curEntry.userMarker) {
+                        curEntry.userMarker.setLatLng([loc.lat, loc.lon]);
                     }
-
                     if (dotNetHelper) {
                         try {
-                            await dotNetHelper.invokeMethodAsync('OnLocationUpdated', realLat, realLon);
+                            await dotNetHelper.invokeMethodAsync('OnLocationUpdated', loc.lat, loc.lon);
                         } catch { }
                     }
-                },
-                (err) => {
-                    // Fallback to default coordinates
-                },
-                { timeout: 5000, enableHighAccuracy: true }
-            );
-        }
-
-        setTimeout(() => map.invalidateSize(), 250);
+                }
+            }
+        });
     },
 
     selectTower: function (elementId, cellId) {
@@ -148,19 +198,27 @@ window.cellScopeMap = {
         }
     },
 
-    locateUser: function (elementId) {
+    locateUser: async function (elementId) {
         const entry = this.mapInstances[elementId];
-        if (!entry || !entry.map) return;
+        if (!entry || !entry.map) return null;
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                entry.map.flyTo([lat, lon], 15);
-                if (entry.userMarker) {
-                    entry.userMarker.setLatLng([lat, lon]);
+        const loc = await this.resolveCoordinates(6000);
+        if (loc) {
+            entry.map.flyTo([loc.lat, loc.lon], 15);
+            if (entry.userMarker) {
+                entry.userMarker.setLatLng([loc.lat, loc.lon]);
+            }
+            if (entry.dotNetHelper) {
+                try {
+                    await entry.dotNetHelper.invokeMethodAsync('OnLocationUpdated', loc.lat, loc.lon);
+                } catch (err) {
+                    console.error("Failed to notify Blazor of location update:", err);
                 }
-            });
+            }
+            return loc;
+        } else {
+            console.warn("Could not determine user coordinates via GPS or IP.");
+            return null;
         }
     },
 

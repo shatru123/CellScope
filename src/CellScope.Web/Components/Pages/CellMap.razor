@@ -25,7 +25,9 @@
                 📡 NOC Simulation Mode
             </button>
         </div>
-        <button class="btn btn-outline btn-sm" @onclick="LocateMe">📍 Locate Me</button>
+        <button class="btn btn-outline btn-sm" @onclick="LocateMe" disabled="@isLocating">
+            @(isLocating ? "🛰️ Locating..." : "📍 Locate Me")
+        </button>
         <button class="btn btn-primary btn-sm" @onclick="ReloadMap">🔄 Refresh Map</button>
     </div>
 </div>
@@ -53,6 +55,12 @@
             {
                 <span class="badge" style="background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.5);font-weight:700;">
                     📡 NOC Simulation Mode
+                </span>
+            }
+            @if (!string.IsNullOrEmpty(locationStatus))
+            {
+                <span class="badge" style="background:rgba(6,182,212,0.2);color:var(--accent-cyan);border:1px solid rgba(6,182,212,0.4);font-weight:700;">
+                    @locationStatus
                 </span>
             }
         </div>
@@ -686,6 +694,8 @@
     private string towerCallSearchTerm = "";
     private double currentLat = 37.7749;
     private double currentLon = -122.4194;
+    private bool isLocating = false;
+    private string? locationStatus;
     private DotNetObjectReference<CellMap>? dotNetRef;
 
     private IEnumerable<TowerConnectedDeviceDto> FilteredTowerDevices
@@ -822,13 +832,13 @@
     {
         currentLat = lat;
         currentLon = lon;
-        if (!DemoService.IsDemoModeActive)
-        {
-            var towers = await TowerService.GetNearbyTowersAsync(lat, lon);
-            towersList = towers.ToList();
-            await UpdateMapAsync();
-            StateHasChanged();
-        }
+        isLocating = false;
+        locationStatus = $"📍 Located at {lat:F4}, {lon:F4}";
+
+        var towers = await TowerService.GetNearbyTowersAsync(lat, lon);
+        towersList = towers.ToList();
+        await UpdateMapAsync();
+        StateHasChanged();
     }
 
     [JSInvokable]
@@ -908,7 +918,19 @@
 
     private async Task LocateMe()
     {
-        await JS.InvokeVoidAsync("cellScopeMap.locateUser", "fullscreen-leaflet-map");
+        isLocating = true;
+        locationStatus = "🛰️ Acquiring GPS / IP Geolocation...";
+        StateHasChanged();
+        try
+        {
+            await JS.InvokeVoidAsync("cellScopeMap.locateUser", "fullscreen-leaflet-map");
+        }
+        catch (Exception)
+        {
+            isLocating = false;
+            locationStatus = "⚠️ Location request failed";
+            StateHasChanged();
+        }
     }
 
     private async Task ReloadMap()
