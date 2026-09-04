@@ -233,6 +233,13 @@ public class DemoDataService : IDemoDataService
 
         foreach (var t in towers)
         {
+            var seedRandom = new Random(t.CellId.GetHashCode());
+            t.TotalConnectedDevices = seedRandom.Next(1850, 4200);
+            t.ActiveDataSessions = (int)(t.TotalConnectedDevices * 0.84);
+            t.VoLteVoiceChannels = (int)(t.TotalConnectedDevices * 0.12);
+            t.IoTTelemetryNodes = t.TotalConnectedDevices - t.ActiveDataSessions - t.VoLteVoiceChannels;
+            t.AggregateThroughputMbps = Math.Round(420.0 + seedRandom.NextDouble() * 460.0, 1);
+            t.PrbUtilizationPercent = Math.Round(68.0 + seedRandom.NextDouble() * 24.0, 1);
             t.ConnectedDevices = GetDemoConnectedDevicesForTower(t.CellId).ToList();
         }
 
@@ -244,43 +251,57 @@ public class DemoDataService : IDemoDataService
         var random = new Random(cellId.GetHashCode());
         var devices = new List<TowerConnectedDeviceDto>();
 
-        var mockNodes = new[]
+        var sampleSubscribers = new (string Name, string Model, string Type, string Plat, string Band, string Modulation, double Throughput)[]
         {
-            (Name: "Pixel 9 Pro (Live Collector)", Model: "Google Pixel 9 Pro", Type: "Mobile Collector", Platform: "Android", State: "Active Attached (Primary UE)"),
-            (Name: "Galaxy S24 Ultra (Field Node)", Model: "Samsung SM-S928B", Type: "Field Telemetry Node", Platform: "Android", State: "Active Attached"),
-            (Name: "CellScope Android Collector #2", Model: "OnePlus 12", Type: "Mobile Collector", Platform: "Android", State: "Active Connected"),
-            (Name: "Quectel 5G Industrial Gateway", Model: "RG500Q-EA IoT Router", Type: "IoT Cellular Gateway", Platform: "Embedded Linux", State: "Continuous M2M Stream"),
-            (Name: "DJI Matrice 350 RTK Drone", Model: "Cellular Dongle LTE/5G", Type: "Field Aerial Node", Platform: "Embedded OS", State: "Telemetry Uplink")
+            ("Samsung Galaxy S25 Ultra", "SM-S938B 5G", "Smartphone (5G UE)", "Android 15", "Band n78 (3500 MHz)", "256-QAM", 285.4),
+            ("Apple iPhone 16 Pro Max", "A3296 5G NR", "Smartphone (5G UE)", "iOS 18", "Band n78 (3500 MHz)", "256-QAM", 312.0),
+            ("Google Pixel 9 Pro (Live Collector)", "GC3VE 5G", "Mobile Collector", "Android 15", "Band n78 (3500 MHz)", "256-QAM", 240.5),
+            ("Realme GT 6 5G", "RMX3850", "Smartphone (5G UE)", "Android 14", "Band 3 (1800 MHz)", "64-QAM", 115.0),
+            ("OnePlus 12 5G", "CPH2581", "Smartphone (5G UE)", "Android 14", "Band n78 (3500 MHz)", "256-QAM", 195.2),
+            ("Xiaomi 14 Ultra", "24030PN60G", "Smartphone (5G UE)", "HyperOS / Android", "Band n78 (3500 MHz)", "256-QAM", 270.8),
+            ("Lenovo ThinkPad X1 5G WWAN", "Quectel EM120R 5G", "5G Laptop & Modem", "Windows 11 Pro", "Band n78 (3500 MHz)", "256-QAM", 340.0),
+            ("Dell Latitude 9440 5G", "Snapdragon X75 5G", "5G Laptop & Modem", "Windows 11 Pro", "Band n78 (3500 MHz)", "256-QAM", 295.6),
+            ("Apple MacBook Pro 5G Tether", "iPhone Hotspot Gateway", "5G Laptop & Modem", "macOS Sonoma", "Band n78 (3500 MHz)", "256-QAM", 220.4),
+            ("DJI Matrice 350 RTK Field Drone", "DJI Cellular Dongle 2", "Field Aerial Node", "Embedded Linux", "Band 3 (1800 MHz)", "64-QAM", 48.5),
+            ("Quectel RG500Q-EA 5G Gateway", "Industrial M2M Gateway", "IoT Cellular Gateway", "Embedded Linux", "Band n78 (3500 MHz)", "256-QAM", 185.0),
+            ("Cisco Catalyst Cellular Gateway", "CG522-E 5G Gigabit", "Cellular Router", "Cisco IOS-XE", "Band n78 (3500 MHz)", "256-QAM", 450.0),
+            ("Telit Cinterion FN990A 5G", "Smart Grid Node #402", "IoT Telemetry Node", "Embedded RTOS", "Band 28 (700 MHz)", "16-QAM", 12.4),
+            ("Apple iPhone 15", "A3090 5G", "Smartphone (5G UE)", "iOS 17.5", "Band 3 (1800 MHz)", "64-QAM", 95.0),
+            ("Samsung Galaxy A55 5G", "SM-A556B", "Smartphone (5G UE)", "Android 14", "Band 28 (700 MHz)", "64-QAM", 72.0),
+            ("Vivo X100 Pro", "V2309A 5G", "Smartphone (5G UE)", "OriginOS 4", "Band n78 (3500 MHz)", "256-QAM", 210.0),
+            ("Motorola Edge 50 Ultra", "XT2401-1", "Smartphone (5G UE)", "Android 14", "Band n78 (3500 MHz)", "256-QAM", 180.5),
+            ("JioBharat 4G Companion Node", "Jio-4G-V2", "Field Telemetry Node", "ThreadX", "Band 28 (700 MHz)", "QPSK", 8.2),
+            ("Sierra Wireless AirLink XR90", "5G Mobile Router", "Cellular Router", "AirLink OS", "Band n78 (3500 MHz)", "256-QAM", 380.0)
         };
 
-        int count = random.Next(2, 5);
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < sampleSubscribers.Length; i++)
         {
-            var node = mockNodes[i % mockNodes.Length];
-            int dbm = -70 - random.Next(5, 35);
-            double rsrq = Math.Round(-8.0 - random.NextDouble() * 7.0, 1);
-            int dist = random.Next(80, 1200);
-            int ta = Math.Max(1, dist / 78);
-
-            var rating = SignalClassifier.Classify(dbm, "5G NR");
+            var s = sampleSubscribers[i];
+            int dbm = -68 - random.Next(2, 38);
+            int dist = random.Next(95, 1450);
+            var rating = SignalClassifier.Classify(dbm, cellId.Contains("LTE", StringComparison.OrdinalIgnoreCase) ? "LTE" : "5G NR");
+            long maskedSuffix = 1000 + (Math.Abs(cellId.GetHashCode()) + i * 137) % 8999;
 
             devices.Add(new TowerConnectedDeviceDto
             {
                 DeviceId = Guid.NewGuid(),
-                DeviceName = node.Name,
-                Model = node.Model,
-                DeviceType = node.Type,
-                Platform = node.Platform,
-                ConnectionState = node.State,
+                DeviceName = s.Name,
+                Model = s.Model,
+                DeviceType = s.Type,
+                Platform = s.Plat,
                 RadioTechnology = cellId.Contains("LTE", StringComparison.OrdinalIgnoreCase) ? "LTE" : "5G NR",
-                Band = cellId.Contains("LTE", StringComparison.OrdinalIgnoreCase) ? "Band 3 (1800 MHz)" : "Band n78 (3500 MHz)",
+                Band = s.Band,
+                MaskedImei = $"86{random.Next(10, 99)}4005****{maskedSuffix}",
+                Modulation = s.Modulation,
+                ThroughputMbps = Math.Round(s.Throughput * (0.8 + random.NextDouble() * 0.4), 1),
                 SignalStrengthDbm = dbm,
-                SignalQuality = rsrq,
+                SignalQuality = Math.Round(-7.5 - random.NextDouble() * 7.0, 1),
                 SignalRating = SignalClassifier.GetRatingText(rating),
                 SignalColor = SignalClassifier.GetRatingColor(rating),
                 EstimatedDistanceMeters = dist,
-                TimingAdvance = ta,
-                LastSeen = DateTimeOffset.UtcNow.AddSeconds(-random.Next(2, 90))
+                TimingAdvance = Math.Max(1, dist / 78),
+                LastSeen = DateTimeOffset.UtcNow.AddMinutes(-random.Next(1, 60)),
+                ConnectionState = "RRC_CONNECTED (Active Carrier Aggregation)"
             });
         }
 

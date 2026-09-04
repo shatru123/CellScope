@@ -45,8 +45,8 @@
 
 <!-- Subnet KPI Cards -->
 <div class="grid-kpis">
-    <MetricCard Title="Local Subnet" Value="@(network?.Subnet ?? "192.168.1.0/24")" Subtitle="Class C Private Network" />
-    <MetricCard Title="Default Gateway" Value="@(network?.GatewayIp ?? "192.168.1.1")" Subtitle="Primary Router / NAT" />
+    <MetricCard Title="Local Subnet" Value="@(network?.Subnet ?? "192.168.31.0/24")" Subtitle="Class C Private Network" />
+    <MetricCard Title="Default Gateway" Value="@(network?.GatewayIp ?? "192.168.31.1")" Subtitle="Primary Router / NAT" />
     <MetricCard Title="Connected Devices" Value="@((network?.ConnectedCount ?? 0).ToString())" Unit="Online" ValueColor="#10b981" Subtitle="Active Communicating Hosts" />
     <MetricCard Title="Disconnected / Blocked" Value="@((network?.DisconnectedCount ?? 0).ToString())" Unit="Offline" ValueColor="#ef4444" Subtitle="Isolated Endpoints" />
 </div>

@@ -101,6 +101,15 @@ public class TowerLocationDto
     public string? SourceReference { get; set; }
     public DateTimeOffset LastVerified { get; set; }
     public double DistanceMeters { get; set; }
+
+    // Macro Sector Capacity & Connected Device Metrics
+    public int TotalConnectedDevices { get; set; } = 2480;
+    public int ActiveDataSessions { get; set; } = 2120;
+    public int VoLteVoiceChannels { get; set; } = 310;
+    public int IoTTelemetryNodes { get; set; } = 50;
+    public double AggregateThroughputMbps { get; set; } = 540.0;
+    public double PrbUtilizationPercent { get; set; } = 76.5;
+
     public List<TowerConnectedDeviceDto> ConnectedDevices { get; set; } = new();
 }
 
@@ -113,6 +122,9 @@ public class TowerConnectedDeviceDto
     public string Model { get; set; } = "Collector Node";
     public string RadioTechnology { get; set; } = "5G NR";
     public string Band { get; set; } = "n78";
+    public string MaskedImei { get; set; } = "86491005****128";
+    public string Modulation { get; set; } = "256-QAM";
+    public double ThroughputMbps { get; set; } = 145.2;
     public int SignalStrengthDbm { get; set; }
     public double? SignalQuality { get; set; }
     public string SignalRating { get; set; } = "Good";
@@ -120,7 +132,7 @@ public class TowerConnectedDeviceDto
     public int EstimatedDistanceMeters { get; set; }
     public int TimingAdvance { get; set; }
     public DateTimeOffset LastSeen { get; set; }
-    public string ConnectionState { get; set; } = "Active Attached";
+    public string ConnectionState { get; set; } = "RRC_CONNECTED (Active)";
 }
 
 public class CellHandoverDto

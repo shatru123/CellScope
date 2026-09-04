@@ -77,8 +77,8 @@
                                     <span>@Math.Round(t.DistanceMeters)m away</span>
                                 </div>
                                 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.05);font-size:0.7rem;">
-                                    <span style="color:#10b981;font-weight:600;">📱 @(t.ConnectedDevices?.Count ?? 2) Connected UEs</span>
-                                    <span style="color:var(--accent-amber);font-weight:700;">Inspect Devices →</span>
+                                    <span style="color:#10b981;font-weight:700;">📱 @t.TotalConnectedDevices.ToString("N0") Connected UEs</span>
+                                    <span style="color:var(--accent-amber);font-weight:700;">Inspect Sector →</span>
                                 </div>
                             </div>
                         }
@@ -140,60 +140,84 @@
 <!-- Modal / Drawer: Detailed Connected Devices Inspector for Selected Tower -->
 @if (selectedTower != null)
 {
-    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(4px);">
-        <div class="noc-card" style="width:100%;max-width:760px;max-height:85vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--accent-amber);box-shadow:0 20px 50px rgba(0,0,0,0.8);position:relative;">
+    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(5px);">
+        <div class="noc-card" style="width:100%;max-width:920px;max-height:90vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--accent-amber);box-shadow:0 24px 60px rgba(0,0,0,0.85);position:relative;">
             
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;border-bottom:1px solid var(--border-color);padding-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;">
                 <div>
                     <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
-                        <span style="font-size:1.3rem;">🗼</span>
-                        <h2 style="font-size:1.25rem;font-weight:800;color:var(--text-primary);">
-                            @(selectedTower.OperatorName ?? "Base Station") — Connected Devices
+                        <span style="font-size:1.4rem;">🗼</span>
+                        <h2 style="font-size:1.35rem;font-weight:800;color:var(--text-primary);margin:0;">
+                            @(selectedTower.OperatorName ?? "Macro Base Station") — Sector Subscribers
                         </h2>
                     </div>
-                    <p style="font-size:0.8rem;color:var(--text-secondary);">
+                    <p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">
                         Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedTower.CellId</span> • PCI: @(selectedTower.PhysicalCellId ?? "N/A") • Tech: <span style="color:var(--accent-amber);font-weight:700;">@selectedTower.RadioTechnology</span> • Distance: @Math.Round(selectedTower.DistanceMeters)m
                     </p>
                 </div>
                 <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">✕ Close</button>
             </div>
 
-            <!-- Connected Devices Table -->
-            <div style="margin-bottom:1.5rem;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-                    <span style="font-size:0.85rem;font-weight:700;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.05em;">
-                        Active Connected Subscribers & Telemetry Nodes (@(selectedTower.ConnectedDevices?.Count ?? 0) UEs)
-                    </span>
-                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">● Active Attachment</span>
-                </div>
+            <!-- Sector High-Density Capacity KPIs -->
+            <div class="grid-kpis" style="margin-bottom:1.25rem;">
+                <MetricCard Title="Total Connected UEs" Value="@selectedTower.TotalConnectedDevices.ToString("N0")" Unit="Active" ValueColor="#10b981" Subtitle="Connected Devices in Sector" />
+                <MetricCard Title="Active Data Bearers" Value="@selectedTower.ActiveDataSessions.ToString("N0")" Unit="Sessions" ValueColor="var(--accent-cyan)" Subtitle="5G/4G High-Speed Sessions" />
+                <MetricCard Title="VoLTE / VoNR Channels" Value="@selectedTower.VoLteVoiceChannels.ToString("N0")" Unit="Calls" ValueColor="#f59e0b" Subtitle="Active Voice Channels" />
+                <MetricCard Title="Sector Throughput" Value="@($"{selectedTower.AggregateThroughputMbps}")" Unit="Mbps" ValueColor="#8b5cf6" Subtitle="@($"PRB Load: {selectedTower.PrbUtilizationPercent}%")" />
+            </div>
 
-                <div class="noc-table-container">
+            <!-- Subscriber Filter & Search -->
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+                <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
+                    @foreach (var cat in new[] { "All", "Smartphone", "Laptop", "IoT", "Drone" })
+                    {
+                        <button class="btn btn-sm @(towerCategoryFilter == cat ? "btn-primary" : "btn-outline")"
+                                style="font-size:0.75rem;padding:3px 8px;"
+                                @onclick="@(() => towerCategoryFilter = cat)">
+                            @cat
+                        </button>
+                    }
+                </div>
+                <div style="min-width:200px;">
+                    <input type="text" class="input-field" style="width:100%;font-size:0.75rem;padding:3px 8px;"
+                           placeholder="🔎 Search subscriber, model, IMEI..."
+                           @bind="towerSearchTerm" @bind:event="oninput" />
+                </div>
+            </div>
+
+            <!-- Connected Devices Table -->
+            <div style="margin-bottom:1rem;">
+                <div class="noc-table-container" style="max-height:320px;overflow-y:auto;">
                     <table class="noc-table">
                         <thead>
                             <tr>
                                 <th>Status</th>
                                 <th>Subscriber / Device</th>
+                                <th>Masked IMEI / IMSI</th>
                                 <th>Type</th>
+                                <th>Modulation & Speed</th>
                                 <th>Signal Strength</th>
-                                <th>Distance / Timing</th>
-                                <th>Band & Frequency</th>
-                                <th>Last Active</th>
+                                <th>Distance / TA</th>
+                                <th>Band</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @if (selectedTower.ConnectedDevices != null && selectedTower.ConnectedDevices.Count > 0)
+                            @if (FilteredTowerDevices.Any())
                             {
-                                @foreach (var dev in selectedTower.ConnectedDevices)
+                                @foreach (var dev in FilteredTowerDevices)
                                 {
                                     <tr>
                                         <td>
-                                            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;">
-                                                ● Attached
+                                            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;font-weight:700;">
+                                                ● RRC_CONN
                                             </span>
                                         </td>
                                         <td>
-                                            <div style="font-weight:600;color:var(--text-primary);">@dev.DeviceName</div>
+                                            <div style="font-weight:700;color:var(--text-primary);font-size:0.8rem;">@dev.DeviceName</div>
                                             <div style="font-size:0.7rem;color:var(--text-muted);">@dev.Model (@dev.Platform)</div>
+                                        </td>
+                                        <td style="font-family:var(--font-mono);font-size:0.75rem;color:var(--accent-cyan);">
+                                            @(dev.MaskedImei ?? "86491005****128")
                                         </td>
                                         <td>
                                             <span class="badge" style="background:var(--bg-secondary);color:var(--text-secondary);font-size:0.7rem;">
@@ -201,18 +225,19 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <div style="font-weight:700;color:@dev.SignalColor;">@dev.SignalStrengthDbm dBm</div>
-                                            <div style="font-size:0.7rem;color:var(--text-muted);">Quality: @(dev.SignalQuality != null ? $"{dev.SignalQuality} dB" : "Good")</div>
+                                            <div style="font-weight:700;color:var(--text-primary);font-size:0.75rem;">@dev.ThroughputMbps Mbps</div>
+                                            <div style="font-size:0.65rem;color:var(--text-muted);">@dev.Modulation</div>
                                         </td>
                                         <td>
-                                            <div style="font-weight:600;color:var(--text-primary);">@dev.EstimatedDistanceMeters m</div>
-                                            <div style="font-size:0.7rem;color:var(--text-muted);">TA: @dev.TimingAdvance</div>
+                                            <div style="font-weight:700;color:@dev.SignalColor;font-size:0.8rem;">@dev.SignalStrengthDbm dBm</div>
+                                            <div style="font-size:0.65rem;color:var(--text-muted);">Quality: @(dev.SignalQuality != null ? $"{dev.SignalQuality} dB" : "Good")</div>
                                         </td>
-                                        <td style="font-size:0.8rem;color:var(--text-secondary);">
+                                        <td>
+                                            <div style="font-weight:600;color:var(--text-primary);font-size:0.75rem;">@dev.EstimatedDistanceMeters m</div>
+                                            <div style="font-size:0.65rem;color:var(--text-muted);">TA: @dev.TimingAdvance</div>
+                                        </td>
+                                        <td style="font-size:0.75rem;color:var(--text-secondary);">
                                             @dev.Band
-                                        </td>
-                                        <td style="font-size:0.75rem;color:var(--text-muted);">
-                                            @dev.LastSeen.ToString("HH:mm:ss")
                                         </td>
                                     </tr>
                                 }
@@ -220,8 +245,8 @@
                             else
                             {
                                 <tr>
-                                    <td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
-                                        No active subscriber devices currently registered on this sector.
+                                    <td colspan="8" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
+                                        No active subscriber devices match the search criteria.
                                     </td>
                                 </tr>
                             }
@@ -230,7 +255,10 @@
                 </div>
             </div>
 
-            <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:0.75rem;color:var(--text-muted);">
+                    Showing @FilteredTowerDevices.Count() active telemetry nodes representing @selectedTower.TotalConnectedDevices.ToString("N0") sector UEs
+                </span>
                 <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
             </div>
         </div>
@@ -308,9 +336,40 @@
     private TowerLocationDto? selectedTower;
     private NetworkDeviceDto? selectedLanDevice;
     private string activeTab = "towers";
+    private string towerCategoryFilter = "All";
+    private string towerSearchTerm = "";
     private double currentLat = 37.7749;
     private double currentLon = -122.4194;
     private DotNetObjectReference<CellMap>? dotNetRef;
+
+    private IEnumerable<TowerConnectedDeviceDto> FilteredTowerDevices
+    {
+        get
+        {
+            if (selectedTower?.ConnectedDevices == null) return Enumerable.Empty<TowerConnectedDeviceDto>();
+
+            var query = selectedTower.ConnectedDevices.AsEnumerable();
+
+            if (towerCategoryFilter != "All")
+            {
+                query = query.Where(d => d.DeviceType.Contains(towerCategoryFilter, StringComparison.OrdinalIgnoreCase) ||
+                                         d.DeviceName.Contains(towerCategoryFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(towerSearchTerm))
+            {
+                query = query.Where(d =>
+                    d.DeviceName.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    d.Model.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    d.MaskedImei.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    d.Band.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    d.DeviceType.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase)
+                );
+            }
+
+            return query;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
