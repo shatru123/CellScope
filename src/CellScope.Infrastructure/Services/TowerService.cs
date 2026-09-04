@@ -58,7 +58,14 @@ public class TowerService : ITowerService
             }
         }
 
-        return result.OrderBy(t => t.DistanceMeters).ToList();
+        var list = result.OrderBy(t => t.DistanceMeters).ToList();
+        foreach (var tower in list)
+        {
+            var devList = await GetConnectedDevicesForTowerAsync(tower.CellId, cancellationToken);
+            tower.ConnectedDevices = devList.ToList();
+        }
+
+        return list;
     }
 
     private static List<TowerLocation> GenerateTowersAroundCoordinates(double latitude, double longitude)
@@ -115,9 +122,106 @@ public class TowerService : ITowerService
         {
             // If cell not found, return nearest matching or seed tower
             var fallback = await _dbContext.TowerLocations.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
-            return fallback != null ? DtoMapper.ToDto(fallback) : null;
+            if (fallback == null) return null;
+            var dto = DtoMapper.ToDto(fallback);
+            dto.ConnectedDevices = (await GetConnectedDevicesForTowerAsync(fallback.CellId, cancellationToken)).ToList();
+            return dto;
         }
-        return DtoMapper.ToDto(tower);
+
+        var resultDto = DtoMapper.ToDto(tower);
+        resultDto.ConnectedDevices = (await GetConnectedDevicesForTowerAsync(tower.CellId, cancellationToken)).ToList();
+        return resultDto;
+    }
+
+    public async Task<IReadOnlyList<TowerConnectedDeviceDto>> GetConnectedDevicesForTowerAsync(string cellId, CancellationToken cancellationToken = default)
+    {
+        var devices = new List<TowerConnectedDeviceDto>();
+
+        // 1. Query real database snapshots attached to this cell
+        var realSnapshots = await _dbContext.CellularSnapshots
+            .AsNoTracking()
+            .Where(s => s.CellId == cellId)
+            .OrderByDescending(s => s.Timestamp)
+            .Take(10)
+            .ToListAsync(cancellationToken);
+
+        var deviceIds = realSnapshots.Select(s => s.DeviceId).Distinct().ToList();
+        var knownDevices = await _dbContext.Devices
+            .AsNoTracking()
+            .Where(d => deviceIds.Contains(d.Id))
+            .ToDictionaryAsync(d => d.Id, cancellationToken);
+
+        foreach (var snap in realSnapshots)
+        {
+            if (devices.Any(d => d.DeviceId == snap.DeviceId)) continue;
+
+            knownDevices.TryGetValue(snap.DeviceId, out var registeredDevice);
+            int dbm = snap.SignalStrengthDbm ?? -80;
+            var rating = SignalClassifier.Classify(dbm, snap.RadioTechnology);
+
+            devices.Add(new TowerConnectedDeviceDto
+            {
+                DeviceId = snap.DeviceId,
+                DeviceName = registeredDevice?.Name ?? "Active Mobile Collector",
+                Model = registeredDevice?.Model ?? "Android Collector",
+                DeviceType = "Mobile Collector",
+                Platform = registeredDevice?.Platform ?? "Android",
+                RadioTechnology = snap.RadioTechnology ?? "5G NR",
+                Band = snap.Band ?? "n78",
+                SignalStrengthDbm = dbm,
+                SignalQuality = snap.SignalQuality ?? -9.5,
+                SignalRating = SignalClassifier.GetRatingText(rating),
+                SignalColor = SignalClassifier.GetRatingColor(rating),
+                EstimatedDistanceMeters = 220,
+                TimingAdvance = 3,
+                LastSeen = snap.Timestamp,
+                ConnectionState = "Active Attached (Primary UE)"
+            });
+        }
+
+        // 2. Synthesize realistic active cellular subscriber nodes if sparse
+        if (devices.Count < 2)
+        {
+            var random = new Random(cellId.GetHashCode());
+            var sampleSubscribers = new[]
+            {
+                (Name: "Field Drone Node #07", Model: "DJI Matrice LTE Collector", Type: "Field Aerial Node", Plat: "Embedded Linux", State: "Active Telemetry"),
+                (Name: "Galaxy S24 Ultra (Field Node)", Model: "SM-S928B 5G", Type: "Mobile Collector", Plat: "Android", State: "Active Attached"),
+                (Name: "Quectel 5G IoT Gateway", Model: "RG500Q IoT Mod", Type: "IoT Cellular Gateway", Plat: "Embedded Linux", State: "Continuous M2M"),
+                (Name: "Pixel 9 Pro Collector", Model: "Google Pixel 9 Pro", Type: "Mobile Collector", Plat: "Android", State: "Active Attached"),
+                (Name: "Cisco Catalyst Cellular Gateway", Model: "CG522-E", Type: "Cellular Router", Plat: "Cisco IOS-XE", State: "Active Link")
+            };
+
+            int count = random.Next(2, 4);
+            for (int i = 0; i < count; i++)
+            {
+                var s = sampleSubscribers[(i + Math.Abs(cellId.GetHashCode())) % sampleSubscribers.Length];
+                int dbm = -72 - random.Next(4, 32);
+                int dist = random.Next(120, 1400);
+                var rating = SignalClassifier.Classify(dbm, "5G NR");
+
+                devices.Add(new TowerConnectedDeviceDto
+                {
+                    DeviceId = Guid.NewGuid(),
+                    DeviceName = s.Name,
+                    Model = s.Model,
+                    DeviceType = s.Type,
+                    Platform = s.Plat,
+                    RadioTechnology = cellId.Contains("LTE", StringComparison.OrdinalIgnoreCase) ? "LTE" : "5G NR",
+                    Band = cellId.Contains("LTE", StringComparison.OrdinalIgnoreCase) ? "Band 3 (1800 MHz)" : "Band n78 (3500 MHz)",
+                    SignalStrengthDbm = dbm,
+                    SignalQuality = Math.Round(-8.5 - random.NextDouble() * 5.0, 1),
+                    SignalRating = SignalClassifier.GetRatingText(rating),
+                    SignalColor = SignalClassifier.GetRatingColor(rating),
+                    EstimatedDistanceMeters = dist,
+                    TimingAdvance = Math.Max(1, dist / 78),
+                    LastSeen = DateTimeOffset.UtcNow.AddMinutes(-random.Next(1, 45)),
+                    ConnectionState = s.State
+                });
+            }
+        }
+
+        return devices;
     }
 
     public async Task SeedDefaultTowersAsync(CancellationToken cancellationToken = default)

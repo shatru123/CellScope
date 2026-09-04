@@ -101,6 +101,26 @@ public class TowerLocationDto
     public string? SourceReference { get; set; }
     public DateTimeOffset LastVerified { get; set; }
     public double DistanceMeters { get; set; }
+    public List<TowerConnectedDeviceDto> ConnectedDevices { get; set; } = new();
+}
+
+public class TowerConnectedDeviceDto
+{
+    public Guid DeviceId { get; set; }
+    public string DeviceName { get; set; } = string.Empty;
+    public string DeviceType { get; set; } = "Mobile Collector";
+    public string Platform { get; set; } = "Android";
+    public string Model { get; set; } = "Collector Node";
+    public string RadioTechnology { get; set; } = "5G NR";
+    public string Band { get; set; } = "n78";
+    public int SignalStrengthDbm { get; set; }
+    public double? SignalQuality { get; set; }
+    public string SignalRating { get; set; } = "Good";
+    public string SignalColor { get; set; } = "#10B981";
+    public int EstimatedDistanceMeters { get; set; }
+    public int TimingAdvance { get; set; }
+    public DateTimeOffset LastSeen { get; set; }
+    public string ConnectionState { get; set; } = "Active Attached";
 }
 
 public class CellHandoverDto

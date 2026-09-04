@@ -127,7 +127,7 @@ public class DemoDataService : IDemoDataService
 
     public IReadOnlyList<TowerLocationDto> GetDemoTowers()
     {
-        return new List<TowerLocationDto>
+        var towers = new List<TowerLocationDto>
         {
             new()
             {
@@ -230,6 +230,61 @@ public class DemoDataService : IDemoDataService
                 DistanceMeters = 1350.0
             }
         };
+
+        foreach (var t in towers)
+        {
+            t.ConnectedDevices = GetDemoConnectedDevicesForTower(t.CellId).ToList();
+        }
+
+        return towers;
+    }
+
+    public IReadOnlyList<TowerConnectedDeviceDto> GetDemoConnectedDevicesForTower(string cellId)
+    {
+        var random = new Random(cellId.GetHashCode());
+        var devices = new List<TowerConnectedDeviceDto>();
+
+        var mockNodes = new[]
+        {
+            (Name: "Pixel 9 Pro (Live Collector)", Model: "Google Pixel 9 Pro", Type: "Mobile Collector", Platform: "Android", State: "Active Attached (Primary UE)"),
+            (Name: "Galaxy S24 Ultra (Field Node)", Model: "Samsung SM-S928B", Type: "Field Telemetry Node", Platform: "Android", State: "Active Attached"),
+            (Name: "CellScope Android Collector #2", Model: "OnePlus 12", Type: "Mobile Collector", Platform: "Android", State: "Active Connected"),
+            (Name: "Quectel 5G Industrial Gateway", Model: "RG500Q-EA IoT Router", Type: "IoT Cellular Gateway", Platform: "Embedded Linux", State: "Continuous M2M Stream"),
+            (Name: "DJI Matrice 350 RTK Drone", Model: "Cellular Dongle LTE/5G", Type: "Field Aerial Node", Platform: "Embedded OS", State: "Telemetry Uplink")
+        };
+
+        int count = random.Next(2, 5);
+        for (int i = 0; i < count; i++)
+        {
+            var node = mockNodes[i % mockNodes.Length];
+            int dbm = -70 - random.Next(5, 35);
+            double rsrq = Math.Round(-8.0 - random.NextDouble() * 7.0, 1);
+            int dist = random.Next(80, 1200);
+            int ta = Math.Max(1, dist / 78);
+
+            var rating = SignalClassifier.Classify(dbm, "5G NR");
+
+            devices.Add(new TowerConnectedDeviceDto
+            {
+                DeviceId = Guid.NewGuid(),
+                DeviceName = node.Name,
+                Model = node.Model,
+                DeviceType = node.Type,
+                Platform = node.Platform,
+                ConnectionState = node.State,
+                RadioTechnology = cellId.Contains("LTE", StringComparison.OrdinalIgnoreCase) ? "LTE" : "5G NR",
+                Band = cellId.Contains("LTE", StringComparison.OrdinalIgnoreCase) ? "Band 3 (1800 MHz)" : "Band n78 (3500 MHz)",
+                SignalStrengthDbm = dbm,
+                SignalQuality = rsrq,
+                SignalRating = SignalClassifier.GetRatingText(rating),
+                SignalColor = SignalClassifier.GetRatingColor(rating),
+                EstimatedDistanceMeters = dist,
+                TimingAdvance = ta,
+                LastSeen = DateTimeOffset.UtcNow.AddSeconds(-random.Next(2, 90))
+            });
+        }
+
+        return devices;
     }
 
     public IReadOnlyList<LocationPointDto> GetDemoTrail()

@@ -17,14 +17,19 @@ public class TowersController : ControllerBase
         _demoDataService = demoDataService;
     }
 
+    [HttpGet("")]
     [HttpGet("nearby")]
     public async Task<ActionResult<IReadOnlyList<TowerLocationDto>>> GetNearbyTowers(
         [FromQuery] double latitude = 37.7749,
         [FromQuery] double longitude = -122.4194,
         [FromQuery] double radiusMeters = 5000,
+        [FromQuery] double? lat = null,
+        [FromQuery] double? lon = null,
         CancellationToken cancellationToken = default)
     {
-        var towers = await _towerService.GetNearbyTowersAsync(latitude, longitude, radiusMeters, cancellationToken);
+        var finalLat = lat ?? latitude;
+        var finalLon = lon ?? longitude;
+        var towers = await _towerService.GetNearbyTowersAsync(finalLat, finalLon, radiusMeters, cancellationToken);
         if (towers.Count == 0 && _demoDataService.IsDemoModeActive)
         {
             return Ok(_demoDataService.GetDemoTowers());
@@ -40,5 +45,17 @@ public class TowersController : ControllerBase
             return NotFound(new { message = $"Tower location unavailable for Cell ID {cellId}." });
 
         return Ok(tower);
+    }
+
+    [HttpGet("{cellId}/devices")]
+    public async Task<ActionResult<IReadOnlyList<TowerConnectedDeviceDto>>> GetTowerDevices(string cellId, CancellationToken cancellationToken)
+    {
+        if (_demoDataService.IsDemoModeActive)
+        {
+            return Ok(_demoDataService.GetDemoConnectedDevicesForTower(cellId));
+        }
+
+        var devices = await _towerService.GetConnectedDevicesForTowerAsync(cellId, cancellationToken);
+        return Ok(devices);
     }
 }

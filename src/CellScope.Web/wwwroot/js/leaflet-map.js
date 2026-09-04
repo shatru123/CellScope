@@ -84,6 +84,7 @@ window.cellScopeMap = {
 
         this.mapInstances[elementId] = {
             map: map,
+            dotNetHelper: dotNetHelper,
             userMarker: null,
             servingMarker: null,
             towerMarkers: [],
@@ -120,6 +121,24 @@ window.cellScopeMap = {
         setTimeout(() => map.invalidateSize(), 250);
     },
 
+    selectTower: function (elementId, cellId) {
+        const entry = this.mapInstances[elementId];
+        if (entry && entry.dotNetHelper) {
+            try {
+                entry.dotNetHelper.invokeMethodAsync('OnTowerSelected', cellId);
+            } catch { }
+        }
+    },
+
+    selectDevice: function (elementId, ipAddress) {
+        const entry = this.mapInstances[elementId];
+        if (entry && entry.dotNetHelper) {
+            try {
+                entry.dotNetHelper.invokeMethodAsync('OnDeviceSelected', ipAddress);
+            } catch { }
+        }
+    },
+
     locateUser: function (elementId) {
         const entry = this.mapInstances[elementId];
         if (!entry || !entry.map) return;
@@ -145,9 +164,9 @@ window.cellScopeMap = {
         if (data.userLat && data.userLon) {
             const userIcon = L.divIcon({
                 className: 'custom-user-marker',
-                html: `<div style="width:20px;height:20px;background:#06b6d4;border:3px solid #ffffff;border-radius:50%;box-shadow:0 0 16px #06b6d4, 0 0 4px #06b6d4;display:flex;align-items:center;justify-content:center;"><div style="width:6px;height:6px;background:#fff;border-radius:50%;"></div></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
+                html: `<div style="width:22px;height:22px;background:#06b6d4;border:3px solid #ffffff;border-radius:50%;box-shadow:0 0 16px #06b6d4, 0 0 6px #06b6d4;display:flex;align-items:center;justify-content:center;"><div style="width:6px;height:6px;background:#fff;border-radius:50%;"></div></div>`,
+                iconSize: [22, 22],
+                iconAnchor: [11, 11]
             });
 
             if (entry.userMarker) {
@@ -155,7 +174,7 @@ window.cellScopeMap = {
             } else {
                 entry.userMarker = L.marker([data.userLat, data.userLon], { icon: userIcon })
                     .addTo(map)
-                    .bindPopup(`<b>📍 Your Device Location</b><br><b>Latitude:</b> ${data.userLat.toFixed(5)}<br><b>Longitude:</b> ${data.userLon.toFixed(5)}<br><b>Accuracy:</b> High (GPS/Wi-Fi)`);
+                    .bindPopup(`<b>📍 Your Device Location</b><br><b>Latitude:</b> ${data.userLat.toFixed(5)}<br><b>Longitude:</b> ${data.userLon.toFixed(5)}<br><b>Accuracy:</b> High (GPS / Wi-Fi Active)`);
             }
         }
 
@@ -180,52 +199,131 @@ window.cellScopeMap = {
             }
         }
 
-        // 3. Known Public Telecom Towers (Amber / Gold Pins)
+        // 3. Known Public Telecom Towers & Attached Connected Devices
         if (data.towers && Array.isArray(data.towers)) {
             entry.towerMarkers.forEach(m => m.remove());
             entry.towerMarkers = [];
 
             data.towers.forEach(t => {
+                const devCount = t.connectedDevices ? t.connectedDevices.length : (t.ConnectedDevices ? t.ConnectedDevices.length : 2);
+                const devList = t.connectedDevices || t.ConnectedDevices || [];
                 const distText = t.distanceMeters ? ` • ${Math.round(t.distanceMeters)}m` : '';
+
                 const towerIcon = L.divIcon({
                     className: 'tower-marker',
-                    html: `<div style="background:#f59e0b;color:#0b0f19;padding:3px 8px;border-radius:6px;font-size:10.5px;font-weight:700;border:1px solid #ffffff;box-shadow:0 0 12px rgba(245,158,11,0.7);white-space:nowrap;display:inline-flex;align-items:center;gap:3px;">🗼 ${t.radioTechnology}${distText}</div>`,
-                    iconAnchor: [42, 13]
+                    html: `<div style="background:#f59e0b;color:#0b0f19;padding:3px 8px;border-radius:6px;font-size:10.5px;font-weight:700;border:1px solid #ffffff;box-shadow:0 0 14px rgba(245,158,11,0.7);white-space:nowrap;display:inline-flex;align-items:center;gap:4px;">🗼 ${t.radioTechnology}${distText} <span style="background:#0b0f19;color:#fbbf24;padding:1px 5px;border-radius:10px;font-size:9px;">${devCount} UEs</span></div>`,
+                    iconAnchor: [50, 13]
                 });
+
+                // Build connected devices HTML snippet
+                let devSnippet = '';
+                if (devList.length > 0) {
+                    devSnippet = `<div style="margin-top:8px;padding-top:6px;border-top:1px solid #1f2d42;">
+                        <div style="font-size:10.5px;font-weight:700;color:#f59e0b;text-transform:uppercase;margin-bottom:4px;">📱 Connected Devices (${devList.length} Attached UEs):</div>
+                        <div style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;">`;
+                    
+                    devList.forEach(dev => {
+                        devSnippet += `<div style="background:#111827;padding:3px 6px;border-radius:4px;border:1px solid #1f2d42;font-size:10px;">
+                            <div style="display:flex;justify-content:space-between;font-weight:600;color:#f8fafc;">
+                                <span>${dev.deviceName || dev.DeviceName}</span>
+                                <span style="color:${dev.signalColor || dev.SignalColor || '#10b981'}">${dev.signalStrengthDbm || dev.SignalStrengthDbm} dBm</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;color:#94a3b8;font-size:9px;">
+                                <span>${dev.deviceType || dev.DeviceType}</span>
+                                <span>${dev.estimatedDistanceMeters || dev.EstimatedDistanceMeters || 200}m</span>
+                            </div>
+                        </div>`;
+                    });
+
+                    devSnippet += `</div></div>`;
+                }
+
+                const popupHtml = `
+                    <div style="min-width:220px;">
+                        <b>🗼 Public Base Station / Tower</b><br>
+                        <b>Cell ID:</b> ${t.cellId}<br>
+                        <b>Operator:</b> ${t.operatorName || 'Public Carrier'}<br>
+                        <b>Technology:</b> ${t.radioTechnology}<br>
+                        <b>Physical Cell ID (PCI):</b> ${t.physicalCellId || 'N/A'}<br>
+                        <b>Confidence:</b> ${t.confidence}<br>
+                        <b>Distance:</b> ${t.distanceMeters ? Math.round(t.distanceMeters) + ' meters' : 'Nearby'}<br>
+                        ${devSnippet}
+                        <button onclick="window.cellScopeMap.selectTower('${elementId}', '${t.cellId}')" style="margin-top:8px;width:100%;background:#f59e0b;color:#0b0f19;border:none;border-radius:5px;padding:5px 8px;font-weight:700;font-size:11px;cursor:pointer;">
+                            ⚡ Inspect Tower & Connected UEs
+                        </button>
+                    </div>
+                `;
 
                 const m = L.marker([t.latitude, t.longitude], { icon: towerIcon })
                     .addTo(map)
-                    .bindPopup(`<b>🗼 Public Base Station / Tower</b><br><b>Cell ID:</b> ${t.cellId}<br><b>Operator:</b> ${t.operatorName || 'Public Carrier'}<br><b>Technology:</b> ${t.radioTechnology}<br><b>Physical Cell ID:</b> ${t.physicalCellId || 'N/A'}<br><b>Confidence:</b> ${t.confidence}<br><b>Distance:</b> ${t.distanceMeters ? Math.round(t.distanceMeters) + ' meters' : 'Nearby'}<br><b>Source:</b> ${t.source || 'OpenCellID Dataset'}<br><b>Verified:</b> ${t.lastVerified ? new Date(t.lastVerified).toLocaleDateString() : 'Active'}`);
+                    .bindPopup(popupHtml, { maxWidth: 280 });
+
+                m.on('click', () => {
+                    window.cellScopeMap.selectTower(elementId, t.cellId);
+                });
+
                 entry.towerMarkers.push(m);
             });
         }
 
-        // 4. Connected Network Devices (Blue Badges)
+        // 4. Connected Local Area Network (LAN) Devices
         if (data.devices && Array.isArray(data.devices)) {
             entry.deviceMarkers.forEach(m => m.remove());
             entry.deviceMarkers = [];
 
+            const userBaseLat = data.userLat || 37.7749;
+            const userBaseLon = data.userLon || -122.4194;
+
             data.devices.forEach((d, idx) => {
-                // Generate slight local coordinate scatter around user for visualization if no GPS
-                const dLat = (data.userLat || 37.7749) + (Math.sin(idx * 1.3) * 0.0009);
-                const dLon = (data.userLon || -122.4194) + (Math.cos(idx * 1.3) * 0.0009);
+                // Scatter discovered LAN devices in a 40m - 120m micro radius around the host
+                const angle = (idx * 2 * Math.PI) / Math.max(1, data.devices.length) + (idx * 0.4);
+                const radiusDist = 0.00045 + (idx * 0.00015);
+                const dLat = userBaseLat + (Math.sin(angle) * radiusDist);
+                const dLon = userBaseLon + (Math.cos(angle) * radiusDist);
+
+                let iconSymbol = "💻";
+                if (d.deviceType === "Router" || d.DeviceType === "Router") iconSymbol = "🌐";
+                else if (d.deviceType === "Phone" || d.DeviceType === "Phone") iconSymbol = "📱";
+                else if (d.deviceType === "TV" || d.DeviceType === "TV") iconSymbol = "📺";
+                else if (d.deviceType === "IoT" || d.DeviceType === "IoT") iconSymbol = "📡";
 
                 const devIcon = L.divIcon({
                     className: 'device-marker',
-                    html: `<div style="background:#3b82f6;color:#ffffff;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:600;border:1px solid #ffffff;box-shadow:0 0 8px rgba(59,130,246,0.6);white-space:nowrap;">💻 ${d.hostname || d.ipAddress}</div>`,
-                    iconAnchor: [30, 10]
+                    html: `<div style="background:#3b82f6;color:#ffffff;padding:3px 7px;border-radius:6px;font-size:10.5px;font-weight:700;border:1.5px solid #ffffff;box-shadow:0 0 12px rgba(59,130,246,0.8);white-space:nowrap;display:inline-flex;align-items:center;gap:3px;">${iconSymbol} ${d.hostname || d.Hostname || d.ipAddress || d.IpAddress}</div>`,
+                    iconAnchor: [35, 11]
                 });
+
+                const devPopup = `
+                    <div style="min-width:210px;">
+                        <b>${iconSymbol} LAN Connected Device</b><br>
+                        <b>Hostname:</b> ${d.hostname || d.Hostname || 'Local Client'}<br>
+                        <b>IP Address:</b> <span style="font-family:monospace;color:#06b6d4;">${d.ipAddress || d.IpAddress}</span><br>
+                        <b>MAC Address:</b> <span style="font-family:monospace;color:#94a3b8;font-size:10px;">${d.macAddress || d.MacAddress || 'Restricted on OS'}</span><br>
+                        <b>Vendor / OEM:</b> ${d.vendor || d.Vendor || 'Generic Device'}<br>
+                        <b>Device Type:</b> <span style="background:#111827;padding:1px 5px;border-radius:4px;">${d.deviceType || d.DeviceType}</span><br>
+                        <b>Ping Latency:</b> ${d.responseTimeMs || d.ResponseTimeMs || 1} ms<br>
+                        <b>Identified Services:</b> <span style="font-size:10px;color:#94a3b8;">${d.safeServiceSummary || d.SafeServiceSummary || 'ICMP Host'}</span><br>
+                        <button onclick="window.cellScopeMap.selectDevice('${elementId}', '${d.ipAddress || d.IpAddress}')" style="margin-top:8px;width:100%;background:#3b82f6;color:#ffffff;border:none;border-radius:5px;padding:4px 8px;font-weight:700;font-size:11px;cursor:pointer;">
+                            🔍 Inspect LAN Properties
+                        </button>
+                    </div>
+                `;
 
                 const m = L.marker([dLat, dLon], { icon: devIcon })
                     .addTo(map)
-                    .bindPopup(`<b>🌐 LAN Connected Device</b><br><b>Hostname:</b> ${d.hostname || 'Local Client'}<br><b>IP Address:</b> ${d.ipAddress}<br><b>Vendor:</b> ${d.vendor || 'Generic'}<br><b>Type:</b> ${d.deviceType || 'Client'}<br><b>Latency:</b> ${d.responseTimeMs || 1} ms`);
+                    .bindPopup(devPopup, { maxWidth: 260 });
+
+                m.on('click', () => {
+                    window.cellScopeMap.selectDevice(elementId, d.ipAddress || d.IpAddress);
+                });
+
                 entry.deviceMarkers.push(m);
             });
         }
 
         // 5. Trail Polyline
         if (data.trail && Array.isArray(data.trail) && data.trail.length > 1) {
-            const latlngs = data.trail.map(pt => [pt.latitude, pt.longitude]);
+            const latlngs = data.trail.map(pt => [pt.latitude || pt.Latitude, pt.longitude || pt.Longitude]);
             if (entry.trailPolyline) {
                 entry.trailPolyline.setLatLngs(latlngs);
             } else {

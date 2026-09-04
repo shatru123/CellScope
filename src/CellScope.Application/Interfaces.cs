@@ -17,6 +17,7 @@ public interface ITowerService
 {
     Task<IReadOnlyList<TowerLocationDto>> GetNearbyTowersAsync(double latitude, double longitude, double radiusMeters = 5000, CancellationToken cancellationToken = default);
     Task<TowerLocationDto?> GetTowerForCellAsync(string cellId, string? radioTech = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TowerConnectedDeviceDto>> GetConnectedDevicesForTowerAsync(string cellId, CancellationToken cancellationToken = default);
     Task SeedDefaultTowersAsync(CancellationToken cancellationToken = default);
 }
 
@@ -70,6 +71,7 @@ public interface IDemoDataService
     void InitializeDemoState();
     CellularSnapshotDto GenerateNextTick();
     IReadOnlyList<TowerLocationDto> GetDemoTowers();
+    IReadOnlyList<TowerConnectedDeviceDto> GetDemoConnectedDevicesForTower(string cellId);
     IReadOnlyList<LocationPointDto> GetDemoTrail();
     IReadOnlyList<CellHandoverDto> GetDemoHandovers();
     LocalNetworkDto GetDemoLocalNetwork();

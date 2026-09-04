@@ -51,4 +51,29 @@ public class CellularApiTests : IClassFixture<CellScopeTestFactory>
         result.SignalStrengthDbm.Should().Be(-78);
         result.SignalRating.Should().Be("Excellent");
     }
+
+    [Fact]
+    public async Task GetTowers_ReturnsTowerLocationsWithConnectedDevices()
+    {
+        var response = await _client.GetAsync("/api/towers?lat=37.7749&lon=-122.4194&radiusMeters=5000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var towers = await response.Content.ReadFromJsonAsync<List<TowerLocationDto>>();
+        towers.Should().NotBeNull();
+        towers.Should().NotBeEmpty();
+        towers![0].ConnectedDevices.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetTowerConnectedDevices_ReturnsDeviceList()
+    {
+        var response = await _client.GetAsync("/api/towers/310410_12345/devices");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var devices = await response.Content.ReadFromJsonAsync<List<TowerConnectedDeviceDto>>();
+        devices.Should().NotBeNull();
+        devices.Should().NotBeEmpty();
+        devices![0].DeviceName.Should().NotBeNullOrWhiteSpace();
+    }
 }
+

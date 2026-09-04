@@ -2,12 +2,13 @@
 @inject ILocalNetworkService NetworkService
 @inject IDemoDataService DemoService
 
-<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:0.75rem;">
     <div>
-        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">My Local Network</h1>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">My Local Network & Connected Devices</h1>
         <p style="font-size:0.875rem;color:var(--text-secondary);">Safe device discovery and LAN inventory for authorized home / office networks</p>
     </div>
-    <div>
+    <div style="display:flex;gap:0.5rem;">
+        <a href="/map" class="btn btn-outline btn-sm">🗺️ View on Map</a>
         <button class="btn btn-primary btn-sm" @onclick="ScanNetwork" disabled="@isScanning">
             @(isScanning ? "Scanning LAN..." : "🔍 Scan Local Subnet")
         </button>
@@ -31,14 +32,32 @@
 <div class="grid-kpis">
     <MetricCard Title="Local Subnet" Value="@(network?.Subnet ?? "192.168.1.0/24")" Subtitle="Class C Private Network" />
     <MetricCard Title="Default Gateway" Value="@(network?.GatewayIp ?? "192.168.1.1")" Subtitle="Primary Router / NAT" />
-    <MetricCard Title="Active Devices" Value="@((network?.Devices?.Count ?? 5).ToString())" Unit="Online" ValueColor="#10b981" Subtitle="Discovered Hosts" />
+    <MetricCard Title="Active Discovered Hosts" Value="@((network?.Devices?.Count ?? 5).ToString())" Unit="Online" ValueColor="#10b981" Subtitle="Discovered LAN Endpoints" />
     <MetricCard Title="Network Interface" Value="@(network?.InterfaceName ?? "Wi-Fi (en0)")" Subtitle="Local Network Adapter" />
+</div>
+
+<!-- Filter & Search Bar -->
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
+    <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+        @foreach (var category in new[] { "All", "Router", "Laptop", "Phone", "TV", "IoT" })
+        {
+            <button class="btn btn-sm @(selectedCategory == category ? "btn-primary" : "btn-outline")"
+                    @onclick="@(() => selectedCategory = category)">
+                @category
+            </button>
+        }
+    </div>
+    <div style="min-width:240px;">
+        <input type="text" class="input-field" style="width:100%;font-size:0.8rem;padding:0.4rem 0.75rem;" 
+               placeholder="🔎 Search by hostname, IP, or vendor..." 
+               @bind="searchTerm" @bind:event="oninput" />
+    </div>
 </div>
 
 <!-- Discovered Devices Table -->
 <div class="noc-card">
     <div class="noc-card-header">
-        <span class="noc-card-title">Discovered LAN Inventory</span>
+        <span class="noc-card-title">Discovered LAN Inventory (@FilteredDevices.Count() Devices)</span>
         <span style="font-size:0.75rem;color:var(--text-muted);">Last Scanned: @(network?.ScannedAt.ToString("HH:mm:ss") ?? "Just now")</span>
     </div>
 
@@ -51,17 +70,17 @@
                     <th>IP Address</th>
                     <th>MAC Address</th>
                     <th>Vendor / Manufacturer</th>
-                    <th>Type</th>
+                    <th>Device Type</th>
                     <th>Latency</th>
                     <th>Identified Services</th>
                 </tr>
             </thead>
             <tbody>
-                @if (network?.Devices != null && network.Devices.Count > 0)
+                @if (FilteredDevices.Any())
                 {
-                    @foreach (var dev in network.Devices)
+                    @foreach (var dev in FilteredDevices)
                     {
-                        <tr>
+                        <tr style="cursor:pointer;" @onclick="@(() => selectedDevice = dev)">
                             <td>
                                 <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">
                                     ● Online
@@ -97,7 +116,7 @@
                 {
                     <tr>
                         <td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">
-                            No network devices discovered yet. Click "Scan Local Subnet" to start safe discovery.
+                            No network devices match the filter. Click "Scan Local Subnet" to start safe discovery.
                         </td>
                     </tr>
                 }
@@ -106,9 +125,60 @@
     </div>
 </div>
 
+<!-- Modal / Bottom Card: Selected Device Detail Inspector -->
+@if (selectedDevice != null)
+{
+    <div style="margin-top:1.5rem;" class="noc-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <span style="font-size:1.25rem;">💻</span>
+                <h3 style="font-size:1.1rem;font-weight:800;color:var(--text-primary);">Device Inspector: @selectedDevice.Hostname</h3>
+            </div>
+            <button class="btn btn-outline btn-sm" @onclick="@(() => selectedDevice = null)">✕ Close</button>
+        </div>
+
+        <div class="grid-kpis" style="margin-bottom:0.5rem;">
+            <MetricCard Title="IP Address" Value="@selectedDevice.IpAddress" Subtitle="Assigned Subnet IP" />
+            <MetricCard Title="Hardware MAC" Value="@(selectedDevice.MacAddress ?? "Restricted on OS")" Subtitle="Physical Address" />
+            <MetricCard Title="Vendor OEM" Value="@(selectedDevice.Vendor ?? "Generic Device")" Subtitle="IEEE OUI Registered" />
+            <MetricCard Title="Response Time" Value="@($"{selectedDevice.ResponseTimeMs ?? 1} ms")" ValueColor="#10b981" Subtitle="ICMP Roundtrip Latency" />
+        </div>
+    </div>
+}
+
 @code {
     private LocalNetworkDto? network;
+    private NetworkDeviceDto? selectedDevice;
+    private string selectedCategory = "All";
+    private string searchTerm = "";
     private bool isScanning = false;
+
+    private IEnumerable<NetworkDeviceDto> FilteredDevices
+    {
+        get
+        {
+            if (network?.Devices == null) return Enumerable.Empty<NetworkDeviceDto>();
+
+            var query = network.Devices.AsEnumerable();
+
+            if (selectedCategory != "All")
+            {
+                query = query.Where(d => string.Equals(d.DeviceType, selectedCategory, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                query = query.Where(d =>
+                    (d.Hostname != null && d.Hostname.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                    d.IpAddress.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    (d.Vendor != null && d.Vendor.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                    (d.SafeServiceSummary != null && d.SafeServiceSummary.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                );
+            }
+
+            return query;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

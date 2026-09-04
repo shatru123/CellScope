@@ -9,7 +9,7 @@
 <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
     <div>
         <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">GIS Cell, Tower & LAN Map</h1>
-        <p style="font-size:0.875rem;color:var(--text-secondary);">100% Free OpenStreetMap layers for serving cells, nearby telecom towers, LAN devices, and GPS path</p>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">Click any cellular tower to view its connected subscriber devices, or inspect local network clients</p>
     </div>
     <div style="display:flex;gap:0.5rem;">
         <button class="btn btn-outline btn-sm" @onclick="LocateMe">📍 Locate Me</button>
@@ -24,8 +24,12 @@
             <span style="font-size:0.8rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;">Active Layers:</span>
             <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);border:1px solid rgba(6,182,212,0.3);">📍 User Device</span>
             <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);">📡 Serving Cell</span>
-            <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);">🗼 Known Towers (@(towersList.Count))</span>
-            <span class="badge" style="background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);">💻 LAN Devices (@(localNetwork?.Devices?.Count ?? 0))</span>
+            <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);cursor:pointer;" @onclick="@(() => activeTab = "towers")">
+                🗼 Known Towers (@(towersList.Count))
+            </span>
+            <span class="badge" style="background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);cursor:pointer;" @onclick="@(() => activeTab = "devices")">
+                💻 LAN Devices (@(localNetwork?.Devices?.Count ?? 0))
+            </span>
             <span class="badge" style="background:rgba(139,92,246,0.15);color:#8b5cf6;border:1px solid rgba(139,92,246,0.3);">〰️ GPS Trail</span>
         </div>
         <div style="font-size:0.8rem;color:var(--text-secondary);">
@@ -33,46 +37,201 @@
         </div>
     </div>
 
-    <!-- Map Viewport with Floating Tower Drawer -->
+    <!-- Map Viewport with Floating Interactive Overlay Drawer -->
     <div style="position:relative;">
         <div id="fullscreen-leaflet-map" style="width:100%;height:calc(100vh - 270px);background:#111827;"></div>
 
-        <!-- Floating Nearby Towers Overlay Card -->
-        <div style="position:absolute;bottom:20px;right:20px;z-index:999;width:320px;max-height:260px;background:rgba(22,32,50,0.92);backdrop-filter:blur(8px);border:1px solid var(--border-color);border-radius:10px;padding:12px;box-shadow:0 8px 30px rgba(0,0,0,0.5);overflow-y:auto;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border-color);">
-                <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--accent-amber);letter-spacing:0.05em;">🗼 Nearby Base Stations (@towersList.Count)</span>
-                <span style="font-size:0.7rem;color:var(--text-muted);">Radius: 5 km</span>
+        <!-- Floating Multi-Tab Overlay Card -->
+        <div style="position:absolute;bottom:20px;right:20px;z-index:999;width:360px;max-height:340px;background:rgba(22,32,50,0.95);backdrop-filter:blur(10px);border:1px solid var(--border-color);border-radius:12px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:10px;">
+            
+            <!-- Tab Headers -->
+            <div style="display:flex;gap:6px;border-bottom:1px solid var(--border-color);padding-bottom:8px;">
+                <button class="btn btn-sm @(activeTab == "towers" ? "btn-primary" : "btn-outline")" 
+                        style="flex:1;font-size:0.75rem;padding:4px 6px;" 
+                        @onclick="@(() => activeTab = "towers")">
+                    🗼 Towers (@towersList.Count)
+                </button>
+                <button class="btn btn-sm @(activeTab == "devices" ? "btn-primary" : "btn-outline")" 
+                        style="flex:1;font-size:0.75rem;padding:4px 6px;" 
+                        @onclick="@(() => activeTab = "devices")">
+                    💻 LAN Devices (@(localNetwork?.Devices?.Count ?? 0))
+                </button>
             </div>
-            @if (towersList.Count > 0)
+
+            <!-- Tab 1: Telecom Towers & Attached Devices -->
+            @if (activeTab == "towers")
             {
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                    @foreach (var t in towersList.Take(5))
+                <div style="overflow-y:auto;display:flex;flex-direction:column;gap:6px;max-height:250px;">
+                    @if (towersList.Count > 0)
                     {
-                        <div style="background:var(--bg-secondary);padding:6px 8px;border-radius:6px;border:1px solid var(--border-color);font-size:0.75rem;">
-                            <div style="display:flex;justify-content:space-between;font-weight:600;color:var(--text-primary);">
-                                <span>@(t.OperatorName ?? "Carrier Tower")</span>
-                                <span style="color:var(--accent-amber);">@(t.RadioTechnology)</span>
+                        @foreach (var t in towersList)
+                        {
+                            <div style="background:var(--bg-secondary);padding:8px 10px;border-radius:8px;border:1px solid @(selectedTower?.CellId == t.CellId ? "var(--accent-amber)" : "var(--border-color)");cursor:pointer;transition:all 0.15s ease;"
+                                 @onclick="@(() => SelectTower(t.CellId))">
+                                <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;color:var(--text-primary);font-size:0.8rem;">
+                                    <span>🗼 @(t.OperatorName ?? "Base Station")</span>
+                                    <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-size:0.7rem;">@(t.RadioTechnology)</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;color:var(--text-secondary);font-size:0.725rem;margin-top:4px;">
+                                    <span>Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@t.CellId</span></span>
+                                    <span>@Math.Round(t.DistanceMeters)m away</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.05);font-size:0.7rem;">
+                                    <span style="color:#10b981;font-weight:600;">📱 @(t.ConnectedDevices?.Count ?? 2) Connected UEs</span>
+                                    <span style="color:var(--accent-amber);font-weight:700;">Inspect Devices →</span>
+                                </div>
                             </div>
-                            <div style="display:flex;justify-content:space-between;color:var(--text-secondary);font-size:0.7rem;margin-top:2px;">
-                                <span>Cell ID: <span style="font-family:var(--font-mono);">@t.CellId</span></span>
-                                <span>@(Math.Round(t.DistanceMeters))m away</span>
-                            </div>
-                        </div>
+                        }
+                    }
+                    else
+                    {
+                        <div style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:1rem;">Discovering nearby telecom towers...</div>
                     }
                 </div>
             }
-            else
+
+            <!-- Tab 2: Discovered LAN Connected Devices -->
+            @if (activeTab == "devices")
             {
-                <div style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:12px;">Discovering nearby telecom towers...</div>
+                <div style="overflow-y:auto;display:flex;flex-direction:column;gap:6px;max-height:250px;">
+                    @if (localNetwork?.Devices != null && localNetwork.Devices.Count > 0)
+                    {
+                        @foreach (var dev in localNetwork.Devices)
+                        {
+                            <div style="background:var(--bg-secondary);padding:8px 10px;border-radius:8px;border:1px solid @(selectedLanDevice?.IpAddress == dev.IpAddress ? "var(--accent-cyan)" : "var(--border-color)");cursor:pointer;"
+                                 @onclick="@(() => SelectDevice(dev.IpAddress))">
+                                <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;color:var(--text-primary);font-size:0.8rem;">
+                                    <span>💻 @(dev.Hostname ?? "Local Host")</span>
+                                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.65rem;">● Online</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;color:var(--text-secondary);font-size:0.725rem;margin-top:3px;">
+                                    <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@dev.IpAddress</span>
+                                    <span>@dev.Vendor</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;color:var(--text-muted);font-size:0.7rem;margin-top:2px;">
+                                    <span>Type: @dev.DeviceType</span>
+                                    <span>Latency: @(dev.ResponseTimeMs ?? 1) ms</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:1rem;">No LAN devices scanned yet.</div>
+                    }
+                </div>
             }
         </div>
     </div>
 </div>
 
+<!-- Modal / Drawer: Detailed Connected Devices Inspector for Selected Tower -->
+@if (selectedTower != null)
+{
+    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(4px);">
+        <div class="noc-card" style="width:100%;max-width:760px;max-height:85vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--accent-amber);box-shadow:0 20px 50px rgba(0,0,0,0.8);position:relative;">
+            
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;border-bottom:1px solid var(--border-color);padding-bottom:1rem;">
+                <div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+                        <span style="font-size:1.3rem;">🗼</span>
+                        <h2 style="font-size:1.25rem;font-weight:800;color:var(--text-primary);">
+                            @(selectedTower.OperatorName ?? "Base Station") — Connected Devices
+                        </h2>
+                    </div>
+                    <p style="font-size:0.8rem;color:var(--text-secondary);">
+                        Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedTower.CellId</span> • PCI: @(selectedTower.PhysicalCellId ?? "N/A") • Tech: <span style="color:var(--accent-amber);font-weight:700;">@selectedTower.RadioTechnology</span> • Distance: @Math.Round(selectedTower.DistanceMeters)m
+                    </p>
+                </div>
+                <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">✕ Close</button>
+            </div>
+
+            <!-- Connected Devices Table -->
+            <div style="margin-bottom:1.5rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                    <span style="font-size:0.85rem;font-weight:700;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.05em;">
+                        Active Connected Subscribers & Telemetry Nodes (@(selectedTower.ConnectedDevices?.Count ?? 0) UEs)
+                    </span>
+                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">● Active Attachment</span>
+                </div>
+
+                <div class="noc-table-container">
+                    <table class="noc-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Subscriber / Device</th>
+                                <th>Type</th>
+                                <th>Signal Strength</th>
+                                <th>Distance / Timing</th>
+                                <th>Band & Frequency</th>
+                                <th>Last Active</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (selectedTower.ConnectedDevices != null && selectedTower.ConnectedDevices.Count > 0)
+                            {
+                                @foreach (var dev in selectedTower.ConnectedDevices)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;">
+                                                ● Attached
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div style="font-weight:600;color:var(--text-primary);">@dev.DeviceName</div>
+                                            <div style="font-size:0.7rem;color:var(--text-muted);">@dev.Model (@dev.Platform)</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge" style="background:var(--bg-secondary);color:var(--text-secondary);font-size:0.7rem;">
+                                                @dev.DeviceType
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div style="font-weight:700;color:@dev.SignalColor;">@dev.SignalStrengthDbm dBm</div>
+                                            <div style="font-size:0.7rem;color:var(--text-muted);">Quality: @(dev.SignalQuality != null ? $"{dev.SignalQuality} dB" : "Good")</div>
+                                        </td>
+                                        <td>
+                                            <div style="font-weight:600;color:var(--text-primary);">@dev.EstimatedDistanceMeters m</div>
+                                            <div style="font-size:0.7rem;color:var(--text-muted);">TA: @dev.TimingAdvance</div>
+                                        </td>
+                                        <td style="font-size:0.8rem;color:var(--text-secondary);">
+                                            @dev.Band
+                                        </td>
+                                        <td style="font-size:0.75rem;color:var(--text-muted);">
+                                            @dev.LastSeen.ToString("HH:mm:ss")
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
+                                        No active subscriber devices currently registered on this sector.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+                <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private CellularSnapshotDto? snapshot;
     private LocalNetworkDto? localNetwork;
     private List<TowerLocationDto> towersList = new();
+    private TowerLocationDto? selectedTower;
+    private NetworkDeviceDto? selectedLanDevice;
+    private string activeTab = "towers";
     private double currentLat = 37.7749;
     private double currentLon = -122.4194;
     private DotNetObjectReference<CellMap>? dotNetRef;
@@ -128,6 +287,34 @@
             await UpdateMapAsync();
             StateHasChanged();
         }
+    }
+
+    [JSInvokable]
+    public void OnTowerSelected(string cellId)
+    {
+        SelectTower(cellId);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnDeviceSelected(string ipAddress)
+    {
+        SelectDevice(ipAddress);
+        StateHasChanged();
+    }
+
+    public void SelectTower(string cellId)
+    {
+        selectedTower = towersList.FirstOrDefault(t => t.CellId == cellId);
+        if (selectedTower == null && towersList.Count > 0)
+        {
+            selectedTower = towersList[0];
+        }
+    }
+
+    public void SelectDevice(string ipAddress)
+    {
+        selectedLanDevice = localNetwork?.Devices?.FirstOrDefault(d => d.IpAddress == ipAddress);
     }
 
     private async Task LocateMe()
