@@ -340,7 +340,7 @@ public class DemoDataService : IDemoDataService
 
         var sampleCalls = new (string FromNum, string FromName, string ToNum, string ToName, string Type, string Status, int DurationSec, string Codec, double Mos, string Bearer)[]
         {
-            ("+91 96044 66334", "Shatrughna Ambhore (Galaxy S25)", "+91 98231 54128", "Enterprise Cloud Gateway (Pune)", "VoNR 5G Ultra-HD", "Active (In-Call)", 258, "EVS-SWB 24.4 kbps", 4.5, "5QI-1 (Conversational Voice)"),
+            ("+91 98220 11223", "Sector Subscriber Node #101", "+91 98231 54128", "Enterprise Cloud Gateway (Pune)", "VoNR 5G Ultra-HD", "Active (In-Call)", 258, "EVS-SWB 24.4 kbps", 4.5, "5QI-1 (Conversational Voice)"),
             ("+91 98224 51920", "Realme 5s Smartphone", "+91 97654 32109", "OnePlus Node (Mumbai HQ)", "VoLTE HD Voice", "Active (In-Call)", 712, "AMR-WB 23.85 kbps", 4.2, "QCI-1 (IMS Voice)"),
             ("+91 94221 88390", "Connected Mobile Client", "+91 98901 44210", "Field Operations Node (Delhi)", "VoNR 5G Ultra-HD", "Ringing (Alerting)", 8, "EVS-SWB 24.4 kbps", 4.4, "5QI-1 (Conversational Voice)"),
             ("+91 98500 12345", "Samsung Galaxy S24+", "+91 98235 66789", "iPhone 15 Subscriber (Bangalore)", "VoLTE HD Voice", "Active (In-Call)", 110, "AMR-WB 12.65 kbps", 4.1, "QCI-1 (IMS Voice)"),
@@ -357,7 +357,7 @@ public class DemoDataService : IDemoDataService
             ("+91 98909 22334", "Realme 12 Pro+ 5G", "+91 97650 99887", "Vivo V30 Pro", "VoLTE HD Voice", "Establishing Call", 4, "AMR-WB 12.65 kbps", 4.1, "QCI-1 (IMS Voice)"),
             ("+91 94228 77665", "Xiaomi Redmi Note 13 Pro+", "+91 98227 66554", "OnePlus Nord 4 5G", "VoLTE HD Voice", "Active (In-Call)", 890, "AMR-WB 23.85 kbps", 4.3, "QCI-1 (IMS Voice)"),
             ("+91 98906 55443", "Motorola Razr 50 Ultra", "+91 97643 44332", "Apple iPhone 16 Plus", "VoNR 5G Ultra-HD", "Active (In-Call)", 610, "EVS-FB 128 kbps", 4.7, "5QI-1 (Conversational Voice)"),
-            ("+91 94227 33221", "Samsung Galaxy S23 FE", "+91 96044 66334", "Shatrughna Ambhore (S25)", "VoNR 5G Ultra-HD", "Active (In-Call)", 135, "EVS-SWB 24.4 kbps", 4.5, "5QI-1 (Conversational Voice)"),
+            ("+91 94227 33221", "Samsung Galaxy S23 FE", "+91 94225 66778", "Regional Gateway Node", "VoNR 5G Ultra-HD", "Active (In-Call)", 135, "EVS-SWB 24.4 kbps", 4.5, "5QI-1 (Conversational Voice)"),
             ("+91 70281 99014 (eSIM)", "HP EliteBook 840 5G", "+91 80071 44559 (M2M)", "Quectel Telemetry Server", "Data Bearer VoLTE", "Active (In-Call)", 1250, "Opus HD 64 kbps", 4.4, "5QI-2 (Conversational Video)"),
             ("+91 80071 44557 (eSIM)", "DJI Inspire 3 Aerial Node", "+91 80071 44558 (eSIM)", "Skydio Fleet Dispatch", "Mission Critical PTT (MCPTT)", "Active Voice Stream", 410, "AMR-WB 23.85 kbps", 4.3, "5QI-65 (Mission Critical Voice)")
         };
