@@ -363,6 +363,267 @@ public class DemoDataService : IDemoDataService
         };
     }
 
+    public bool IsDemoAdapterConnected { get; set; } = true;
+
+    private static readonly List<NetworkDeviceDto> _demoLanDevices = new()
+    {
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000001"),
+            IpAddress = "192.168.1.1",
+            MacAddress = "50:C7:BF:41:88:20",
+            Hostname = "Archer-AX55-Router.local",
+            Vendor = "TP-Link Corporation",
+            DeviceType = "Router",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-30),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 1,
+            IsOnline = true,
+            SafeServiceSummary = "HTTP/HTTPS Web Admin, DNS, DHCP Gateway",
+            ConnectionBand = "Gigabit Ethernet / Wi-Fi 6 Gateway",
+            LinkSpeedMbps = 1000,
+            IpAssignment = "Static Router IP"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000002"),
+            IpAddress = "192.168.1.2",
+            MacAddress = "AC:84:C6:92:41:10",
+            Hostname = "Deco-X50-Mesh-AP.local",
+            Vendor = "TP-Link Corporation",
+            DeviceType = "AccessPoint",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-20),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 2,
+            IsOnline = true,
+            SafeServiceSummary = "Wi-Fi 6 Mesh Backhaul, IEEE 802.11ax Roaming",
+            ConnectionBand = "5 GHz Wi-Fi 6 (2400 Mbps)",
+            LinkSpeedMbps = 2400,
+            IpAssignment = "DHCP Reserved"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000003"),
+            IpAddress = "192.168.1.5",
+            MacAddress = "A4:C3:F0:8A:1B:9C",
+            Hostname = "MacBook-Pro-M3.local",
+            Vendor = "Apple Inc.",
+            DeviceType = "Laptop",
+            FirstSeen = DateTimeOffset.UtcNow.AddHours(-12),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 1,
+            IsOnline = true,
+            SafeServiceSummary = "AirPlay 2, SSH Remote Terminal, CellScope Host",
+            ConnectionBand = "5 GHz Wi-Fi 6 (1200 Mbps)",
+            LinkSpeedMbps = 1200,
+            IpAssignment = "DHCP Dynamic"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000004"),
+            IpAddress = "192.168.1.8",
+            MacAddress = "BC:D1:D3:22:90:11",
+            Hostname = "Pixel-9-Pro-Collector.local",
+            Vendor = "Google LLC",
+            DeviceType = "Phone",
+            FirstSeen = DateTimeOffset.UtcNow.AddHours(-6),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 6,
+            IsOnline = true,
+            SafeServiceSummary = "Android Telemetry Collector Node (SignalR Connected)",
+            ConnectionBand = "5 GHz Wi-Fi 6 (1200 Mbps)",
+            LinkSpeedMbps = 1200,
+            IpAssignment = "DHCP Dynamic"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000005"),
+            IpAddress = "192.168.1.9",
+            MacAddress = "A8:42:E3:91:02:44",
+            Hostname = "Galaxy-S24-Ultra.local",
+            Vendor = "Samsung Electronics",
+            DeviceType = "Phone",
+            FirstSeen = DateTimeOffset.UtcNow.AddHours(-4),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 8,
+            IsOnline = true,
+            SafeServiceSummary = "SmartThings Node, Wi-Fi 6 Client Telemetry",
+            ConnectionBand = "5 GHz Wi-Fi 6 (1200 Mbps)",
+            LinkSpeedMbps = 1200,
+            IpAssignment = "DHCP Dynamic"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000006"),
+            IpAddress = "192.168.1.10",
+            MacAddress = "3C:52:82:54:19:AA",
+            Hostname = "iPhone-16-Pro.local",
+            Vendor = "Apple Inc.",
+            DeviceType = "Phone",
+            FirstSeen = DateTimeOffset.UtcNow.AddHours(-2),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 5,
+            IsOnline = true,
+            SafeServiceSummary = "AirDrop, Apple Push Telemetry, iCloud Sync",
+            ConnectionBand = "5 GHz Wi-Fi 6 (1200 Mbps)",
+            LinkSpeedMbps = 1200,
+            IpAssignment = "DHCP Dynamic"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000007"),
+            IpAddress = "192.168.1.12",
+            MacAddress = "70:88:6B:14:8A:DF",
+            Hostname = "LG-webOS-OLED-TV.local",
+            Vendor = "LG Electronics",
+            DeviceType = "TV",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-10),
+            LastSeen = DateTimeOffset.UtcNow.AddMinutes(-5),
+            ResponseTimeMs = 12,
+            IsOnline = true,
+            SafeServiceSummary = "DIAL, DLNA 4K Media Receiver, webOS Connect",
+            ConnectionBand = "5 GHz Wi-Fi (866 Mbps)",
+            LinkSpeedMbps = 866,
+            IpAssignment = "DHCP Dynamic"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000008"),
+            IpAddress = "192.168.1.15",
+            MacAddress = "F4:5C:89:12:77:33",
+            Hostname = "AppleTV-4K-Bedroom.local",
+            Vendor = "Apple Inc.",
+            DeviceType = "TV",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-15),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 2,
+            IsOnline = true,
+            SafeServiceSummary = "AirPlay 2 Receiver, HomeKit Hub (Port 7000)",
+            ConnectionBand = "Gigabit Ethernet (1000 Mbps)",
+            LinkSpeedMbps = 1000,
+            IpAssignment = "DHCP Dynamic"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000009"),
+            IpAddress = "192.168.1.25",
+            MacAddress = "DC:A6:32:88:12:04",
+            Hostname = "HomeAssistant-Pi5.local",
+            Vendor = "Raspberry Pi Foundation",
+            DeviceType = "IoT",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-25),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 3,
+            IsOnline = true,
+            SafeServiceSummary = "MQTT Broker (Port 1883), Zigbee Home Assistant Core",
+            ConnectionBand = "Gigabit Ethernet (1000 Mbps)",
+            LinkSpeedMbps = 1000,
+            IpAssignment = "DHCP Reserved"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000010"),
+            IpAddress = "192.168.1.30",
+            MacAddress = "E8:48:B8:33:44:55",
+            Hostname = "Tapo-Security-Cam.local",
+            Vendor = "TP-Link Corporation",
+            DeviceType = "IoT",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-18),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 14,
+            IsOnline = true,
+            SafeServiceSummary = "RTSP Video Stream (Port 554), ONVIF 2K Security Feed",
+            ConnectionBand = "2.4 GHz Wi-Fi (150 Mbps)",
+            LinkSpeedMbps = 150,
+            IpAssignment = "DHCP Dynamic"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000011"),
+            IpAddress = "192.168.1.40",
+            MacAddress = "00:11:32:98:76:54",
+            Hostname = "Synology-DS923-NAS.local",
+            Vendor = "Synology Inc.",
+            DeviceType = "Server",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-40),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 2,
+            IsOnline = true,
+            SafeServiceSummary = "Synology DSM (5000), SMB/NFS File Share (445), Docker Host",
+            ConnectionBand = "Dual 1Gbps LACP Ethernet (2000 Mbps)",
+            LinkSpeedMbps = 2000,
+            IpAssignment = "Static IP"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000012"),
+            IpAddress = "192.168.1.55",
+            MacAddress = "00:1E:58:AA:BB:CC",
+            Hostname = "LaserJet-Pro-Office.local",
+            Vendor = "D-Link / HP Inc.",
+            DeviceType = "Printer",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-22),
+            LastSeen = DateTimeOffset.UtcNow.AddHours(-1),
+            ResponseTimeMs = 9,
+            IsOnline = true,
+            SafeServiceSummary = "IPP / RAW Port 9100 Print Server, AirPrint, SNMP",
+            ConnectionBand = "2.4 GHz Wi-Fi (300 Mbps)",
+            LinkSpeedMbps = 300,
+            IpAssignment = "DHCP Dynamic"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000013"),
+            IpAddress = "192.168.1.60",
+            MacAddress = "58:CB:52:6A:11:80",
+            Hostname = "PlayStation-5-Console.local",
+            Vendor = "Sony Interactive Entertainment",
+            DeviceType = "IoT",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-12),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 4,
+            IsOnline = true,
+            SafeServiceSummary = "PlayStation Network, Remote Play, Media Server",
+            ConnectionBand = "Gigabit Ethernet (1000 Mbps)",
+            LinkSpeedMbps = 1000,
+            IpAssignment = "DHCP Dynamic"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000014"),
+            IpAddress = "192.168.1.72",
+            MacAddress = "FC:65:DE:11:22:33",
+            Hostname = "Echo-Studio-Audio.local",
+            Vendor = "Amazon Technologies",
+            DeviceType = "IoT",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-15),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 11,
+            IsOnline = true,
+            SafeServiceSummary = "Alexa Voice Assistant, Spotify Connect, mDNS",
+            ConnectionBand = "5 GHz Wi-Fi (433 Mbps)",
+            LinkSpeedMbps = 433,
+            IpAssignment = "DHCP Dynamic"
+        },
+        new()
+        {
+            Id = Guid.Parse("11111111-0000-0000-0000-000000000015"),
+            IpAddress = "192.168.1.88",
+            MacAddress = "48:D7:05:77:88:99",
+            Hostname = "Nest-Learning-Thermostat.local",
+            Vendor = "Google LLC",
+            DeviceType = "IoT",
+            FirstSeen = DateTimeOffset.UtcNow.AddDays(-35),
+            LastSeen = DateTimeOffset.UtcNow,
+            ResponseTimeMs = 18,
+            IsOnline = true,
+            SafeServiceSummary = "Google Nest Weave, Smart HVAC Climate Control",
+            ConnectionBand = "2.4 GHz Wi-Fi (72 Mbps)",
+            LinkSpeedMbps = 72,
+            IpAssignment = "DHCP Dynamic"
+        }
+    };
+
     public LocalNetworkDto GetDemoLocalNetwork()
     {
         return new LocalNetworkDto
@@ -372,81 +633,66 @@ public class DemoDataService : IDemoDataService
             GatewayIp = "192.168.1.1",
             InterfaceName = "en0 (Wi-Fi 6 / 802.11ax)",
             ScannedAt = DateTimeOffset.UtcNow,
-            TotalDevices = 5,
-            Devices = new List<NetworkDeviceDto>
+            TotalDevices = _demoLanDevices.Count,
+            IsAdapterConnected = IsDemoAdapterConnected,
+            Devices = _demoLanDevices.Select(d => new NetworkDeviceDto
             {
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    IpAddress = "192.168.1.1",
-                    MacAddress = "50:C7:BF:41:88:20",
-                    Hostname = "Archer-AX55.local",
-                    Vendor = "TP-Link Corporation",
-                    DeviceType = "Router",
-                    FirstSeen = DateTimeOffset.UtcNow.AddDays(-14),
-                    LastSeen = DateTimeOffset.UtcNow,
-                    ResponseTimeMs = 2,
-                    IsOnline = true,
-                    SafeServiceSummary = "HTTP/HTTPS Web Admin, DNS, DHCP Gateway"
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    IpAddress = "192.168.1.5",
-                    MacAddress = "A4:C3:F0:8A:1B:9C",
-                    Hostname = "MacBook-Pro.local",
-                    Vendor = "Apple Inc.",
-                    DeviceType = "Laptop",
-                    FirstSeen = DateTimeOffset.UtcNow.AddHours(-6),
-                    LastSeen = DateTimeOffset.UtcNow,
-                    ResponseTimeMs = 1,
-                    IsOnline = true,
-                    SafeServiceSummary = "AirPlay 2, SSH, CellScope Host"
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    IpAddress = "192.168.1.8",
-                    MacAddress = "BC:D1:D3:22:90:11",
-                    Hostname = "Pixel-9-Pro.local",
-                    Vendor = "Google LLC",
-                    DeviceType = "Phone",
-                    FirstSeen = DateTimeOffset.UtcNow.AddHours(-3),
-                    LastSeen = DateTimeOffset.UtcNow,
-                    ResponseTimeMs = 7,
-                    IsOnline = true,
-                    SafeServiceSummary = "Android Telemetry Collector Node"
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    IpAddress = "192.168.1.12",
-                    MacAddress = "70:88:6B:14:8A:DF",
-                    Hostname = "LG-webOS-OLED.local",
-                    Vendor = "LG Electronics",
-                    DeviceType = "TV",
-                    FirstSeen = DateTimeOffset.UtcNow.AddDays(-5),
-                    LastSeen = DateTimeOffset.UtcNow.AddMinutes(-8),
-                    ResponseTimeMs = 12,
-                    IsOnline = true,
-                    SafeServiceSummary = "DIAL, DLNA Media Receiver"
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    IpAddress = "192.168.1.25",
-                    MacAddress = "DC:A6:32:88:12:04",
-                    Hostname = "HomeSensor-Pi4.local",
-                    Vendor = "Raspberry Pi Foundation",
-                    DeviceType = "IoT",
-                    FirstSeen = DateTimeOffset.UtcNow.AddDays(-10),
-                    LastSeen = DateTimeOffset.UtcNow,
-                    ResponseTimeMs = 4,
-                    IsOnline = true,
-                    SafeServiceSummary = "MQTT Broker (Port 1883), Prometheus Exporter"
-                }
-            }
+                Id = d.Id,
+                IpAddress = d.IpAddress,
+                MacAddress = d.MacAddress,
+                Hostname = d.Hostname,
+                Vendor = d.Vendor,
+                DeviceType = d.DeviceType,
+                FirstSeen = d.FirstSeen,
+                LastSeen = d.LastSeen,
+                ResponseTimeMs = d.ResponseTimeMs,
+                IsOnline = IsDemoAdapterConnected ? d.IsOnline : false,
+                SafeServiceSummary = d.SafeServiceSummary,
+                ConnectionBand = d.ConnectionBand,
+                LinkSpeedMbps = d.LinkSpeedMbps,
+                IpAssignment = d.IpAssignment
+            }).ToList()
         };
+    }
+
+    public NetworkDeviceDto? ToggleDemoDeviceConnection(Guid id)
+    {
+        var dev = _demoLanDevices.FirstOrDefault(d => d.Id == id);
+        if (dev != null)
+        {
+            dev.IsOnline = !dev.IsOnline;
+            dev.LastSeen = DateTimeOffset.UtcNow;
+            return dev;
+        }
+        return null;
+    }
+
+    public NetworkDeviceDto? SetDemoDeviceConnection(Guid id, bool isConnected)
+    {
+        var dev = _demoLanDevices.FirstOrDefault(d => d.Id == id);
+        if (dev != null)
+        {
+            dev.IsOnline = isConnected;
+            dev.LastSeen = DateTimeOffset.UtcNow;
+            return dev;
+        }
+        return null;
+    }
+
+    public LocalNetworkDto SetAllDemoDevicesConnection(bool isConnected)
+    {
+        foreach (var dev in _demoLanDevices)
+        {
+            dev.IsOnline = isConnected;
+            dev.LastSeen = DateTimeOffset.UtcNow;
+        }
+        return GetDemoLocalNetwork();
+    }
+
+    public bool ToggleDemoAdapter()
+    {
+        IsDemoAdapterConnected = !IsDemoAdapterConnected;
+        return IsDemoAdapterConnected;
     }
 
     public SignalAnalyticsDto GetDemoAnalytics(string timeRange)

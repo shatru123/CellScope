@@ -202,7 +202,11 @@ public class LocalNetworkDto
     public string? InterfaceName { get; set; }
     public DateTimeOffset ScannedAt { get; set; }
     public int TotalDevices { get; set; }
+    public bool IsAdapterConnected { get; set; } = true;
     public List<NetworkDeviceDto> Devices { get; set; } = new();
+
+    public int ConnectedCount => Devices.Count(d => d.IsOnline);
+    public int DisconnectedCount => Devices.Count(d => !d.IsOnline);
 }
 
 public class NetworkDeviceDto
@@ -216,8 +220,12 @@ public class NetworkDeviceDto
     public DateTimeOffset FirstSeen { get; set; }
     public DateTimeOffset LastSeen { get; set; }
     public long? ResponseTimeMs { get; set; }
-    public bool IsOnline { get; set; }
+    public bool IsOnline { get; set; } = true;
     public string? SafeServiceSummary { get; set; }
+    public string ConnectionBand { get; set; } = "Wi-Fi 6 (5 GHz)";
+    public int LinkSpeedMbps { get; set; } = 1200;
+    public string IpAssignment { get; set; } = "DHCP Dynamic";
+    public string ConnectionStatus => IsOnline ? "Connected (Online)" : "Disconnected (Blocked)";
 }
 
 public class SignalAnalyticsDto

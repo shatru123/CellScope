@@ -139,6 +139,15 @@ window.cellScopeMap = {
         }
     },
 
+    toggleDevice: function (elementId, ipAddress) {
+        const entry = this.mapInstances[elementId];
+        if (entry && entry.dotNetHelper) {
+            try {
+                entry.dotNetHelper.invokeMethodAsync('OnDeviceToggleConnection', ipAddress);
+            } catch { }
+        }
+    },
+
     locateUser: function (elementId) {
         const entry = this.mapInstances[elementId];
         if (!entry || !entry.map) return;
@@ -275,43 +284,66 @@ window.cellScopeMap = {
             const userBaseLon = data.userLon || -122.4194;
 
             data.devices.forEach((d, idx) => {
-                // Scatter discovered LAN devices in a 40m - 120m micro radius around the host
+                const isOnline = d.isOnline !== undefined ? d.isOnline : (d.IsOnline !== undefined ? d.IsOnline : true);
                 const angle = (idx * 2 * Math.PI) / Math.max(1, data.devices.length) + (idx * 0.4);
                 const radiusDist = 0.00045 + (idx * 0.00015);
                 const dLat = userBaseLat + (Math.sin(angle) * radiusDist);
                 const dLon = userBaseLon + (Math.cos(angle) * radiusDist);
 
                 let iconSymbol = "💻";
-                if (d.deviceType === "Router" || d.DeviceType === "Router") iconSymbol = "🌐";
-                else if (d.deviceType === "Phone" || d.DeviceType === "Phone") iconSymbol = "📱";
-                else if (d.deviceType === "TV" || d.DeviceType === "TV") iconSymbol = "📺";
-                else if (d.deviceType === "IoT" || d.DeviceType === "IoT") iconSymbol = "📡";
+                const devType = d.deviceType || d.DeviceType || "";
+                if (devType === "Router") iconSymbol = "🌐";
+                else if (devType === "AccessPoint") iconSymbol = "📶";
+                else if (devType === "Phone") iconSymbol = "📱";
+                else if (devType === "TV") iconSymbol = "📺";
+                else if (devType === "IoT") iconSymbol = "📡";
+                else if (devType === "Server") iconSymbol = "🖧";
+                else if (devType === "Printer") iconSymbol = "🖨️";
+
+                const bgStyle = isOnline ? "background:#3b82f6;color:#ffffff;box-shadow:0 0 12px rgba(59,130,246,0.8);" : "background:#475569;color:#94a3b8;box-shadow:none;border-color:#64748b;opacity:0.75;";
+                const statusBadge = isOnline ? `<span style="background:#10b981;color:#0b0f19;padding:1px 5px;border-radius:10px;font-size:9px;font-weight:800;">ONLINE</span>` : `<span style="background:#ef4444;color:#ffffff;padding:1px 5px;border-radius:10px;font-size:9px;font-weight:800;">DISCONNECTED</span>`;
 
                 const devIcon = L.divIcon({
                     className: 'device-marker',
-                    html: `<div style="background:#3b82f6;color:#ffffff;padding:3px 7px;border-radius:6px;font-size:10.5px;font-weight:700;border:1.5px solid #ffffff;box-shadow:0 0 12px rgba(59,130,246,0.8);white-space:nowrap;display:inline-flex;align-items:center;gap:3px;">${iconSymbol} ${d.hostname || d.Hostname || d.ipAddress || d.IpAddress}</div>`,
-                    iconAnchor: [35, 11]
+                    html: `<div style="${bgStyle}padding:3px 7px;border-radius:6px;font-size:10.5px;font-weight:700;border:1.5px solid #ffffff;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;">${iconSymbol} ${d.hostname || d.Hostname || d.ipAddress || d.IpAddress} ${statusBadge}</div>`,
+                    iconAnchor: [45, 11]
                 });
 
+                const actionButton = isOnline ? `
+                    <button onclick="window.cellScopeMap.toggleDevice('${elementId}', '${d.ipAddress || d.IpAddress}')" style="background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444;border-radius:5px;padding:4px 8px;font-weight:700;font-size:10.5px;cursor:pointer;flex:1;">
+                        🛑 Disconnect
+                    </button>
+                ` : `
+                    <button onclick="window.cellScopeMap.toggleDevice('${elementId}', '${d.ipAddress || d.IpAddress}')" style="background:rgba(16,185,129,0.2);color:#10b981;border:1px solid #10b981;border-radius:5px;padding:4px 8px;font-weight:700;font-size:10.5px;cursor:pointer;flex:1;">
+                        🟢 Connect
+                    </button>
+                `;
+
                 const devPopup = `
-                    <div style="min-width:210px;">
-                        <b>${iconSymbol} LAN Connected Device</b><br>
-                        <b>Hostname:</b> ${d.hostname || d.Hostname || 'Local Client'}<br>
+                    <div style="min-width:230px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                            <b>${iconSymbol} ${d.hostname || d.Hostname || 'Local Client'}</b>
+                            ${statusBadge}
+                        </div>
                         <b>IP Address:</b> <span style="font-family:monospace;color:#06b6d4;">${d.ipAddress || d.IpAddress}</span><br>
                         <b>MAC Address:</b> <span style="font-family:monospace;color:#94a3b8;font-size:10px;">${d.macAddress || d.MacAddress || 'Restricted on OS'}</span><br>
                         <b>Vendor / OEM:</b> ${d.vendor || d.Vendor || 'Generic Device'}<br>
                         <b>Device Type:</b> <span style="background:#111827;padding:1px 5px;border-radius:4px;">${d.deviceType || d.DeviceType}</span><br>
+                        <b>Band & Speed:</b> <span style="font-size:10.5px;color:#cbd5e1;">${d.connectionBand || d.ConnectionBand || 'Wi-Fi 6'} (${d.linkSpeedMbps || d.LinkSpeedMbps || 1200} Mbps)</span><br>
                         <b>Ping Latency:</b> ${d.responseTimeMs || d.ResponseTimeMs || 1} ms<br>
                         <b>Identified Services:</b> <span style="font-size:10px;color:#94a3b8;">${d.safeServiceSummary || d.SafeServiceSummary || 'ICMP Host'}</span><br>
-                        <button onclick="window.cellScopeMap.selectDevice('${elementId}', '${d.ipAddress || d.IpAddress}')" style="margin-top:8px;width:100%;background:#3b82f6;color:#ffffff;border:none;border-radius:5px;padding:4px 8px;font-weight:700;font-size:11px;cursor:pointer;">
-                            🔍 Inspect LAN Properties
-                        </button>
+                        <div style="display:flex;gap:6px;margin-top:8px;">
+                            ${actionButton}
+                            <button onclick="window.cellScopeMap.selectDevice('${elementId}', '${d.ipAddress || d.IpAddress}')" style="background:#3b82f6;color:#ffffff;border:none;border-radius:5px;padding:4px 8px;font-weight:700;font-size:10.5px;cursor:pointer;flex:1;">
+                                🔍 Inspect
+                            </button>
+                        </div>
                     </div>
                 `;
 
                 const m = L.marker([dLat, dLon], { icon: devIcon })
                     .addTo(map)
-                    .bindPopup(devPopup, { maxWidth: 260 });
+                    .bindPopup(devPopup, { maxWidth: 280 });
 
                 m.on('click', () => {
                     window.cellScopeMap.selectDevice(elementId, d.ipAddress || d.IpAddress);

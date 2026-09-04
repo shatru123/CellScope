@@ -5,26 +5,41 @@
 <div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:0.75rem;">
     <div>
         <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">My Local Network & Connected Devices</h1>
-        <p style="font-size:0.875rem;color:var(--text-secondary);">Safe device discovery and LAN inventory for authorized home / office networks</p>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">Complete LAN client topology, device discovery, and interactive connection control</p>
     </div>
-    <div style="display:flex;gap:0.5rem;">
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
         <a href="/map" class="btn btn-outline btn-sm">🗺️ View on Map</a>
+        <button class="btn btn-sm" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4);" @onclick="ConnectAllDevices">
+            🔌 Connect All
+        </button>
+        <button class="btn btn-sm" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.4);" @onclick="DisconnectAllDevices">
+            🛑 Disconnect All
+        </button>
         <button class="btn btn-primary btn-sm" @onclick="ScanNetwork" disabled="@isScanning">
             @(isScanning ? "Scanning LAN..." : "🔍 Scan Local Subnet")
         </button>
     </div>
 </div>
 
-<!-- Safety Notice Card -->
-<div class="noc-card" style="margin-bottom:1.5rem;background:rgba(6,182,212,0.05);border-color:rgba(6,182,212,0.3);">
-    <div style="display:flex;gap:0.75rem;align-items:flex-start;">
-        <span style="font-size:1.25rem;">🛡️</span>
-        <div>
-            <div style="font-weight:700;font-size:0.875rem;color:var(--accent-cyan);">Privacy & Local Network Boundary</div>
-            <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.2rem;">
-                Discovery is strictly confined to ARP cache inspection, ICMP echo ping, and standard mDNS/reverse DNS host resolution on the user's current subnet. Intrusive port scanning or credential checks are never performed.
+<!-- LAN Adapter Link Status Notice -->
+<div class="noc-card" style="margin-bottom:1.5rem;background:@(isAdapterActive ? "rgba(6,182,212,0.05)" : "rgba(239,68,68,0.08)");border-color:@(isAdapterActive ? "rgba(6,182,212,0.3)" : "rgba(239,68,68,0.4)");">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+        <div style="display:flex;gap:0.75rem;align-items:center;">
+            <span style="font-size:1.4rem;">@(isAdapterActive ? "🛡️" : "⚠️")</span>
+            <div>
+                <div style="font-weight:700;font-size:0.9rem;color:@(isAdapterActive ? "var(--accent-cyan)" : "#ef4444");">
+                    @(isAdapterActive ? "Local Network Interface: Connected & Active" : "Local Network Interface: Disconnected / Offline")
+                </div>
+                <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.2rem;">
+                    @(isAdapterActive 
+                        ? "Safe discovery is active across the local subnet. You can individually connect, isolate, or disconnect devices below." 
+                        : "LAN interface link is suspended. Reconnect interface adapter to resume active traffic.")
+                </div>
             </div>
         </div>
+        <button class="btn btn-sm @(isAdapterActive ? "btn-outline" : "btn-primary")" @onclick="ToggleAdapterLink">
+            @(isAdapterActive ? "Disable Adapter Link" : "Enable Adapter Link")
+        </button>
     </div>
 </div>
 
@@ -32,14 +47,15 @@
 <div class="grid-kpis">
     <MetricCard Title="Local Subnet" Value="@(network?.Subnet ?? "192.168.1.0/24")" Subtitle="Class C Private Network" />
     <MetricCard Title="Default Gateway" Value="@(network?.GatewayIp ?? "192.168.1.1")" Subtitle="Primary Router / NAT" />
-    <MetricCard Title="Active Discovered Hosts" Value="@((network?.Devices?.Count ?? 5).ToString())" Unit="Online" ValueColor="#10b981" Subtitle="Discovered LAN Endpoints" />
-    <MetricCard Title="Network Interface" Value="@(network?.InterfaceName ?? "Wi-Fi (en0)")" Subtitle="Local Network Adapter" />
+    <MetricCard Title="Connected Devices" Value="@((network?.ConnectedCount ?? 0).ToString())" Unit="Online" ValueColor="#10b981" Subtitle="Active Communicating Hosts" />
+    <MetricCard Title="Disconnected / Blocked" Value="@((network?.DisconnectedCount ?? 0).ToString())" Unit="Offline" ValueColor="#ef4444" Subtitle="Isolated Endpoints" />
 </div>
 
 <!-- Filter & Search Bar -->
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
+    <!-- Category Pills -->
     <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
-        @foreach (var category in new[] { "All", "Router", "Laptop", "Phone", "TV", "IoT" })
+        @foreach (var category in new[] { "All", "Router", "AccessPoint", "Laptop", "Phone", "TV", "IoT", "Server", "Printer" })
         {
             <button class="btn btn-sm @(selectedCategory == category ? "btn-primary" : "btn-outline")"
                     @onclick="@(() => selectedCategory = category)">
@@ -47,17 +63,26 @@
             </button>
         }
     </div>
-    <div style="min-width:240px;">
-        <input type="text" class="input-field" style="width:100%;font-size:0.8rem;padding:0.4rem 0.75rem;" 
-               placeholder="🔎 Search by hostname, IP, or vendor..." 
-               @bind="searchTerm" @bind:event="oninput" />
+
+    <!-- Status & Search Filters -->
+    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+        <select class="input-field" style="font-size:0.8rem;padding:0.4rem 0.6rem;" @bind="statusFilter">
+            <option value="All">All Statuses</option>
+            <option value="Online">🟢 Connected Only</option>
+            <option value="Offline">🛑 Disconnected Only</option>
+        </select>
+        <div style="min-width:220px;">
+            <input type="text" class="input-field" style="width:100%;font-size:0.8rem;padding:0.4rem 0.75rem;" 
+                   placeholder="🔎 Search by hostname, IP, vendor, service..." 
+                   @bind="searchTerm" @bind:event="oninput" />
+        </div>
     </div>
 </div>
 
 <!-- Discovered Devices Table -->
 <div class="noc-card">
     <div class="noc-card-header">
-        <span class="noc-card-title">Discovered LAN Inventory (@FilteredDevices.Count() Devices)</span>
+        <span class="noc-card-title">Discovered Connected Devices Inventory (@FilteredDevices.Count() Endpoints)</span>
         <span style="font-size:0.75rem;color:var(--text-muted);">Last Scanned: @(network?.ScannedAt.ToString("HH:mm:ss") ?? "Just now")</span>
     </div>
 
@@ -65,14 +90,16 @@
         <table class="noc-table">
             <thead>
                 <tr>
-                    <th>Status</th>
+                    <th>Connection State</th>
                     <th>Device Hostname</th>
                     <th>IP Address</th>
                     <th>MAC Address</th>
                     <th>Vendor / Manufacturer</th>
-                    <th>Device Type</th>
-                    <th>Latency</th>
+                    <th>Type</th>
+                    <th>Band / Speed</th>
+                    <th>Ping Latency</th>
                     <th>Identified Services</th>
+                    <th style="text-align:center;">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -82,15 +109,30 @@
                     {
                         <tr style="cursor:pointer;" @onclick="@(() => selectedDevice = dev)">
                             <td>
-                                <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">
-                                    ● Online
-                                </span>
+                                @if (dev.IsOnline)
+                                {
+                                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-weight:700;">
+                                        ● Connected
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-weight:700;">
+                                        ○ Disconnected
+                                    </span>
+                                }
                             </td>
-                            <td style="font-weight:600;color:var(--text-primary);">
-                                @(dev.Hostname ?? "Local Host")
+                            <td>
+                                <div style="font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:0.4rem;">
+                                    <span>@GetDeviceIcon(dev.DeviceType)</span>
+                                    <span>@(dev.Hostname ?? "Local Client")</span>
+                                </div>
                             </td>
-                            <td style="font-family:var(--font-mono);font-weight:600;color:var(--accent-cyan);">
-                                @dev.IpAddress
+                            <td>
+                                <div style="font-family:var(--font-mono);font-weight:600;color:var(--accent-cyan);">
+                                    @dev.IpAddress
+                                </div>
+                                <div style="font-size:0.7rem;color:var(--text-muted);">@dev.IpAssignment</div>
                             </td>
                             <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-muted);">
                                 @(dev.MacAddress ?? "Restricted on OS")
@@ -103,11 +145,32 @@
                                     @dev.DeviceType
                                 </span>
                             </td>
-                            <td style="font-size:0.8rem;color:var(--text-secondary);">
-                                @(dev.ResponseTimeMs != null ? $"{dev.ResponseTimeMs} ms" : "1 ms")
+                            <td style="font-size:0.75rem;color:var(--text-secondary);">
+                                @dev.ConnectionBand
                             </td>
-                            <td style="font-size:0.75rem;color:var(--text-muted);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            <td style="font-size:0.8rem;color:var(--text-secondary);">
+                                @(dev.IsOnline ? (dev.ResponseTimeMs != null ? $"{dev.ResponseTimeMs} ms" : "1 ms") : "Timed Out")
+                            </td>
+                            <td style="font-size:0.75rem;color:var(--text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                                 @(dev.SafeServiceSummary ?? "ICMP Host")
+                            </td>
+                            <td style="text-align:center;" @onclick:stopPropagation="true">
+                                @if (dev.IsOnline)
+                                {
+                                    <button class="btn btn-sm" 
+                                            style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.4);font-size:0.75rem;padding:3px 8px;"
+                                            @onclick="@(() => ToggleDeviceConnection(dev))">
+                                        🛑 Disconnect
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm" 
+                                            style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4);font-size:0.75rem;padding:3px 8px;"
+                                            @onclick="@(() => ToggleDeviceConnection(dev))">
+                                        🟢 Connect
+                                    </button>
+                                }
                             </td>
                         </tr>
                     }
@@ -115,8 +178,8 @@
                 else
                 {
                     <tr>
-                        <td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">
-                            No network devices match the filter. Click "Scan Local Subnet" to start safe discovery.
+                        <td colspan="10" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+                            No network devices match the active filter criteria. Click "Scan Local Subnet" to discover clients.
                         </td>
                     </tr>
                 }
@@ -125,23 +188,68 @@
     </div>
 </div>
 
-<!-- Modal / Bottom Card: Selected Device Detail Inspector -->
+<!-- Detailed Device Inspector Modal / Bottom Card -->
 @if (selectedDevice != null)
 {
     <div style="margin-top:1.5rem;" class="noc-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;">
-            <div style="display:flex;align-items:center;gap:0.5rem;">
-                <span style="font-size:1.25rem;">💻</span>
-                <h3 style="font-size:1.1rem;font-weight:800;color:var(--text-primary);">Device Inspector: @selectedDevice.Hostname</h3>
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+                <span style="font-size:1.4rem;">@GetDeviceIcon(selectedDevice.DeviceType)</span>
+                <div>
+                    <h3 style="font-size:1.15rem;font-weight:800;color:var(--text-primary);margin:0;">
+                        Device Inspector: @selectedDevice.Hostname
+                    </h3>
+                    <span style="font-size:0.75rem;color:var(--text-muted);">
+                        Vendor: @selectedDevice.Vendor • Category: @selectedDevice.DeviceType
+                    </span>
+                </div>
             </div>
-            <button class="btn btn-outline btn-sm" @onclick="@(() => selectedDevice = null)">✕ Close</button>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+                @if (selectedDevice.IsOnline)
+                {
+                    <button class="btn btn-sm" style="background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444;font-weight:700;"
+                            @onclick="@(() => ToggleDeviceConnection(selectedDevice))">
+                        🛑 Disconnect Device
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-sm" style="background:rgba(16,185,129,0.2);color:#10b981;border:1px solid #10b981;font-weight:700;"
+                            @onclick="@(() => ToggleDeviceConnection(selectedDevice))">
+                        🟢 Connect Device
+                    </button>
+                }
+                <button class="btn btn-outline btn-sm" @onclick="@(() => selectedDevice = null)">✕ Close</button>
+            </div>
         </div>
 
-        <div class="grid-kpis" style="margin-bottom:0.5rem;">
-            <MetricCard Title="IP Address" Value="@selectedDevice.IpAddress" Subtitle="Assigned Subnet IP" />
-            <MetricCard Title="Hardware MAC" Value="@(selectedDevice.MacAddress ?? "Restricted on OS")" Subtitle="Physical Address" />
-            <MetricCard Title="Vendor OEM" Value="@(selectedDevice.Vendor ?? "Generic Device")" Subtitle="IEEE OUI Registered" />
-            <MetricCard Title="Response Time" Value="@($"{selectedDevice.ResponseTimeMs ?? 1} ms")" ValueColor="#10b981" Subtitle="ICMP Roundtrip Latency" />
+        <!-- Connection State Banner -->
+        <div style="margin-bottom:1rem;padding:0.75rem 1rem;border-radius:8px;background:@(selectedDevice.IsOnline ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)");border:1px solid @(selectedDevice.IsOnline ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)");display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <span style="font-size:1.2rem;">@(selectedDevice.IsOnline ? "🟢" : "🔴")</span>
+                <div>
+                    <strong style="color:@(selectedDevice.IsOnline ? "#10b981" : "#ef4444");">
+                        @(selectedDevice.IsOnline ? "Status: Connected & Authorized" : "Status: Disconnected / Blocked")
+                    </strong>
+                    <div style="font-size:0.75rem;color:var(--text-secondary);">
+                        @(selectedDevice.IsOnline ? "Device is actively communicating on the LAN subnet." : "Device is disconnected or isolated from communicating on the network.")
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-kpis" style="margin-bottom:1rem;">
+            <MetricCard Title="IP Address" Value="@selectedDevice.IpAddress" Subtitle="@selectedDevice.IpAssignment" />
+            <MetricCard Title="Hardware MAC" Value="@(selectedDevice.MacAddress ?? "Restricted on OS")" Subtitle="Physical Layer Address" />
+            <MetricCard Title="Connection Band" Value="@selectedDevice.ConnectionBand" Subtitle="@($"{selectedDevice.LinkSpeedMbps} Mbps PHY Link")" />
+            <MetricCard Title="Ping Roundtrip" Value="@(selectedDevice.IsOnline ? $"{selectedDevice.ResponseTimeMs ?? 1} ms" : "Timeout")" ValueColor="@(selectedDevice.IsOnline ? "#10b981" : "#ef4444")" Subtitle="ICMP Response Latency" />
+        </div>
+
+        <div style="background:var(--bg-secondary);padding:1rem;border-radius:8px;border:1px solid var(--border-color);font-size:0.8rem;">
+            <div style="font-weight:700;color:var(--text-primary);margin-bottom:0.4rem;">Identified Services & Protocols:</div>
+            <div style="color:var(--accent-cyan);font-family:var(--font-mono);">
+                @(selectedDevice.SafeServiceSummary ?? "Standard ICMP / mDNS Host")
+            </div>
         </div>
     </div>
 }
@@ -150,8 +258,10 @@
     private LocalNetworkDto? network;
     private NetworkDeviceDto? selectedDevice;
     private string selectedCategory = "All";
+    private string statusFilter = "All";
     private string searchTerm = "";
     private bool isScanning = false;
+    private bool isAdapterActive = true;
 
     private IEnumerable<NetworkDeviceDto> FilteredDevices
     {
@@ -166,13 +276,23 @@
                 query = query.Where(d => string.Equals(d.DeviceType, selectedCategory, StringComparison.OrdinalIgnoreCase));
             }
 
+            if (statusFilter == "Online")
+            {
+                query = query.Where(d => d.IsOnline);
+            }
+            else if (statusFilter == "Offline")
+            {
+                query = query.Where(d => !d.IsOnline);
+            }
+
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 query = query.Where(d =>
                     (d.Hostname != null && d.Hostname.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
                     d.IpAddress.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                     (d.Vendor != null && d.Vendor.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-                    (d.SafeServiceSummary != null && d.SafeServiceSummary.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                    (d.SafeServiceSummary != null && d.SafeServiceSummary.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                    d.ConnectionBand.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
                 );
             }
 
@@ -190,10 +310,12 @@
         if (DemoService.IsDemoModeActive)
         {
             network = DemoService.GetDemoLocalNetwork();
+            isAdapterActive = DemoService.IsDemoAdapterConnected;
         }
         else
         {
             network = await NetworkService.GetLatestNetworkScanAsync() ?? await NetworkService.ScanLocalSubnetAsync();
+            isAdapterActive = network.IsAdapterConnected;
         }
     }
 
@@ -204,7 +326,7 @@
 
         if (DemoService.IsDemoModeActive)
         {
-            await Task.Delay(600);
+            await Task.Delay(500);
             network = DemoService.GetDemoLocalNetwork();
         }
         else
@@ -215,4 +337,91 @@
         isScanning = false;
         StateHasChanged();
     }
+
+    private async Task ToggleDeviceConnection(NetworkDeviceDto dev)
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            var updated = DemoService.ToggleDemoDeviceConnection(dev.Id);
+            if (updated != null)
+            {
+                dev.IsOnline = updated.IsOnline;
+                if (selectedDevice?.Id == dev.Id) selectedDevice = updated;
+            }
+            network = DemoService.GetDemoLocalNetwork();
+        }
+        else
+        {
+            var updated = await NetworkService.ToggleDeviceConnectionAsync(dev.Id);
+            if (updated != null)
+            {
+                dev.IsOnline = updated.IsOnline;
+                if (selectedDevice?.Id == dev.Id) selectedDevice = updated;
+            }
+            network = await NetworkService.GetLatestNetworkScanAsync();
+        }
+        StateHasChanged();
+    }
+
+    private async Task ConnectAllDevices()
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            network = DemoService.SetAllDemoDevicesConnection(true);
+        }
+        else
+        {
+            network = await NetworkService.SetAllDevicesConnectionAsync(true);
+        }
+        if (selectedDevice != null)
+        {
+            selectedDevice.IsOnline = true;
+        }
+        StateHasChanged();
+    }
+
+    private async Task DisconnectAllDevices()
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            network = DemoService.SetAllDemoDevicesConnection(false);
+        }
+        else
+        {
+            network = await NetworkService.SetAllDevicesConnectionAsync(false);
+        }
+        if (selectedDevice != null)
+        {
+            selectedDevice.IsOnline = false;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ToggleAdapterLink()
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            isAdapterActive = DemoService.ToggleDemoAdapter();
+            network = DemoService.GetDemoLocalNetwork();
+        }
+        else
+        {
+            network = await NetworkService.ToggleAdapterConnectionAsync();
+            isAdapterActive = network.IsAdapterConnected;
+        }
+        StateHasChanged();
+    }
+
+    private string GetDeviceIcon(string? deviceType) => deviceType switch
+    {
+        "Router" => "🌐",
+        "AccessPoint" => "📶",
+        "Laptop" => "💻",
+        "Phone" => "📱",
+        "TV" => "📺",
+        "IoT" => "📡",
+        "Server" => "🖧",
+        "Printer" => "🖨️",
+        _ => "💻"
+    };
 }

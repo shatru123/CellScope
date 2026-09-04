@@ -1,5 +1,6 @@
 using CellScope.Application.DTOs;
 using CellScope.Domain.Entities;
+using CellScope.Domain.Enums;
 using CellScope.Domain.Services;
 
 namespace CellScope.Application.Mapping;
@@ -154,6 +155,28 @@ public static class DtoMapper
 
     public static NetworkDeviceDto ToDto(NetworkDevice entity)
     {
+        string band = entity.DeviceType switch
+        {
+            NetworkDeviceType.Router or NetworkDeviceType.Server => "Gigabit Ethernet (1000 Mbps)",
+            NetworkDeviceType.AccessPoint => "5 GHz Wi-Fi 6 Backhaul (2400 Mbps)",
+            NetworkDeviceType.Laptop or NetworkDeviceType.Phone => "5 GHz Wi-Fi 6 (1200 Mbps)",
+            NetworkDeviceType.TV => "5 GHz Wi-Fi (866 Mbps)",
+            NetworkDeviceType.Printer or NetworkDeviceType.IoT => "2.4 GHz Wi-Fi (150 Mbps)",
+            _ => "Wi-Fi / Ethernet"
+        };
+
+        int speed = entity.DeviceType switch
+        {
+            NetworkDeviceType.AccessPoint => 2400,
+            NetworkDeviceType.Laptop or NetworkDeviceType.Phone => 1200,
+            NetworkDeviceType.Router or NetworkDeviceType.Server => 1000,
+            NetworkDeviceType.TV => 866,
+            NetworkDeviceType.Printer or NetworkDeviceType.IoT => 150,
+            _ => 100
+        };
+
+        string ipType = entity.DeviceType == NetworkDeviceType.Router ? "Static Router Gateway" : (entity.DeviceType == NetworkDeviceType.Server ? "Static Reserved IP" : "DHCP Dynamic");
+
         return new NetworkDeviceDto
         {
             Id = entity.Id,
@@ -166,7 +189,10 @@ public static class DtoMapper
             LastSeen = entity.LastSeen,
             ResponseTimeMs = entity.ResponseTimeMs,
             IsOnline = entity.IsOnline,
-            SafeServiceSummary = entity.SafeServiceSummary
+            SafeServiceSummary = entity.SafeServiceSummary,
+            ConnectionBand = band,
+            LinkSpeedMbps = speed,
+            IpAssignment = ipType
         };
     }
 }

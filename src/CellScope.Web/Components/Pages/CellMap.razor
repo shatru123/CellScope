@@ -101,16 +101,28 @@
                             <div style="background:var(--bg-secondary);padding:8px 10px;border-radius:8px;border:1px solid @(selectedLanDevice?.IpAddress == dev.IpAddress ? "var(--accent-cyan)" : "var(--border-color)");cursor:pointer;"
                                  @onclick="@(() => SelectDevice(dev.IpAddress))">
                                 <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;color:var(--text-primary);font-size:0.8rem;">
-                                    <span>💻 @(dev.Hostname ?? "Local Host")</span>
-                                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.65rem;">● Online</span>
+                                    <span>@GetDeviceIcon(dev.DeviceType) @(dev.Hostname ?? "Local Host")</span>
+                                    @if (dev.IsOnline)
+                                    {
+                                        <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.65rem;">● Online</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-size:0.65rem;">○ Disconnected</span>
+                                    }
                                 </div>
                                 <div style="display:flex;justify-content:space-between;color:var(--text-secondary);font-size:0.725rem;margin-top:3px;">
                                     <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@dev.IpAddress</span>
                                     <span>@dev.Vendor</span>
                                 </div>
-                                <div style="display:flex;justify-content:space-between;color:var(--text-muted);font-size:0.7rem;margin-top:2px;">
-                                    <span>Type: @dev.DeviceType</span>
-                                    <span>Latency: @(dev.ResponseTimeMs ?? 1) ms</span>
+                                <div style="display:flex;justify-content:space-between;align-items:center;color:var(--text-muted);font-size:0.7rem;margin-top:4px;">
+                                    <span>@dev.ConnectionBand</span>
+                                    <button class="btn btn-sm" 
+                                            style="font-size:0.65rem;padding:2px 6px;@(dev.IsOnline ? "background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.4);" : "background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4);")"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="@(() => ToggleLanDevice(dev))">
+                                        @(dev.IsOnline ? "🛑 Disconnect" : "🟢 Connect")
+                                    </button>
                                 </div>
                             </div>
                         }
@@ -225,6 +237,70 @@
     </div>
 }
 
+<!-- Modal / Drawer: Detailed Connected Devices Inspector for Selected LAN Device -->
+@if (selectedLanDevice != null)
+{
+    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(4px);">
+        <div class="noc-card" style="width:100%;max-width:680px;max-height:85vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--accent-cyan);box-shadow:0 20px 50px rgba(0,0,0,0.8);position:relative;">
+            
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;border-bottom:1px solid var(--border-color);padding-bottom:1rem;">
+                <div style="display:flex;align-items:center;gap:0.6rem;">
+                    <span style="font-size:1.4rem;">@GetDeviceIcon(selectedLanDevice.DeviceType)</span>
+                    <div>
+                        <h2 style="font-size:1.2rem;font-weight:800;color:var(--text-primary);margin:0;">
+                            LAN Client: @selectedLanDevice.Hostname
+                        </h2>
+                        <p style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.2rem;">
+                            IP: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedLanDevice.IpAddress</span> • MAC: @(selectedLanDevice.MacAddress ?? "Restricted on OS")
+                        </p>
+                    </div>
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <button class="btn btn-sm" 
+                            style="@(selectedLanDevice.IsOnline ? "background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444;font-weight:700;" : "background:rgba(16,185,129,0.2);color:#10b981;border:1px solid #10b981;font-weight:700;")"
+                            @onclick="@(() => ToggleLanDevice(selectedLanDevice))">
+                        @(selectedLanDevice.IsOnline ? "🛑 Disconnect Device" : "🟢 Connect Device")
+                    </button>
+                    <button class="btn btn-outline btn-sm" @onclick="@(() => selectedLanDevice = null)">✕ Close</button>
+                </div>
+            </div>
+
+            <!-- Status Banner -->
+            <div style="margin-bottom:1rem;padding:0.75rem 1rem;border-radius:8px;background:@(selectedLanDevice.IsOnline ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)");border:1px solid @(selectedLanDevice.IsOnline ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)");display:flex;justify-content:space-between;align-items:center;">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <span style="font-size:1.2rem;">@(selectedLanDevice.IsOnline ? "🟢" : "🔴")</span>
+                    <div>
+                        <strong style="color:@(selectedLanDevice.IsOnline ? "#10b981" : "#ef4444");">
+                            @(selectedLanDevice.IsOnline ? "Status: Connected & Authorized" : "Status: Disconnected / Blocked")
+                        </strong>
+                        <div style="font-size:0.75rem;color:var(--text-secondary);">
+                            @(selectedLanDevice.IsOnline ? "Device is actively sending and receiving LAN traffic." : "Device is isolated from communicating on the subnet.")
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-kpis" style="margin-bottom:1rem;">
+                <MetricCard Title="Vendor OEM" Value="@(selectedLanDevice.Vendor ?? "Generic")" Subtitle="IEEE OUI Registered" />
+                <MetricCard Title="Device Type" Value="@selectedLanDevice.DeviceType" Subtitle="Topology Classification" />
+                <MetricCard Title="Connection Band" Value="@selectedLanDevice.ConnectionBand" Subtitle="@($"{selectedLanDevice.LinkSpeedMbps} Mbps PHY Link")" />
+                <MetricCard Title="Ping Latency" Value="@(selectedLanDevice.IsOnline ? $"{selectedLanDevice.ResponseTimeMs ?? 1} ms" : "Timeout")" ValueColor="@(selectedLanDevice.IsOnline ? "#10b981" : "#ef4444")" Subtitle="Roundtrip Echo Response" />
+            </div>
+
+            <div style="background:var(--bg-secondary);padding:0.75rem 1rem;border-radius:8px;border:1px solid var(--border-color);font-size:0.8rem;margin-bottom:1rem;">
+                <div style="font-weight:700;color:var(--text-primary);margin-bottom:0.3rem;">Identified Services:</div>
+                <div style="color:var(--accent-cyan);font-family:var(--font-mono);">
+                    @(selectedLanDevice.SafeServiceSummary ?? "Standard ICMP Host")
+                </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+                <button class="btn btn-outline btn-sm" @onclick="@(() => selectedLanDevice = null)">Close Inspector</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private CellularSnapshotDto? snapshot;
     private LocalNetworkDto? localNetwork;
@@ -303,6 +379,16 @@
         StateHasChanged();
     }
 
+    [JSInvokable]
+    public async Task OnDeviceToggleConnection(string ipAddress)
+    {
+        var dev = localNetwork?.Devices?.FirstOrDefault(d => d.IpAddress == ipAddress);
+        if (dev != null)
+        {
+            await ToggleLanDevice(dev);
+        }
+    }
+
     public void SelectTower(string cellId)
     {
         selectedTower = towersList.FirstOrDefault(t => t.CellId == cellId);
@@ -315,6 +401,32 @@
     public void SelectDevice(string ipAddress)
     {
         selectedLanDevice = localNetwork?.Devices?.FirstOrDefault(d => d.IpAddress == ipAddress);
+    }
+
+    public async Task ToggleLanDevice(NetworkDeviceDto dev)
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            var updated = DemoService.ToggleDemoDeviceConnection(dev.Id);
+            if (updated != null)
+            {
+                dev.IsOnline = updated.IsOnline;
+                if (selectedLanDevice?.Id == dev.Id) selectedLanDevice = updated;
+            }
+            localNetwork = DemoService.GetDemoLocalNetwork();
+        }
+        else
+        {
+            var updated = await NetworkService.ToggleDeviceConnectionAsync(dev.Id);
+            if (updated != null)
+            {
+                dev.IsOnline = updated.IsOnline;
+                if (selectedLanDevice?.Id == dev.Id) selectedLanDevice = updated;
+            }
+            localNetwork = await NetworkService.GetLatestNetworkScanAsync();
+        }
+        await UpdateMapAsync();
+        StateHasChanged();
     }
 
     private async Task LocateMe()
@@ -344,8 +456,22 @@
         });
     }
 
+    private string GetDeviceIcon(string? deviceType) => deviceType switch
+    {
+        "Router" => "🌐",
+        "AccessPoint" => "📶",
+        "Laptop" => "💻",
+        "Phone" => "📱",
+        "TV" => "📺",
+        "IoT" => "📡",
+        "Server" => "🖧",
+        "Printer" => "🖨️",
+        _ => "💻"
+    };
+
     public void Dispose()
     {
         dotNetRef?.Dispose();
     }
 }
+

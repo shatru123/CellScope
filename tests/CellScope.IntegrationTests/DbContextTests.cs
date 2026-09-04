@@ -62,4 +62,27 @@ public class DbContextTests
         retrieved.NeighborCells.Should().HaveCount(1);
         retrieved.NeighborCells.First().CellId.Should().Be("310410_98765");
     }
+
+    [Fact]
+    public async Task CanScanAndToggle_LocalNetworkDevices()
+    {
+        using var db = CreateInMemoryDbContext();
+        var netService = new CellScope.Infrastructure.Services.LocalNetworkService(db);
+
+        var scan = await netService.ScanLocalSubnetAsync("192.168.10");
+        scan.Should().NotBeNull();
+        scan.Devices.Should().NotBeEmpty();
+
+        var firstDevice = scan.Devices.First();
+        firstDevice.IsOnline.Should().BeTrue();
+
+        var toggled = await netService.ToggleDeviceConnectionAsync(firstDevice.Id);
+        toggled.Should().NotBeNull();
+        toggled!.IsOnline.Should().BeFalse();
+
+        var reconnected = await netService.SetDeviceConnectionAsync(firstDevice.Id, true);
+        reconnected.Should().NotBeNull();
+        reconnected!.IsOnline.Should().BeTrue();
+    }
 }
+

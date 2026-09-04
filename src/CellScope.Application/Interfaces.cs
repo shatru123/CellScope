@@ -26,6 +26,10 @@ public interface ILocalNetworkService
     Task<LocalNetworkDto> ScanLocalSubnetAsync(string? specificSubnet = null, CancellationToken cancellationToken = default);
     Task<LocalNetworkDto?> GetLatestNetworkScanAsync(CancellationToken cancellationToken = default);
     Task<NetworkDeviceDto?> GetDeviceByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<NetworkDeviceDto?> ToggleDeviceConnectionAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<NetworkDeviceDto?> SetDeviceConnectionAsync(Guid id, bool isConnected, CancellationToken cancellationToken = default);
+    Task<LocalNetworkDto> SetAllDevicesConnectionAsync(bool isConnected, CancellationToken cancellationToken = default);
+    Task<LocalNetworkDto> ToggleAdapterConnectionAsync(CancellationToken cancellationToken = default);
     string ResolveVendorFromMac(string macAddress);
 }
 
@@ -68,6 +72,7 @@ public interface IDiagnosticsService
 public interface IDemoDataService
 {
     bool IsDemoModeActive { get; set; }
+    bool IsDemoAdapterConnected { get; set; }
     void InitializeDemoState();
     CellularSnapshotDto GenerateNextTick();
     IReadOnlyList<TowerLocationDto> GetDemoTowers();
@@ -75,6 +80,10 @@ public interface IDemoDataService
     IReadOnlyList<LocationPointDto> GetDemoTrail();
     IReadOnlyList<CellHandoverDto> GetDemoHandovers();
     LocalNetworkDto GetDemoLocalNetwork();
+    NetworkDeviceDto? ToggleDemoDeviceConnection(Guid id);
+    NetworkDeviceDto? SetDemoDeviceConnection(Guid id, bool isConnected);
+    LocalNetworkDto SetAllDemoDevicesConnection(bool isConnected);
+    bool ToggleDemoAdapter();
     SignalAnalyticsDto GetDemoAnalytics(string timeRange);
 }
 
