@@ -6,6 +6,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CellScope.Application\CellScope.Application.csproj" />
     <ProjectReference Include="..\CellScope.Domain\CellScope.Domain.csproj" />
+    <ProjectReference Include="..\CellScope.Infrastructure\CellScope.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.2" />
