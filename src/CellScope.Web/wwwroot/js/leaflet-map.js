@@ -151,6 +151,29 @@ window.cellScopeMap = {
             trailPolyline: null
         };
 
+        // Listen for Pan & Zoom (Viewport Movement) to dynamically load visible towers anywhere on Earth
+        let moveDebounceTimer = null;
+        map.on('moveend', () => {
+            clearTimeout(moveDebounceTimer);
+            moveDebounceTimer = setTimeout(() => {
+                const center = map.getCenter();
+                const bounds = map.getBounds();
+                const northEast = bounds.getNorthEast();
+                const southWest = bounds.getSouthWest();
+                const cornerDist = map.distance(center, northEast);
+                const radiusMeters = Math.min(60000, Math.max(1500, cornerDist));
+
+                if (dotNetHelper) {
+                    dotNetHelper.invokeMethodAsync('OnMapViewChanged', center.lat, center.lng, radiusMeters, {
+                        north: northEast.lat,
+                        east: northEast.lng,
+                        south: southWest.lat,
+                        west: southWest.lng
+                    }).catch(() => {});
+                }
+            }, 300);
+        });
+
         setTimeout(() => map.invalidateSize(), 250);
 
         // Auto-locate real user position in background (GPS first, then IP fallback)
@@ -170,6 +193,13 @@ window.cellScopeMap = {
                 }
             }
         });
+    },
+
+    flyToLocation: function (elementId, lat, lon, zoom = 14) {
+        const entry = this.mapInstances[elementId];
+        if (entry && entry.map) {
+            entry.map.flyTo([lat, lon], zoom, { duration: 1.2 });
+        }
     },
 
     selectTower: function (elementId, cellId) {

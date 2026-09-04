@@ -341,3 +341,11 @@ public class SystemDiagnosticsDto
     public bool IsDemoMode { get; set; }
     public DateTimeOffset CheckedAt { get; set; } = DateTimeOffset.UtcNow;
 }
+
+public class MapBoundsDto
+{
+    public double North { get; set; }
+    public double East { get; set; }
+    public double South { get; set; }
+    public double West { get; set; }
+}

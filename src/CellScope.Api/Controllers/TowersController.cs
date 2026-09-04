@@ -32,7 +32,7 @@ public class TowersController : ControllerBase
         var towers = await _towerService.GetNearbyTowersAsync(finalLat, finalLon, radiusMeters, cancellationToken);
         if (towers.Count == 0 && _demoDataService.IsDemoModeActive)
         {
-            return Ok(_demoDataService.GetDemoTowers());
+            return Ok(_demoDataService.GetDemoTowers(finalLat, finalLon, radiusMeters));
         }
         return Ok(towers);
     }

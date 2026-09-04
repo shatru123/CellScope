@@ -149,111 +149,14 @@ public class DemoDataService : IDemoDataService
         };
     }
 
-    public IReadOnlyList<TowerLocationDto> GetDemoTowers()
+    public IReadOnlyList<TowerLocationDto> GetDemoTowers() => GetDemoTowers(null, null, 8000);
+
+    public IReadOnlyList<TowerLocationDto> GetDemoTowers(double? latitude = null, double? longitude = null, double radiusMeters = 8000)
     {
-        var towers = new List<TowerLocationDto>
-        {
-            new()
-            {
-                Id = Guid.NewGuid(),
-                CellId = "310410_12345",
-                PhysicalCellId = "102",
-                RadioTechnology = "5G NR",
-                Mcc = 310,
-                Mnc = 410,
-                LacTac = "54201",
-                OperatorName = "Airtel / Global Telecom",
-                Latitude = 37.7749,
-                Longitude = -122.4194,
-                RangeMeters = 1200,
-                Samples = 1420,
-                Confidence = "High",
-                Source = "OpenCellID / MLS Dataset",
-                SourceReference = "CID-310410-12345",
-                LastVerified = DateTimeOffset.UtcNow.AddDays(-2),
-                DistanceMeters = 45.0
-            },
-            new()
-            {
-                Id = Guid.NewGuid(),
-                CellId = "310410_98765",
-                PhysicalCellId = "204",
-                RadioTechnology = "5G NR",
-                Mcc = 310,
-                Mnc = 410,
-                LacTac = "54201",
-                OperatorName = "Airtel / Global Telecom",
-                Latitude = 37.7785,
-                Longitude = -122.4140,
-                RangeMeters = 1500,
-                Samples = 980,
-                Confidence = "High",
-                Source = "OpenCellID / MLS Dataset",
-                SourceReference = "CID-310410-98765",
-                LastVerified = DateTimeOffset.UtcNow.AddDays(-5),
-                DistanceMeters = 540.0
-            },
-            new()
-            {
-                Id = Guid.NewGuid(),
-                CellId = "310410_54321",
-                PhysicalCellId = "305",
-                RadioTechnology = "LTE",
-                Mcc = 310,
-                Mnc = 410,
-                LacTac = "54201",
-                OperatorName = "Airtel / Global Telecom",
-                Latitude = 37.7830,
-                Longitude = -122.4230,
-                RangeMeters = 2000,
-                Samples = 3200,
-                Confidence = "High",
-                Source = "OpenCellID / MLS Dataset",
-                SourceReference = "CID-310410-54321",
-                LastVerified = DateTimeOffset.UtcNow.AddDays(-1),
-                DistanceMeters = 980.0
-            },
-            new()
-            {
-                Id = Guid.NewGuid(),
-                CellId = "310260_67890",
-                PhysicalCellId = "412",
-                RadioTechnology = "LTE",
-                Mcc = 310,
-                Mnc = 260,
-                LacTac = "54202",
-                OperatorName = "Metro Wireless",
-                Latitude = 37.7710,
-                Longitude = -122.4260,
-                RangeMeters = 1800,
-                Samples = 2100,
-                Confidence = "Medium",
-                Source = "OpenCellID Dataset",
-                SourceReference = "CID-310260-67890",
-                LastVerified = DateTimeOffset.UtcNow.AddDays(-10),
-                DistanceMeters = 1120.0
-            },
-            new()
-            {
-                Id = Guid.NewGuid(),
-                CellId = "310260_11223",
-                PhysicalCellId = "118",
-                RadioTechnology = "5G NR",
-                Mcc = 310,
-                Mnc = 260,
-                LacTac = "54202",
-                OperatorName = "Metro Wireless",
-                Latitude = 37.7760,
-                Longitude = -122.4080,
-                RangeMeters = 900,
-                Samples = 750,
-                Confidence = "High",
-                Source = "OpenCellID Dataset",
-                SourceReference = "CID-310260-11223",
-                LastVerified = DateTimeOffset.UtcNow.AddDays(-3),
-                DistanceMeters = 1350.0
-            }
-        };
+        double centerLat = latitude ?? 37.7749;
+        double centerLon = longitude ?? -122.4194;
+
+        var towers = GenerateDynamicDemoTowers(centerLat, centerLon, radiusMeters);
 
         foreach (var t in towers)
         {
@@ -269,6 +172,63 @@ public class DemoDataService : IDemoDataService
         }
 
         return towers;
+    }
+
+    private static List<TowerLocationDto> GenerateDynamicDemoTowers(double centerLat, double centerLon, double radiusMeters)
+    {
+        var towers = new List<TowerLocationDto>();
+        var random = new Random(HashCode.Combine((int)(Math.Round(centerLat, 2) * 100), (int)(Math.Round(centerLon, 2) * 100)));
+
+        var sectorTemplates = new (double DistFraction, double Angle, string Tech, string Band, string Pci, string Op, string Suffix, string Conf, int Samples)[]
+        {
+            (0.04, 35.0, "5G NR", "Band n78 (3500 MHz)", "102", "Airtel / Primary 5G gNodeB", "101", "High", 2800),
+            (0.10, 125.0, "5G NR", "Band n78 (3500 MHz)", "204", "Telecom Ultra-HD 5G (n78)", "102", "High", 2100),
+            (0.18, 215.0, "LTE", "Band 3 (1800 MHz)", "305", "Urban Macro LTE Station", "201", "High", 3200),
+            (0.25, 305.0, "LTE", "Band 28 (700 MHz)", "412", "Suburban Coverage LTE Sector", "202", "Medium", 1450),
+            (0.32, 75.0, "5G NR", "Band n28 (700 MHz)", "118", "Sub-6 Long Range 5G Cell", "301", "High", 1950),
+            (0.40, 165.0, "LTE", "Band 1 (2100 MHz)", "520", "High Capacity Metro LTE", "302", "High", 2650),
+            (0.48, 255.0, "5G NR", "Band n77 (3700 MHz)", "224", "C-Band Gigabit Micro gNodeB", "401", "High", 1820),
+            (0.55, 345.0, "5G NR", "Band n258 (28 GHz)", "330", "mmWave High Density Node", "402", "Medium", 920),
+            (0.62, 45.0, "LTE", "Band 7 (2600 MHz)", "615", "High Band LTE Sector", "501", "High", 2400),
+            (0.70, 135.0, "5G NR", "Band n78 (3500 MHz)", "418", "Enterprise Campus 5G Cell", "502", "High", 3100),
+            (0.78, 225.0, "LTE", "Band 20 (800 MHz)", "725", "Rural Highway LTE Mast", "601", "Medium", 1100),
+            (0.85, 315.0, "5G NR", "Band n78 (3500 MHz)", "512", "Regional Macro gNodeB", "602", "High", 2780),
+            (0.15, 90.0, "5G NR", "Band n78 (3500 MHz)", "115", "Carrier Aggregation 5G Node", "701", "High", 2340),
+            (0.28, 180.0, "LTE", "Band 40 (2300 MHz)", "630", "TDD Capacity LTE Sector", "702", "High", 2890),
+            (0.44, 270.0, "5G NR", "Band n78 (3500 MHz)", "240", "Public Safety & Emergency 5G", "801", "High", 1650),
+            (0.58, 0.0, "LTE", "Band 8 (900 MHz)", "810", "Extended Coverage Base Station", "802", "Medium", 1320),
+            (0.74, 150.0, "5G NR", "Band n77 (3700 MHz)", "345", "Mid-Band Commercial 5G", "901", "High", 2980),
+            (0.90, 290.0, "LTE", "Band 3 (1800 MHz)", "920", "Perimeter Macro LTE Mast", "902", "Medium", 1540)
+        };
+
+        foreach (var s in sectorTemplates)
+        {
+            double dist = Math.Max(180.0, s.DistFraction * radiusMeters);
+            var (tLat, tLon) = GeodesyUtils.CalculateOffsetCoordinates(centerLat, centerLon, dist, s.Angle);
+
+            towers.Add(new TowerLocationDto
+            {
+                Id = Guid.NewGuid(),
+                CellId = $"310410_{s.Suffix}_{random.Next(1000, 9999)}",
+                PhysicalCellId = s.Pci,
+                RadioTechnology = s.Tech,
+                Mcc = 310,
+                Mnc = 410,
+                LacTac = "54201",
+                OperatorName = s.Op,
+                Latitude = Math.Round(tLat, 6),
+                Longitude = Math.Round(tLon, 6),
+                RangeMeters = (int)(dist * 1.3),
+                Samples = s.Samples,
+                Confidence = s.Conf,
+                Source = "OpenCellID / MLS Global Cellular Dataset",
+                SourceReference = $"OCID-GLOBAL-{random.Next(100000, 999999)}",
+                LastVerified = DateTimeOffset.UtcNow.AddDays(-random.Next(1, 15)),
+                DistanceMeters = dist
+            });
+        }
+
+        return towers.OrderBy(t => t.DistanceMeters).ToList();
     }
 
     public IReadOnlyList<TowerConnectedDeviceDto> GetDemoConnectedDevicesForTower(string cellId)

@@ -78,7 +78,7 @@ public interface IDemoDataService
     void SetMode(bool isDemoMode);
     void InitializeDemoState();
     CellularSnapshotDto GenerateNextTick();
-    IReadOnlyList<TowerLocationDto> GetDemoTowers();
+    IReadOnlyList<TowerLocationDto> GetDemoTowers(double? latitude = null, double? longitude = null, double radiusMeters = 8000);
     IReadOnlyList<TowerConnectedDeviceDto> GetDemoConnectedDevicesForTower(string cellId);
     IReadOnlyList<ActiveCallSessionDto> GetDemoActiveCallsForTower(string cellId);
 
