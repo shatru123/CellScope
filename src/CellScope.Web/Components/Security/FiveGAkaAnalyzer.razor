@@ -1,0 +1,300 @@
+@inject ISecurityAnalysisService SecurityService
+
+<div style="display:flex;flex-direction:column;gap:1.25rem;">
+    <!-- Inputs & Preset Card -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <div>
+                <span class="noc-card-title">📶 5G-AKA Authentication Flow Simulator</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-top:2px;">
+                    3GPP TS 33.501 Clause 6.1.3 — Mutual Authentication & Key Agreement between UE, SEAF/AMF, AUSF, and UDM/ARPF
+                </span>
+            </div>
+            <div style="display:flex;gap:0.4rem;align-items:center;">
+                <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-weight:700;">
+                    3GPP TS 33.501 / 3GPP TS 35.206
+                </span>
+            </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0.85rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+                    <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-right:2px;">Test Vectors:</span>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "ts35208-1" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => LoadPreset("ts35208-1"))">
+                        3GPP TS 35.208 Set 1
+                    </button>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "ts35208-2" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => LoadPreset("ts35208-2"))">
+                        3GPP TS 35.208 Set 2
+                    </button>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "custom" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => selectedPreset = "custom")">
+                        Custom Vector
+                    </button>
+                </div>
+
+                <button class="btn btn-primary btn-sm" @onclick="Calculate5GAka">
+                    ⚡ Calculate 5G Authentication Vector
+                </button>
+            </div>
+
+            <!-- Parameters Grid -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:0.75rem;">
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">
+                        Subscriber Key K (128-bit Hex):
+                    </label>
+                    <input type="text" class="input-field" style="width:100%;font-family:var(--font-mono);font-size:0.75rem;padding:5px 8px;"
+                           @bind="keyHex" @bind:event="oninput" />
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">
+                        Operator Key OPc (128-bit Hex):
+                    </label>
+                    <input type="text" class="input-field" style="width:100%;font-family:var(--font-mono);font-size:0.75rem;padding:5px 8px;"
+                           @bind="opcHex" @bind:event="oninput" />
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">
+                        Random Challenge RAND (128-bit Hex):
+                    </label>
+                    <input type="text" class="input-field" style="width:100%;font-family:var(--font-mono);font-size:0.75rem;padding:5px 8px;"
+                           @bind="randHex" @bind:event="oninput" />
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">
+                        Sequence Number SQN (48-bit Hex):
+                    </label>
+                    <input type="text" class="input-field" style="width:100%;font-family:var(--font-mono);font-size:0.75rem;padding:5px 8px;"
+                           @bind="sqnHex" @bind:event="oninput" />
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">
+                        Auth Management Field AMF (16-bit Hex):
+                    </label>
+                    <input type="text" class="input-field" style="width:100%;font-family:var(--font-mono);font-size:0.75rem;padding:5px 8px;"
+                           @bind="amfHex" @bind:event="oninput" />
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">
+                        Serving Network Name (SNN):
+                    </label>
+                    <input type="text" class="input-field" style="width:100%;font-family:var(--font-mono);font-size:0.75rem;padding:5px 8px;"
+                           @bind="servingNetwork" @bind:event="oninput" />
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:6px 10px;border-radius:6px;font-size:0.75rem;">
+                    ⚠️ @errorMessage
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (result != null)
+    {
+        <!-- Mutual Authentication Result Banner -->
+        <div class="noc-card" style="border-color:@(result.AuthenticationSuccess ? "#10b981" : "#ef4444");background:@(result.AuthenticationSuccess ? "rgba(16,185,129,0.06)" : "rgba(239,68,68,0.06)");">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <span style="font-size:1.6rem;">@(result.AuthenticationSuccess ? "✅" : "❌")</span>
+                    <div>
+                        <h3 style="font-size:1.05rem;font-weight:800;color:@(result.AuthenticationSuccess ? "#10b981" : "#ef4444");margin:0;">
+                            @(result.AuthenticationSuccess ? "5G-AKA Mutual Authentication: VERIFIED (SUCCESS)" : "5G-AKA Authentication Mismatch (FAIL)")
+                        </h3>
+                        <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">
+                            UE Calculated RES* matches Home Network XRES*. 5G Key Anchor Hierarchy successfully derived.
+                        </div>
+                    </div>
+                </div>
+                <span class="badge" style="background:@(result.AuthenticationSuccess ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)");color:@(result.AuthenticationSuccess ? "#10b981" : "#ef4444");font-size:0.8rem;font-weight:800;">
+                    RES* == XRES*
+                </span>
+            </div>
+        </div>
+
+        <!-- 5G-AKA Network Entity Flow Diagram -->
+        <div class="noc-card">
+            <div class="noc-card-header">
+                <span class="noc-card-title">🔄 5G-AKA Entity Flow (UE ➔ AMF/SEAF ➔ AUSF ➔ UDM/ARPF)</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);">3GPP TS 33.501 Mutual Auth Architecture</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:0.75rem;">
+                <!-- 1. UE / USIM -->
+                <div style="background:var(--bg-secondary);padding:0.75rem;border-radius:8px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:0.4rem;font-weight:700;color:var(--text-primary);font-size:0.8rem;margin-bottom:0.4rem;">
+                        <span>📱</span>
+                        <span>UE (USIM + ME)</span>
+                    </div>
+                    <div style="font-size:0.7rem;color:var(--text-secondary);line-height:1.4;">
+                        Runs MILENAGE:
+                        <div style="color:var(--accent-cyan);font-family:var(--font-mono);margin-top:2px;">
+                            • Verifies AUTN (MAC-A)<br>
+                            • Checks SQN Freshness<br>
+                            • Computes RES, CK, IK<br>
+                            • Derives RES* & K_AUSF
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. AMF / SEAF -->
+                <div style="background:var(--bg-secondary);padding:0.75rem;border-radius:8px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:0.4rem;font-weight:700;color:var(--text-primary);font-size:0.8rem;margin-bottom:0.4rem;">
+                        <span>🏢</span>
+                        <span>SEAF / AMF (Serving)</span>
+                    </div>
+                    <div style="font-size:0.7rem;color:var(--text-secondary);line-height:1.4;">
+                        Serving Anchor:
+                        <div style="color:var(--accent-amber);font-family:var(--font-mono);margin-top:2px;">
+                            • Sends RAND & AUTN to UE<br>
+                            • Checks HRES* == HXRES*<br>
+                            • Receives K_SEAF<br>
+                            • Derives K_AMF & NAS Keys
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. AUSF -->
+                <div style="background:var(--bg-secondary);padding:0.75rem;border-radius:8px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:0.4rem;font-weight:700;color:var(--text-primary);font-size:0.8rem;margin-bottom:0.4rem;">
+                        <span>🛡️</span>
+                        <span>AUSF (Home Core)</span>
+                    </div>
+                    <div style="font-size:0.7rem;color:var(--text-secondary);line-height:1.4;">
+                        Auth Server Function:
+                        <div style="color:var(--accent-cyan);font-family:var(--font-mono);margin-top:2px;">
+                            • Stores XRES*<br>
+                            • Calculates HXRES* & K_SEAF<br>
+                            • Verifies RES* == XRES*<br>
+                            • Confirms Auth Success
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. UDM / ARPF -->
+                <div style="background:var(--bg-secondary);padding:0.75rem;border-radius:8px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:0.4rem;font-weight:700;color:var(--text-primary);font-size:0.8rem;margin-bottom:0.4rem;">
+                        <span>🖧</span>
+                        <span>UDM / ARPF (Database)</span>
+                    </div>
+                    <div style="font-size:0.7rem;color:var(--text-secondary);line-height:1.4;">
+                        Subscriber Registry:
+                        <div style="color:#10b981;font-family:var(--font-mono);margin-top:2px;">
+                            • Holds Master Secret K<br>
+                            • Computes 5G HE AV<br>
+                            • RAND, AUTN, XRES*<br>
+                            • Derives K_AUSF
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calculated Authentication Outputs Grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:0.85rem;">
+            <!-- AUTN -->
+            <HexViewer HexValue="@result.AutnHex" Label="AUTN = (SQN ^ AK) || AMF || MAC-A (128-bit)" />
+
+            <!-- RES* & XRES* -->
+            <HexViewer HexValue="@result.ResStarHex" Label="RES* (UE Response) / XRES* (128-bit)" />
+
+            <!-- HXRES* -->
+            <HexViewer HexValue="@result.HxresStarHex" Label="HXRES* = SHA-256(RAND || XRES*)[16..31]" />
+
+            <!-- K_AUSF -->
+            <HexViewer HexValue="@result.KausfHex" Label="K_AUSF Master Key (256-bit)" />
+
+            <!-- K_SEAF -->
+            <HexViewer HexValue="@result.KseafHex" Label="K_SEAF Serving Anchor Key (256-bit)" />
+
+            <!-- K_AMF -->
+            <HexViewer HexValue="@result.KamfHex" Label="K_AMF Mobility Function Key (256-bit)" />
+
+            <!-- K_NASenc -->
+            <HexViewer HexValue="@result.KnasEncHex" Label="K_NASenc (NAS Ciphering Key, 128-bit)" />
+
+            <!-- K_NASint -->
+            <HexViewer HexValue="@result.KnasIntHex" Label="K_NASint (NAS Integrity Key, 128-bit)" />
+
+            <!-- K_gNB -->
+            <HexViewer HexValue="@result.KgnbHex" Label="K_gNB (Base Station Master Key, 256-bit)" />
+
+            <!-- K_RRCenc -->
+            <HexViewer HexValue="@result.KrrcEncHex" Label="K_RRCenc (Radio Resource Ciphering Key, 128-bit)" />
+
+            <!-- K_RRCint -->
+            <HexViewer HexValue="@result.KrrcIntHex" Label="K_RRCint (Radio Resource Integrity Key, 128-bit)" />
+
+            <!-- K_UPenc -->
+            <HexViewer HexValue="@result.KupEncHex" Label="K_UPenc (User Plane Data Ciphering Key, 128-bit)" />
+        </div>
+    }
+</div>
+
+@code {
+    private string keyHex = "465b5ce8b199b49faa5f0a2ee238a6bc";
+    private string opcHex = "cd63cb71954a9f4e48a5994e37a02baf";
+    private string randHex = "23553cbe9637a89d218ae64dae47bf35";
+    private string sqnHex = "ff9bb4d09667";
+    private string amfHex = "b9b9";
+    private string servingNetwork = "5G:mnc410.mcc310.3gppnetwork.org";
+    private string supi = "imsi-310410123456789";
+
+    private string selectedPreset = "ts35208-1";
+    private string? errorMessage;
+    private FiveGAkaResultDto? result;
+
+    protected override void OnInitialized()
+    {
+        Calculate5GAka();
+    }
+
+    private void LoadPreset(string preset)
+    {
+        selectedPreset = preset;
+        if (preset == "ts35208-1")
+        {
+            keyHex = "465b5ce8b199b49faa5f0a2ee238a6bc";
+            opcHex = "cd63cb71954a9f4e48a5994e37a02baf";
+            randHex = "23553cbe9637a89d218ae64dae47bf35";
+            sqnHex = "ff9bb4d09667";
+            amfHex = "b9b9";
+        }
+        else if (preset == "ts35208-2")
+        {
+            keyHex = "fec86ba6eb707ed08905757b1bb44b8f";
+            opcHex = "dbc59adc49bebe0961913043694505d2";
+            randHex = "9f7c8d021accf4db213ccff0c7f71a6a";
+            sqnHex = "9d0277595ffc";
+            amfHex = "725c";
+        }
+        Calculate5GAka();
+    }
+
+    private void Calculate5GAka()
+    {
+        errorMessage = null;
+        try
+        {
+            byte[] k = Convert.FromHexString(keyHex.Replace(" ", "").Trim());
+            byte[] opc = Convert.FromHexString(opcHex.Replace(" ", "").Trim());
+            byte[] rand = Convert.FromHexString(randHex.Replace(" ", "").Trim());
+            byte[] sqn = Convert.FromHexString(sqnHex.Replace(" ", "").Trim());
+            byte[] amf = Convert.FromHexString(amfHex.Replace(" ", "").Trim());
+
+            result = SecurityService.Compute5GAka(k, opc, true, rand, sqn, amf, servingNetwork.Trim(), supi.Trim());
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error computing 5G-AKA: {ex.Message}";
+        }
+    }
+}

@@ -1,0 +1,270 @@
+@inject ISecurityAnalysisService SecurityService
+
+<div style="display:flex;flex-direction:column;gap:1.25rem;">
+    <!-- Tree Overview & Header -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <div>
+                <span class="noc-card-title">🌳 5G Cryptographic Key Hierarchy & Derivation Tree</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-top:2px;">
+                    3GPP TS 33.501 Clause 6.2 & Annex A — Root Anchor, NAS Signaling, and Access Stratum (AS) Key Derivations
+                </span>
+            </div>
+            <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-weight:700;">
+                HMAC-SHA-256 KDF
+            </span>
+        </div>
+
+        <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;">
+            Click on any cryptographic key node in the hierarchy below to inspect its mathematical derivation parameters, Function Code (FC), network entity location, and 3GPP specification clause.
+        </p>
+
+        <!-- Visual Interactive Key Tree -->
+        <div style="background:var(--bg-secondary);padding:1.25rem;border-radius:10px;border:1px solid var(--border-color);display:flex;flex-direction:column;gap:1.25rem;align-items:center;">
+            
+            <!-- Tier 1: Subscriber Master Key K -->
+            <div style="display:flex;flex-direction:column;align-items:center;">
+                <div class="key-tree-node @(selectedKeyName == "K" ? "selected" : "")"
+                     @onclick="@(() => SelectKey("K"))">
+                    <span style="font-size:1.1rem;">🔑</span>
+                    <div>
+                        <div style="font-weight:800;font-size:0.85rem;color:#f59e0b;">K (Master Secret)</div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);">USIM & UDM/ARPF • 128/256-bit</div>
+                    </div>
+                </div>
+                <div class="tree-line"></div>
+            </div>
+
+            <!-- Tier 2: K_AUSF -->
+            <div style="display:flex;flex-direction:column;align-items:center;">
+                <div class="key-tree-node @(selectedKeyName == "K_AUSF" ? "selected" : "")"
+                     @onclick="@(() => SelectKey("K_AUSF"))">
+                    <span style="font-size:1.1rem;">🛡️</span>
+                    <div>
+                        <div style="font-weight:800;font-size:0.85rem;color:var(--accent-cyan);">K_AUSF (Auth Server Key)</div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);">AUSF & UE • FC = 0x6A • 256-bit</div>
+                    </div>
+                </div>
+                <div class="tree-line"></div>
+            </div>
+
+            <!-- Tier 3: K_SEAF -->
+            <div style="display:flex;flex-direction:column;align-items:center;">
+                <div class="key-tree-node @(selectedKeyName == "K_SEAF" ? "selected" : "")"
+                     @onclick="@(() => SelectKey("K_SEAF"))">
+                    <span style="font-size:1.1rem;">🏢</span>
+                    <div>
+                        <div style="font-weight:800;font-size:0.85rem;color:#10b981;">K_SEAF (Security Anchor Key)</div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);">SEAF / AMF • FC = 0x6C • 256-bit</div>
+                    </div>
+                </div>
+                <div class="tree-line"></div>
+            </div>
+
+            <!-- Tier 4: K_AMF -->
+            <div style="display:flex;flex-direction:column;align-items:center;">
+                <div class="key-tree-node @(selectedKeyName == "K_AMF" ? "selected" : "")"
+                     @onclick="@(() => SelectKey("K_AMF"))">
+                    <span style="font-size:1.1rem;">⚡</span>
+                    <div>
+                        <div style="font-weight:800;font-size:0.85rem;color:#8b5cf6;">K_AMF (Mobility Mgmt Key)</div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);">AMF & UE • FC = 0x6D • 256-bit</div>
+                    </div>
+                </div>
+                <div class="tree-line"></div>
+            </div>
+
+            <!-- Tier 5: Split to NAS Keys & gNodeB Master Key -->
+            <div style="display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap;width:100%;">
+                <!-- Left Branch: NAS Signaling Keys -->
+                <div style="flex:1;min-width:260px;background:var(--bg-primary);padding:1rem;border-radius:8px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
+                    <span style="font-size:0.75rem;font-weight:700;color:var(--accent-cyan);text-transform:uppercase;">
+                        Non-Access Stratum (NAS) Keys
+                    </span>
+                    <div style="display:flex;gap:0.5rem;width:100%;justify-content:center;flex-wrap:wrap;">
+                        <div class="key-tree-node @(selectedKeyName == "K_NASenc" ? "selected" : "")" style="flex:1;"
+                             @onclick="@(() => SelectKey("K_NASenc"))">
+                            <div>
+                                <div style="font-weight:800;font-size:0.8rem;color:var(--accent-cyan);">K_NASenc</div>
+                                <div style="font-size:0.65rem;color:var(--text-muted);">NAS Ciphering • FC=0x69</div>
+                            </div>
+                        </div>
+                        <div class="key-tree-node @(selectedKeyName == "K_NASint" ? "selected" : "")" style="flex:1;"
+                             @onclick="@(() => SelectKey("K_NASint"))">
+                            <div>
+                                <div style="font-weight:800;font-size:0.8rem;color:#10b981;">K_NASint</div>
+                                <div style="font-size:0.65rem;color:var(--text-muted);">NAS Integrity • FC=0x69</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Branch: Access Stratum (gNB) Master & Sub-Keys -->
+                <div style="flex:1.5;min-width:320px;background:var(--bg-primary);padding:1rem;border-radius:8px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
+                    <span style="font-size:0.75rem;font-weight:700;color:var(--accent-amber);text-transform:uppercase;">
+                        Access Stratum (gNodeB / RAN) Keys
+                    </span>
+                    
+                    <div class="key-tree-node @(selectedKeyName == "K_gNB" ? "selected" : "")" style="width:80%;"
+                         @onclick="@(() => SelectKey("K_gNB"))">
+                        <div>
+                            <div style="font-weight:800;font-size:0.85rem;color:#f59e0b;">K_gNB (Base Station Master)</div>
+                            <div style="font-size:0.65rem;color:var(--text-muted);">gNodeB & UE • FC = 0x6E • 256-bit</div>
+                        </div>
+                    </div>
+
+                    <!-- AS Sub-Keys Grid -->
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:0.4rem;width:100%;margin-top:0.25rem;">
+                        <div class="key-tree-node @(selectedKeyName == "K_RRCenc" ? "selected" : "")"
+                             @onclick="@(() => SelectKey("K_RRCenc"))">
+                            <div style="font-weight:700;font-size:0.75rem;color:var(--accent-cyan);">K_RRCenc</div>
+                            <div style="font-size:0.6rem;color:var(--text-muted);">RRC Cipher</div>
+                        </div>
+                        <div class="key-tree-node @(selectedKeyName == "K_RRCint" ? "selected" : "")"
+                             @onclick="@(() => SelectKey("K_RRCint"))">
+                            <div style="font-weight:700;font-size:0.75rem;color:#10b981;">K_RRCint</div>
+                            <div style="font-size:0.6rem;color:var(--text-muted);">RRC Integrity</div>
+                        </div>
+                        <div class="key-tree-node @(selectedKeyName == "K_UPenc" ? "selected" : "")"
+                             @onclick="@(() => SelectKey("K_UPenc"))">
+                            <div style="font-weight:700;font-size:0.75rem;color:#8b5cf6;">K_UPenc</div>
+                            <div style="font-size:0.6rem;color:var(--text-muted);">UP Cipher</div>
+                        </div>
+                        <div class="key-tree-node @(selectedKeyName == "K_UPint" ? "selected" : "")"
+                             @onclick="@(() => SelectKey("K_UPint"))">
+                            <div style="font-weight:700;font-size:0.75rem;color:#f59e0b;">K_UPint</div>
+                            <div style="font-size:0.6rem;color:var(--text-muted);">UP Integrity</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Selected Key Detailed Inspector -->
+    @if (SelectedNode != null)
+    {
+        <div class="noc-card" style="border:1px solid var(--accent-cyan);">
+            <div class="noc-card-header" style="margin-bottom:0.75rem;">
+                <div style="display:flex;align-items:center;gap:0.6rem;">
+                    <span style="font-size:1.4rem;">🔑</span>
+                    <div>
+                        <h3 style="font-size:1.15rem;font-weight:800;color:var(--text-primary);margin:0;">
+                            @SelectedNode.KeyName (@SelectedNode.KeyBitLength Bits)
+                        </h3>
+                        <span style="font-size:0.75rem;color:var(--accent-cyan);">
+                            @SelectedNode.SpecificationClause
+                        </span>
+                    </div>
+                </div>
+                <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-weight:700;">
+                    @SelectedNode.FunctionCode
+                </span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:0.75rem;margin-bottom:1rem;">
+                <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Purpose</div>
+                    <div style="font-size:0.8rem;color:var(--text-primary);margin-top:2px;">@SelectedNode.Purpose</div>
+                </div>
+                <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Parent Input Key</div>
+                    <div style="font-size:0.8rem;color:var(--accent-cyan);font-weight:700;font-family:var(--font-mono);margin-top:2px;">@SelectedNode.ParentKeyName</div>
+                </div>
+                <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Network Storage Location</div>
+                    <div style="font-size:0.8rem;color:#10b981;font-weight:600;margin-top:2px;">@SelectedNode.Location</div>
+                </div>
+                <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;">KDF Algorithm</div>
+                    <div style="font-size:0.8rem;color:#f59e0b;font-weight:600;margin-top:2px;">@SelectedNode.KdfAlgorithm</div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(SelectedNode.DerivationInputS))
+            {
+                <div style="margin-bottom:0.75rem;">
+                    <HexViewer HexValue="@SelectedNode.DerivationInputS" Label="KDF Input String S (FC || P0 || L0 || P1 || L1 ...)" />
+                </div>
+            }
+
+            <HexViewer HexValue="@SelectedNode.KeyHex" Label="@($"Calculated {SelectedNode.KeyName} Key Value")" />
+        </div>
+    }
+</div>
+
+<style>
+    .key-tree-node {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        transition: all 0.15s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .key-tree-node:hover {
+        border-color: var(--accent-cyan);
+        transform: translateY(-2px);
+    }
+    .key-tree-node.selected {
+        border-color: var(--accent-cyan);
+        box-shadow: 0 0 16px rgba(6,182,212,0.5);
+        background: rgba(6,182,212,0.08);
+    }
+    .tree-line {
+        width: 2px;
+        height: 16px;
+        background: var(--border-color);
+        margin: 2px 0;
+    }
+</style>
+
+@code {
+    private FiveGAkaResultDto? akaResult;
+    private string selectedKeyName = "K_AUSF";
+
+    private KeyHierarchyNodeDto? SelectedNode
+    {
+        get
+        {
+            if (selectedKeyName == "K")
+            {
+                return new KeyHierarchyNodeDto
+                {
+                    KeyName = "K",
+                    KeyHex = akaResult?.KeyHex ?? "465b5ce8b199b49faa5f0a2ee238a6bc",
+                    KeyBitLength = 128,
+                    ParentKeyName = "None (Provisioned during SIM manufacturing)",
+                    FunctionCode = "None (Root Secret)",
+                    Purpose = "Permanent shared master secret provisioned on the physical USIM card and stored in the Home Network UDM/ARPF/HSM.",
+                    Location = "USIM Secure Element & UDM/ARPF/HSM",
+                    DerivationInputS = "N/A (Pre-shared symmetric credential)",
+                    KdfAlgorithm = "N/A",
+                    SpecificationClause = "3GPP TS 33.501 Clause 6.1"
+                };
+            }
+            return akaResult?.KeyNodes.FirstOrDefault(n => n.KeyName == selectedKeyName) ?? akaResult?.KeyNodes.FirstOrDefault();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        byte[] k = Convert.FromHexString("465b5ce8b199b49faa5f0a2ee238a6bc");
+        byte[] opc = Convert.FromHexString("cd63cb71954a9f4e48a5994e37a02baf");
+        byte[] rand = Convert.FromHexString("23553cbe9637a89d218ae64dae47bf35");
+        byte[] sqn = Convert.FromHexString("ff9bb4d09667");
+        byte[] amf = Convert.FromHexString("b9b9");
+
+        akaResult = SecurityService.Compute5GAka(k, opc, true, rand, sqn, amf, "5G:mnc410.mcc310.3gppnetwork.org", "imsi-310410123456789");
+    }
+
+    private void SelectKey(string keyName)
+    {
+        selectedKeyName = keyName;
+    }
+}

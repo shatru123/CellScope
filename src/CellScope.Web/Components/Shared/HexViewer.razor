@@ -1,0 +1,159 @@
+@inject IJSRuntime JS
+
+<div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:0.6rem 0.8rem;font-size:0.8rem;display:flex;flex-direction:column;gap:0.4rem;@CustomStyle">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+            @if (!string.IsNullOrEmpty(Label))
+            {
+                <span style="font-weight:700;color:var(--text-primary);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.04em;">
+                    @Label
+                </span>
+            }
+            <span class="badge" style="background:var(--bg-secondary);color:var(--accent-cyan);font-size:0.65rem;font-family:var(--font-mono);">
+                @ByteCount Bytes (@(ByteCount * 8) Bits)
+            </span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:0.35rem;">
+            <!-- Format Pills -->
+            <div style="display:inline-flex;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:12px;padding:2px;gap:2px;">
+                <button type="button" class="btn btn-sm" 
+                        style="border-radius:10px;font-size:0.65rem;padding:1px 6px;font-weight:700;@(currentFormat == "HEX" ? "background:var(--accent-cyan);color:#0b0f19;border:none;" : "background:transparent;color:var(--text-secondary);border:none;")"
+                        @onclick="@(() => currentFormat = "HEX")">
+                    HEX
+                </button>
+                <button type="button" class="btn btn-sm" 
+                        style="border-radius:10px;font-size:0.65rem;padding:1px 6px;font-weight:700;@(currentFormat == "BIN" ? "background:var(--accent-cyan);color:#0b0f19;border:none;" : "background:transparent;color:var(--text-secondary);border:none;")"
+                        @onclick="@(() => currentFormat = "BIN")">
+                    BIN
+                </button>
+                <button type="button" class="btn btn-sm" 
+                        style="border-radius:10px;font-size:0.65rem;padding:1px 6px;font-weight:700;@(currentFormat == "BYTES" ? "background:var(--accent-cyan);color:#0b0f19;border:none;" : "background:transparent;color:var(--text-secondary);border:none;")"
+                        @onclick="@(() => currentFormat = "BYTES")">
+                    DEC
+                </button>
+                <button type="button" class="btn btn-sm" 
+                        style="border-radius:10px;font-size:0.65rem;padding:1px 6px;font-weight:700;@(currentFormat == "ASCII" ? "background:var(--accent-cyan);color:#0b0f19;border:none;" : "background:transparent;color:var(--text-secondary);border:none;")"
+                        @onclick="@(() => currentFormat = "ASCII")">
+                    TXT
+                </button>
+            </div>
+
+            @if (ShowCopy)
+            {
+                <button type="button" class="btn btn-outline btn-sm" 
+                        style="font-size:0.65rem;padding:2px 6px;border-radius:6px;"
+                        @onclick="CopyValue" title="Copy to Clipboard">
+                    @(isCopied ? "✓ Copied" : "📋 Copy")
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Formatted Display Area -->
+    <div style="background:var(--bg-primary);padding:0.5rem 0.65rem;border-radius:6px;border:1px solid rgba(255,255,255,0.05);font-family:var(--font-mono);font-size:0.75rem;line-height:1.45;word-break:break-all;color:var(--accent-cyan);overflow-x:auto;">
+        @if (currentFormat == "HEX")
+        {
+            <span>@FormattedHex</span>
+        }
+        else if (currentFormat == "BIN")
+        {
+            <span style="font-size:0.7rem;color:#10b981;">@FormattedBinary</span>
+        }
+        else if (currentFormat == "BYTES")
+        {
+            <span style="color:#f59e0b;">@FormattedBytes</span>
+        }
+        else
+        {
+            <span style="color:#cbd5e1;">@FormattedAscii</span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string HexValue { get; set; } = string.Empty;
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public bool ShowCopy { get; set; } = true;
+    [Parameter] public string CustomStyle { get; set; } = string.Empty;
+
+    private string currentFormat = "HEX";
+    private bool isCopied = false;
+
+    private byte[] RawBytes
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(HexValue)) return Array.Empty<byte>();
+            string clean = HexValue.Replace(" ", "").Replace("0x", "").Replace(":", "").Trim();
+            if (clean.Length % 2 != 0) clean = "0" + clean;
+            try
+            {
+                return Convert.FromHexString(clean);
+            }
+            catch
+            {
+                return Array.Empty<byte>();
+            }
+        }
+    }
+
+    private int ByteCount => RawBytes.Length;
+
+    private string FormattedHex
+    {
+        get
+        {
+            var bytes = RawBytes;
+            if (bytes.Length == 0) return "0x00";
+            return string.Join(" ", bytes.Select(b => $"{b:x2}"));
+        }
+    }
+
+    private string FormattedBinary
+    {
+        get
+        {
+            var bytes = RawBytes;
+            if (bytes.Length == 0) return "00000000";
+            return string.Join(" ", bytes.Select(b => Convert.ToString(b, 2).PadLeft(8, '0')));
+        }
+    }
+
+    private string FormattedBytes
+    {
+        get
+        {
+            var bytes = RawBytes;
+            if (bytes.Length == 0) return "[0]";
+            return $"[{string.Join(", ", bytes)}]";
+        }
+    }
+
+    private string FormattedAscii
+    {
+        get
+        {
+            var bytes = RawBytes;
+            if (bytes.Length == 0) return "-";
+            return new string(bytes.Select(b => (b >= 32 && b <= 126) ? (char)b : '.').ToArray());
+        }
+    }
+
+    private async Task CopyValue()
+    {
+        try
+        {
+            string cleanHex = HexValue.Replace(" ", "").Replace("0x", "").Trim().ToLowerInvariant();
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", cleanHex);
+            isCopied = true;
+            StateHasChanged();
+            _ = Task.Delay(1800).ContinueWith(_ =>
+            {
+                isCopied = false;
+                InvokeAsync(StateHasChanged);
+            });
+        }
+        catch { }
+    }
+}

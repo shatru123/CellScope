@@ -1,0 +1,177 @@
+@inject ISecurityAnalysisService SecurityService
+
+<div style="display:flex;flex-direction:column;gap:1.25rem;">
+    <!-- MILENAGE Overview & Mathematical Flow Card -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <div>
+                <span class="noc-card-title">⚙️ 3GPP MILENAGE Algorithm Suite</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-top:2px;">
+                    3GPP TS 35.205 & TS 35.206 — Specification of the MILENAGE Algorithm Set for 3G/4G/5G Authentication & Key Generation
+                </span>
+            </div>
+            <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-weight:700;">
+                Functions f1 – f5*
+            </span>
+        </div>
+
+        <!-- Architectural Transformation Flow Diagram -->
+        <div style="background:var(--bg-secondary);padding:1rem;border-radius:8px;border:1px solid var(--border-color);display:flex;flex-direction:column;gap:0.75rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                <span style="font-size:0.8rem;font-weight:700;color:var(--text-primary);text-transform:uppercase;">
+                    MILENAGE Cryptographic Pipeline
+                </span>
+                <span style="font-size:0.7rem;color:var(--accent-cyan);font-family:var(--font-mono);">
+                    Core Primitives: Rijndael AES-128, Cyclic Bit Rotation, Modulo Additive Constants
+                </span>
+            </div>
+
+            <!-- Visual Flow Steps -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:0.5rem;text-align:center;font-size:0.75rem;">
+                <div style="background:var(--bg-primary);padding:0.6rem 0.4rem;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="color:var(--accent-cyan);font-weight:700;margin-bottom:2px;">Inputs</div>
+                    <div style="font-size:0.7rem;color:var(--text-secondary);">K, OPc, RAND, SQN, AMF</div>
+                </div>
+                <div style="background:var(--bg-primary);padding:0.6rem 0.4rem;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="color:var(--accent-amber);font-weight:700;margin-bottom:2px;">TEMP Stage</div>
+                    <div style="font-size:0.7rem;color:var(--text-secondary);">AES_K(RAND ⊕ OPc)</div>
+                </div>
+                <div style="background:var(--bg-primary);padding:0.6rem 0.4rem;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="color:#10b981;font-weight:700;margin-bottom:2px;">Rotations (r1-r5)</div>
+                    <div style="font-size:0.7rem;color:var(--text-secondary);">r1:64, r2:0, r3:32, r4:64, r5:96</div>
+                </div>
+                <div style="background:var(--bg-primary);padding:0.6rem 0.4rem;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="color:#8b5cf6;font-weight:700;margin-bottom:2px;">Constants (c1-c5)</div>
+                    <div style="font-size:0.7rem;color:var(--text-secondary);">c1:0, c2:1, c3:2, c4:4, c5:8</div>
+                </div>
+                <div style="background:var(--bg-primary);padding:0.6rem 0.4rem;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="color:#06b6d4;font-weight:700;margin-bottom:2px;">Outputs</div>
+                    <div style="font-size:0.7rem;color:var(--text-secondary);">MAC-A, RES, CK, IK, AK</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (milenageResult != null)
+    {
+        <!-- Intermediate Pipeline Buffers -->
+        <div class="noc-card">
+            <div class="noc-card-header">
+                <span class="noc-card-title">Intermediate Pipeline Stages</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);">128-bit Internal Blocks</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:0.75rem;">
+                <HexViewer HexValue="@milenageResult.TempHex" Label="TEMP = AES_K(RAND ^ OPc)" />
+                <HexViewer HexValue="@milenageResult.In1Hex" Label="IN_1 = SQN || AMF || SQN || AMF" />
+                <HexViewer HexValue="@milenageResult.OpcHex" Label="Operator Config Field OPc" />
+                <HexViewer HexValue="@milenageResult.AutnHex" Label="AUTN = (SQN ^ AK) || AMF || MAC-A" />
+            </div>
+        </div>
+
+        <!-- Individual MILENAGE Functions Explorer (f1 to f5*) -->
+        <div class="noc-card">
+            <div class="noc-card-header">
+                <span class="noc-card-title">Individual Function Breakdown (f1, f1*, f2, f3, f4, f5, f5*)</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);">Click any function tab below to inspect</span>
+            </div>
+
+            <!-- Function Tabs -->
+            <div style="display:flex;gap:0.4rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+                @foreach (var fn in milenageResult.Functions)
+                {
+                    bool isSelected = selectedFunctionName == fn.FunctionName;
+                    <button type="button" class="btn btn-sm @(isSelected ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.75rem;font-weight:700;padding:4px 10px;"
+                            @onclick="@(() => selectedFunctionName = fn.FunctionName)">
+                        @fn.FunctionName (@fn.OutputName)
+                    </button>
+                }
+            </div>
+
+            @if (CurrentFunction != null)
+            {
+                <div style="display:flex;flex-direction:column;gap:1rem;">
+                    <div style="background:var(--bg-secondary);padding:1rem;border-radius:8px;border:1px solid var(--accent-cyan);">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem;">
+                            <div>
+                                <h3 style="font-size:1.15rem;font-weight:800;color:var(--text-primary);margin:0;">
+                                    Function @CurrentFunction.FunctionName ➔ Output: @CurrentFunction.OutputName (@CurrentFunction.OutputBits Bits)
+                                </h3>
+                                <span style="font-size:0.75rem;color:var(--accent-cyan);display:block;margin-top:2px;">
+                                    @CurrentFunction.SpecificationClause
+                                </span>
+                            </div>
+                            <span class="badge" style="background:rgba(16,185,129,0.2);color:#10b981;font-weight:700;font-size:0.75rem;">
+                                @CurrentFunction.RotationAmount
+                            </span>
+                        </div>
+
+                        <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;margin-bottom:0.75rem;">
+                            @CurrentFunction.Purpose
+                        </p>
+
+                        <!-- Mathematical Derivation Formula -->
+                        <div style="background:var(--bg-primary);padding:0.75rem;border-radius:6px;font-family:var(--font-mono);font-size:0.75rem;color:#f8fafc;border:1px solid rgba(255,255,255,0.05);margin-bottom:0.75rem;">
+                            @if (CurrentFunction.FunctionName == "f1")
+                            {
+                                <div><strong>f1 Equation:</strong> MAC-A = [AES_K(TEMP ⊕ rot(IN_1 ⊕ OPc, r1) ⊕ c1) ⊕ OPc][0..63]</div>
+                            }
+                            else if (CurrentFunction.FunctionName == "f1*")
+                            {
+                                <div><strong>f1* Equation:</strong> MAC-S = [AES_K(TEMP ⊕ rot(IN_1 ⊕ OPc, r1) ⊕ c1) ⊕ OPc][64..127]</div>
+                            }
+                            else if (CurrentFunction.FunctionName == "f2")
+                            {
+                                <div><strong>f2 Equation:</strong> RES = [AES_K(rot(TEMP ⊕ OPc, r2) ⊕ c2) ⊕ OPc][64..127]</div>
+                            }
+                            else if (CurrentFunction.FunctionName == "f3")
+                            {
+                                <div><strong>f3 Equation:</strong> CK = AES_K(rot(TEMP ⊕ OPc, r3) ⊕ c3) ⊕ OPc</div>
+                            }
+                            else if (CurrentFunction.FunctionName == "f4")
+                            {
+                                <div><strong>f4 Equation:</strong> IK = AES_K(rot(TEMP ⊕ OPc, r4) ⊕ c4) ⊕ OPc</div>
+                            }
+                            else if (CurrentFunction.FunctionName == "f5")
+                            {
+                                <div><strong>f5 Equation:</strong> AK = [AES_K(rot(TEMP ⊕ OPc, r5) ⊕ c5) ⊕ OPc][0..47]</div>
+                            }
+                            else if (CurrentFunction.FunctionName == "f5*")
+                            {
+                                <div><strong>f5* Equation:</strong> AK* = [AES_K(rot(TEMP ⊕ OPc, r5) ⊕ c5) ⊕ OPc][64..111]</div>
+                            }
+                        </div>
+
+                        <!-- Intermediate Buffers for Selected Function -->
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:0.75rem;">
+                            <HexViewer HexValue="@CurrentFunction.ConstantHex" Label="Constant c_i (128-bit)" />
+                            <HexViewer HexValue="@CurrentFunction.IntermediateXorHex" Label="AES Core Input Buffer" />
+                            <HexViewer HexValue="@CurrentFunction.AesOutputHex" Label="AES Cipher Output" />
+                            <HexViewer HexValue="@CurrentFunction.OutputHex" Label="@($"Final {CurrentFunction.OutputName} Output")" />
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private MilenageResultDto? milenageResult;
+    private string selectedFunctionName = "f1";
+
+    private MilenageFunctionDetailDto? CurrentFunction =>
+        milenageResult?.Functions.FirstOrDefault(f => f.FunctionName == selectedFunctionName) ?? milenageResult?.Functions.FirstOrDefault();
+
+    protected override void OnInitialized()
+    {
+        byte[] k = Convert.FromHexString("465b5ce8b199b49faa5f0a2ee238a6bc");
+        byte[] opc = Convert.FromHexString("cd63cb71954a9f4e48a5994e37a02baf");
+        byte[] rand = Convert.FromHexString("23553cbe9637a89d218ae64dae47bf35");
+        byte[] sqn = Convert.FromHexString("ff9bb4d09667");
+        byte[] amf = Convert.FromHexString("b9b9");
+
+        milenageResult = SecurityService.ComputeMilenage(k, opc, true, rand, sqn, amf);
+    }
+}

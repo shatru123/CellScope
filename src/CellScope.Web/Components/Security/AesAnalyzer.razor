@@ -1,0 +1,467 @@
+@inject ISecurityAnalysisService SecurityService
+@implements IDisposable
+
+<div style="display:flex;flex-direction:column;gap:1.25rem;">
+    <!-- Top Configuration & Presets Card -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <div>
+                <span class="noc-card-title">🔑 AES-128 Cryptographic State Analyzer</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-top:2px;">
+                    FIPS-197 & 3GPP TS 33.501 Standard Rijndael Cipher with full 4x4 State Matrix & 43-Step Execution Tracer
+                </span>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+                <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-weight:700;">
+                    FIPS-197 / TS 33.501 (128-bit)
+                </span>
+            </div>
+        </div>
+
+        <!-- Preset Selector & Inputs -->
+        <div style="display:flex;flex-direction:column;gap:0.85rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+                    <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-right:2px;">Test Vectors:</span>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "fips-b" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => LoadPreset("fips-b"))">
+                        FIPS-197 App B
+                    </button>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "fips-c" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => LoadPreset("fips-c"))">
+                        FIPS-197 App C
+                    </button>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "3gpp" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => LoadPreset("3gpp"))">
+                        3GPP MILENAGE Key
+                    </button>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "custom" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => selectedPreset = "custom")">
+                        Custom Input
+                    </button>
+                </div>
+                <button class="btn btn-primary btn-sm" @onclick="ExecuteTrace">
+                    ⚡ Execute AES-128 Trace
+                </button>
+            </div>
+
+            <!-- 2-Column Hex Inputs -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:0.75rem;">
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                        128-bit Cipher Key (16 Bytes / 32 Hex Characters):
+                    </label>
+                    <input type="text" class="input-field" style="width:100%;font-family:var(--font-mono);font-size:0.8rem;padding:6px 8px;"
+                           @bind="keyHexInput" @bind:event="oninput" placeholder="e.g. 2b7e151628aed2a6abf7158809cf4f3c" />
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                        128-bit Input Plaintext (16 Bytes / 32 Hex Characters):
+                    </label>
+                    <input type="text" class="input-field" style="width:100%;font-family:var(--font-mono);font-size:0.8rem;padding:6px 8px;"
+                           @bind="plaintextHexInput" @bind:event="oninput" placeholder="e.g. 3243f6a8885a308d313198a2e0370734" />
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:6px 10px;border-radius:6px;font-size:0.75rem;">
+                    ⚠️ @errorMessage
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (traceResult != null && CurrentStep != null)
+    {
+        <!-- Interactive Playback & Step Navigator -->
+        <div class="noc-card" style="padding:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                    <!-- Step Navigation Buttons -->
+                    <button class="btn btn-outline btn-sm" @onclick="FirstStep" disabled="@(currentStepIndex == 0)">⏮ Start</button>
+                    <button class="btn btn-outline btn-sm" @onclick="PrevStep" disabled="@(currentStepIndex == 0)">◀ Prev Step</button>
+                    <button class="btn btn-sm" 
+                            style="@(isPlaying ? "background:#ef4444;color:#fff;font-weight:700;" : "background:#10b981;color:#0b0f19;font-weight:700;")"
+                            @onclick="TogglePlay">
+                        @(isPlaying ? "⏸ Pause" : "▶ Play Auto-Step")
+                    </button>
+                    <button class="btn btn-outline btn-sm" @onclick="NextStep" disabled="@(currentStepIndex >= traceResult.Steps.Count - 1)">Next Step ▶</button>
+                    <button class="btn btn-outline btn-sm" @onclick="LastStep" disabled="@(currentStepIndex >= traceResult.Steps.Count - 1)">End ⏭</button>
+
+                    <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-weight:700;font-size:0.75rem;">
+                        Step @(currentStepIndex + 1) / @traceResult.Steps.Count
+                    </span>
+                </div>
+
+                <!-- Round Quick Jump Pills -->
+                <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">
+                    <span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);margin-right:2px;">Round:</span>
+                    @for (int r = 0; r <= 10; r++)
+                    {
+                        int targetRound = r;
+                        bool isCurrentRound = CurrentStep.RoundNumber == targetRound;
+                        <button type="button" class="btn btn-sm" 
+                                style="font-size:0.65rem;padding:2px 5px;border-radius:4px;@(isCurrentRound ? "background:var(--accent-cyan);color:#0b0f19;font-weight:800;" : "background:var(--bg-secondary);color:var(--text-secondary);")"
+                                @onclick="@(() => JumpToRound(targetRound))">
+                            R@(targetRound)
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Step Timeline Progress Bar -->
+            <div style="margin-top:0.75rem;background:var(--bg-primary);border-radius:6px;height:6px;width:100%;overflow:hidden;border:1px solid rgba(255,255,255,0.05);">
+                <div style="background:linear-gradient(90deg, #06b6d4, #10b981);height:100%;width:@(((double)(currentStepIndex + 1) / traceResult.Steps.Count) * 100)%;transition:width 0.2s ease;"></div>
+            </div>
+        </div>
+
+        <!-- Current Step Detailed Inspector Card -->
+        <div class="noc-card" style="border:1px solid var(--accent-cyan);box-shadow:0 0 20px rgba(6,182,212,0.15);">
+            <div class="noc-card-header" style="margin-bottom:0.75rem;">
+                <div style="display:flex;align-items:center;gap:0.6rem;">
+                    <span style="font-size:1.4rem;">@GetOperationIcon(CurrentStep.OperationType)</span>
+                    <div>
+                        <h3 style="font-size:1.1rem;font-weight:800;color:var(--text-primary);margin:0;">
+                            @CurrentStep.StepName
+                        </h3>
+                        <span style="font-size:0.75rem;color:var(--accent-cyan);">
+                            @CurrentStep.SpecificationClause
+                        </span>
+                    </div>
+                </div>
+                <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-weight:700;">
+                    Operation: @CurrentStep.OperationType
+                </span>
+            </div>
+
+            <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1rem;line-height:1.45;background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:6px;border-left:3px solid var(--accent-cyan);">
+                @CurrentStep.Description
+            </p>
+
+            <!-- 3 Matrix Columns: Input State -> Operation Key/Sbox -> Output State -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:1rem;align-items:start;">
+                <!-- 1. Input State Matrix -->
+                <div style="background:var(--bg-secondary);padding:0.75rem;border-radius:8px;border:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                        <span style="font-size:0.75rem;font-weight:700;color:var(--text-primary);text-transform:uppercase;">
+                            Input State Matrix (4x4)
+                        </span>
+                        <span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-mono);">
+                            Column-Major
+                        </span>
+                    </div>
+                    @RenderStateMatrix(CurrentStep.InputState, false)
+                    <div style="margin-top:0.5rem;">
+                        <HexViewer HexValue="@CurrentStep.InputHex" Label="Input State" ShowCopy="true" />
+                    </div>
+                </div>
+
+                <!-- 2. Transformation / Round Key Matrix -->
+                <div style="background:var(--bg-secondary);padding:0.75rem;border-radius:8px;border:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                        <span style="font-size:0.75rem;font-weight:700;color:var(--text-primary);text-transform:uppercase;">
+                            @(CurrentStep.RoundKey != null ? $"Round Key K_{CurrentStep.RoundNumber}" : "Transformation Operator")
+                        </span>
+                        <span class="badge" style="font-size:0.65rem;background:var(--bg-card);color:var(--accent-amber);">
+                            @CurrentStep.OperationType
+                        </span>
+                    </div>
+
+                    @if (CurrentStep.RoundKey != null)
+                    {
+                        @RenderStateMatrix(CurrentStep.RoundKey, false, "#f59e0b")
+                        <div style="margin-top:0.5rem;">
+                            <HexViewer HexValue="@CurrentStep.RoundKeyHex" Label="@($"K_{CurrentStep.RoundNumber}")" ShowCopy="true" />
+                        </div>
+                    }
+                    else if (CurrentStep.OperationType == "SubBytes")
+                    {
+                        <div style="padding:1rem;background:var(--bg-primary);border-radius:6px;text-align:center;font-size:0.75rem;color:var(--text-secondary);">
+                            <div style="font-size:1.5rem;margin-bottom:0.3rem;">🔄</div>
+                            <strong>Non-Linear S-Box Mapping</strong>
+                            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem;">
+                                Every byte $S_{r,c}$ is replaced with $\text{SBox}[S_{r,c}]$ in $GF(2^8)$.
+                            </div>
+                        </div>
+                    }
+                    else if (CurrentStep.OperationType == "ShiftRows")
+                    {
+                        <div style="padding:1rem;background:var(--bg-primary);border-radius:6px;text-align:center;font-size:0.75rem;color:var(--text-secondary);">
+                            <div style="font-size:1.5rem;margin-bottom:0.3rem;">🔀</div>
+                            <strong>Row Permutation</strong>
+                            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem;">
+                                Row 0: shift 0 • Row 1: shift 1 • Row 2: shift 2 • Row 3: shift 3
+                            </div>
+                        </div>
+                    }
+                    else if (CurrentStep.OperationType == "MixColumns")
+                    {
+                        <div style="padding:1rem;background:var(--bg-primary);border-radius:6px;text-align:center;font-size:0.75rem;color:var(--text-secondary);">
+                            <div style="font-size:1.5rem;margin-bottom:0.3rem;">✖️</div>
+                            <strong>MDS Matrix Multiplication</strong>
+                            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem;">
+                                Multiplied by fixed polynomial $\{02, 03, 01, 01\}$ in $GF(2^8)$.
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- 3. Output State Matrix (With Highlighted Changes) -->
+                <div style="background:var(--bg-secondary);padding:0.75rem;border-radius:8px;border:1px solid #10b981;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                        <span style="font-size:0.75rem;font-weight:700;color:#10b981;text-transform:uppercase;">
+                            Output State Matrix (4x4)
+                        </span>
+                        <span class="badge" style="background:rgba(16,185,129,0.2);color:#10b981;font-size:0.65rem;">
+                            ● Updated
+                        </span>
+                    </div>
+                    @RenderStateMatrix(CurrentStep.OutputState, true, "#10b981")
+                    <div style="margin-top:0.5rem;">
+                        <HexViewer HexValue="@CurrentStep.OutputHex" Label="Output State" ShowCopy="true" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expanded Round Keys Overview (w[0] to w[43]) -->
+        <div class="noc-card">
+            <div class="noc-card-header">
+                <span class="noc-card-title">Key Schedule & Expanded Round Keys (K_0 to K_10)</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);">44 Words (176 Bytes)</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:0.6rem;">
+                @for (int r = 0; r <= 10; r++)
+                {
+                    int roundIdx = r;
+                    bool isCurrentRoundKey = CurrentStep.RoundNumber == roundIdx;
+                    <div style="background:var(--bg-secondary);padding:0.5rem 0.75rem;border-radius:6px;border:1px solid @(isCurrentRoundKey ? "var(--accent-amber)" : "var(--border-color)");cursor:pointer;"
+                         @onclick="@(() => JumpToRound(roundIdx))">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                            <strong style="font-size:0.75rem;color:@(isCurrentRoundKey ? "var(--accent-amber)" : "var(--text-primary)");">
+                                K_@roundIdx @(roundIdx == 0 ? "(Initial)" : (roundIdx == 10 ? "(Final)" : ""))
+                            </strong>
+                            <span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-mono);">
+                                w[@(4 * roundIdx)..@(4 * roundIdx + 3)]
+                            </span>
+                        </div>
+                        <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--accent-cyan);word-break:break-all;">
+                            @traceResult.ExpandedRoundKeysHex[roundIdx]
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string keyHexInput = "2b7e151628aed2a6abf7158809cf4f3c";
+    private string plaintextHexInput = "3243f6a8885a308d313198a2e0370734";
+    private string selectedPreset = "fips-b";
+    private string? errorMessage;
+    private AesTraceResultDto? traceResult;
+    private int currentStepIndex = 0;
+    private bool isPlaying = false;
+    private System.Threading.Timer? playTimer;
+
+    private AesStepTraceDto? CurrentStep =>
+        traceResult != null && currentStepIndex >= 0 && currentStepIndex < traceResult.Steps.Count
+            ? traceResult.Steps[currentStepIndex]
+            : null;
+
+    protected override void OnInitialized()
+    {
+        ExecuteTrace();
+    }
+
+    private void LoadPreset(string preset)
+    {
+        selectedPreset = preset;
+        if (preset == "fips-b")
+        {
+            keyHexInput = "2b7e151628aed2a6abf7158809cf4f3c";
+            plaintextHexInput = "3243f6a8885a308d313198a2e0370734";
+        }
+        else if (preset == "fips-c")
+        {
+            keyHexInput = "000102030405060708090a0b0c0d0e0f";
+            plaintextHexInput = "00112233445566778899aabbccddeeff";
+        }
+        else if (preset == "3gpp")
+        {
+            keyHexInput = "465b5ce8b199b49faa5f0a2ee238a6bc";
+            plaintextHexInput = "23553cbe9637a89d218ae64dae47bf35";
+        }
+        ExecuteTrace();
+    }
+
+    private void ExecuteTrace()
+    {
+        errorMessage = null;
+        try
+        {
+            string cleanKey = keyHexInput.Replace(" ", "").Trim();
+            string cleanPt = plaintextHexInput.Replace(" ", "").Trim();
+
+            if (cleanKey.Length != 32)
+            {
+                errorMessage = "Key must be exactly 32 hexadecimal characters (16 bytes / 128 bits).";
+                return;
+            }
+            if (cleanPt.Length != 32)
+            {
+                errorMessage = "Plaintext block must be exactly 32 hexadecimal characters (16 bytes / 128 bits).";
+                return;
+            }
+
+            byte[] keyBytes = Convert.FromHexString(cleanKey);
+            byte[] ptBytes = Convert.FromHexString(cleanPt);
+
+            traceResult = SecurityService.TraceAes128(keyBytes, ptBytes);
+            currentStepIndex = 0;
+            Pause();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to execute AES-128 trace: {ex.Message}";
+        }
+    }
+
+    private void NextStep()
+    {
+        if (traceResult != null && currentStepIndex < traceResult.Steps.Count - 1)
+        {
+            currentStepIndex++;
+            StateHasChanged();
+        }
+        else
+        {
+            Pause();
+        }
+    }
+
+    private void PrevStep()
+    {
+        if (currentStepIndex > 0)
+        {
+            currentStepIndex--;
+            StateHasChanged();
+        }
+    }
+
+    private void FirstStep()
+    {
+        currentStepIndex = 0;
+        Pause();
+        StateHasChanged();
+    }
+
+    private void LastStep()
+    {
+        if (traceResult != null)
+        {
+            currentStepIndex = traceResult.Steps.Count - 1;
+            Pause();
+            StateHasChanged();
+        }
+    }
+
+    private void JumpToRound(int round)
+    {
+        if (traceResult == null) return;
+        var step = traceResult.Steps.FirstOrDefault(s => s.RoundNumber == round);
+        if (step != null)
+        {
+            currentStepIndex = step.StepIndex;
+            Pause();
+            StateHasChanged();
+        }
+    }
+
+    private void TogglePlay()
+    {
+        if (isPlaying) Pause();
+        else Play();
+    }
+
+    private void Play()
+    {
+        if (traceResult == null) return;
+        if (currentStepIndex >= traceResult.Steps.Count - 1) currentStepIndex = 0;
+
+        isPlaying = true;
+        playTimer?.Dispose();
+        playTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                if (currentStepIndex < traceResult.Steps.Count - 1)
+                {
+                    currentStepIndex++;
+                    StateHasChanged();
+                }
+                else
+                {
+                    Pause();
+                }
+            });
+        }, null, 750, 750);
+    }
+
+    private void Pause()
+    {
+        isPlaying = false;
+        playTimer?.Dispose();
+        playTimer = null;
+        StateHasChanged();
+    }
+
+    private RenderFragment RenderStateMatrix(byte[][] matrix, bool highlightChanges = false, string accentColor = "var(--accent-cyan)") => builder =>
+    {
+        if (matrix == null || matrix.Length != 4) return;
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "style", "display:grid;grid-template-columns:repeat(4, 1fr);gap:4px;background:var(--bg-primary);padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);");
+
+        for (int r = 0; r < 4; r++)
+        {
+            for (int c = 0; c < 4; c++)
+            {
+                byte val = matrix[r][c];
+                bool isChanged = highlightChanges && CurrentStep != null && CurrentStep.ChangedCells.Any(cell => cell.Row == r && cell.Col == c);
+
+                builder.OpenElement(2, "div");
+                string cellBg = isChanged ? "rgba(16,185,129,0.18)" : "var(--bg-card)";
+                string cellBorder = isChanged ? "1px solid #10b981" : "1px solid var(--border-color)";
+                string cellColor = isChanged ? "#10b981" : accentColor;
+
+                builder.AddAttribute(3, "style", $"background:{cellBg};border:{cellBorder};border-radius:4px;padding:6px 2px;text-align:center;font-family:var(--font-mono);font-size:0.8rem;font-weight:700;color:{cellColor};");
+                builder.AddContent(4, $"{val:x2}");
+                builder.CloseElement();
+            }
+        }
+
+        builder.CloseElement();
+    };
+
+    private string GetOperationIcon(string op) => op switch
+    {
+        "AddRoundKey" => "🔑",
+        "SubBytes" => "🔄",
+        "ShiftRows" => "🔀",
+        "MixColumns" => "✖️",
+        _ => "⚡"
+    };
+
+    public void Dispose()
+    {
+        playTimer?.Dispose();
+    }
+}

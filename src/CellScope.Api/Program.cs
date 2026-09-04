@@ -49,6 +49,7 @@ builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IExportService, ExportService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDiagnosticsService, DiagnosticsService>();
+builder.Services.AddScoped<ISecurityAnalysisService, SecurityAnalysisService>();
 builder.Services.AddSingleton<IDemoDataService, DemoDataService>();
 builder.Services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
 

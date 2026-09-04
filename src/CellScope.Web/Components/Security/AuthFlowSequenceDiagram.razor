@@ -1,0 +1,183 @@
+@inject ISecurityAnalysisService SecurityService
+
+<div style="display:flex;flex-direction:column;gap:1.25rem;">
+    <!-- Flow Header -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <div>
+                <span class="noc-card-title">🔄 5G-AKA Protocol Sequence & Signaling Diagram</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-top:2px;">
+                    3GPP TS 33.501 Clause 6.1.3 & TS 24.501 — Interactive Message Flow with Step-by-Step Security Cryptanalysis
+                </span>
+            </div>
+            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-weight:700;">
+                11 3GPP Signaling Steps
+            </span>
+        </div>
+
+        <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;">
+            Click on any message row in the sequence diagram below to open the complete cryptographic parameter payload, security significance, and 3GPP specification clause reference.
+        </p>
+
+        <!-- Sequence Diagram Container -->
+        <div style="background:var(--bg-secondary);padding:1.25rem;border-radius:10px;border:1px solid var(--border-color);overflow-x:auto;">
+            
+            <!-- Entity Column Headers -->
+            <div style="display:grid;grid-template-columns:120px 140px 140px 140px 150px;gap:1rem;min-width:720px;border-bottom:2px solid var(--border-color);padding-bottom:0.75rem;margin-bottom:1rem;text-align:center;">
+                <div style="background:var(--bg-card);padding:6px;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="font-size:1.1rem;">📱</div>
+                    <strong style="font-size:0.75rem;color:var(--text-primary);">UE / USIM</strong>
+                    <div style="font-size:0.65rem;color:var(--text-muted);">Subscriber Node</div>
+                </div>
+                <div style="background:var(--bg-card);padding:6px;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="font-size:1.1rem;">🗼</div>
+                    <strong style="font-size:0.75rem;color:var(--text-primary);">(R)AN / gNB</strong>
+                    <div style="font-size:0.65rem;color:var(--text-muted);">Radio Base Station</div>
+                </div>
+                <div style="background:var(--bg-card);padding:6px;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="font-size:1.1rem;">🏢</div>
+                    <strong style="font-size:0.75rem;color:var(--text-primary);">AMF / SEAF</strong>
+                    <div style="font-size:0.65rem;color:var(--text-muted);">Serving Network</div>
+                </div>
+                <div style="background:var(--bg-card);padding:6px;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="font-size:1.1rem;">🛡️</div>
+                    <strong style="font-size:0.75rem;color:var(--text-primary);">AUSF</strong>
+                    <div style="font-size:0.65rem;color:var(--text-muted);">Home Auth Server</div>
+                </div>
+                <div style="background:var(--bg-card);padding:6px;border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="font-size:1.1rem;">🖧</div>
+                    <strong style="font-size:0.75rem;color:var(--text-primary);">UDM / ARPF</strong>
+                    <div style="font-size:0.65rem;color:var(--text-muted);">Subscriber Vault</div>
+                </div>
+            </div>
+
+            <!-- Interactive Message Flow Rows -->
+            <div style="display:flex;flex-direction:column;gap:0.6rem;min-width:720px;">
+                @foreach (var msg in messages)
+                {
+                    bool isSelected = selectedStep == msg.StepNumber;
+                    <div class="sequence-message-row @(isSelected ? "selected" : "")"
+                         @onclick="@(() => SelectMessage(msg.StepNumber))">
+                        
+                        <div style="display:flex;align-items:center;gap:0.75rem;width:100%;">
+                            <!-- Step Badge -->
+                            <span class="badge" style="font-size:0.7rem;font-weight:800;background:var(--bg-primary);color:@(isSelected ? "var(--accent-cyan)" : "var(--text-secondary)");">
+                                Step @msg.StepNumber
+                            </span>
+
+                            <!-- Route Visual Indicator -->
+                            <div style="font-size:0.75rem;font-weight:700;color:var(--accent-amber);min-width:180px;">
+                                @msg.Sender ➔ @msg.Receiver
+                            </div>
+
+                            <!-- Message Title -->
+                            <div style="flex:1;font-weight:700;font-size:0.8rem;color:var(--text-primary);">
+                                @msg.MessageName
+                            </div>
+
+                            <!-- Spec Badge -->
+                            <span class="badge" style="background:rgba(6,182,212,0.12);color:var(--accent-cyan);font-size:0.65rem;">
+                                @msg.SpecificationReference
+                            </span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Selected Message Deep-Dive Inspector Drawer -->
+    @if (CurrentMessage != null)
+    {
+        <div class="noc-card" style="border:1px solid var(--accent-cyan);box-shadow:0 0 20px rgba(6,182,212,0.12);">
+            <div class="noc-card-header" style="margin-bottom:0.75rem;">
+                <div style="display:flex;align-items:center;gap:0.6rem;">
+                    <span style="font-size:1.4rem;">📨</span>
+                    <div>
+                        <h3 style="font-size:1.15rem;font-weight:800;color:var(--text-primary);margin:0;">
+                            Step @CurrentMessage.StepNumber: @CurrentMessage.MessageName
+                        </h3>
+                        <span style="font-size:0.75rem;color:var(--accent-cyan);">
+                            Protocol Layer: @CurrentMessage.SpecificationReference
+                        </span>
+                    </div>
+                </div>
+                <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-weight:700;">
+                    @CurrentMessage.Sender ➔ @CurrentMessage.Receiver
+                </span>
+            </div>
+
+            <!-- Message Summary -->
+            <div style="background:var(--bg-secondary);padding:0.85rem 1rem;border-radius:8px;font-size:0.8rem;color:var(--text-secondary);line-height:1.5;margin-bottom:1rem;border-left:3px solid var(--accent-cyan);">
+                @CurrentMessage.Summary
+            </div>
+
+            <!-- Security Significance & Parameters 2-Col Grid -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:1rem;">
+                <!-- Security Significance -->
+                <div style="background:var(--bg-secondary);padding:0.85rem;border-radius:8px;border:1px solid var(--border-color);">
+                    <div style="font-size:0.75rem;font-weight:700;color:#f59e0b;text-transform:uppercase;margin-bottom:0.4rem;display:flex;align-items:center;gap:4px;">
+                        <span>🛡️</span> Security & Cryptographic Significance
+                    </div>
+                    <div style="font-size:0.8rem;color:var(--text-primary);line-height:1.45;">
+                        @CurrentMessage.SecuritySignificance
+                    </div>
+                </div>
+
+                <!-- Parameters Transmitted -->
+                <div style="background:var(--bg-secondary);padding:0.85rem;border-radius:8px;border:1px solid var(--border-color);">
+                    <div style="font-size:0.75rem;font-weight:700;color:var(--accent-cyan);text-transform:uppercase;margin-bottom:0.4rem;display:flex;align-items:center;gap:4px;">
+                        <span>📦</span> Transmitted Information Elements (IEs)
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:3px;">
+                        @foreach (var param in CurrentMessage.KeyParameters)
+                        {
+                            <div style="background:var(--bg-primary);padding:3px 6px;border-radius:4px;font-family:var(--font-mono);font-size:0.75rem;color:var(--accent-cyan);border:1px solid rgba(255,255,255,0.05);">
+                                • @param
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .sequence-message-row {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 0.55rem 0.85rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .sequence-message-row:hover {
+        border-color: var(--accent-cyan);
+        transform: translateX(3px);
+    }
+    .sequence-message-row.selected {
+        border-color: var(--accent-cyan);
+        background: rgba(6,182,212,0.08);
+        box-shadow: 0 0 14px rgba(6,182,212,0.25);
+    }
+</style>
+
+@code {
+    private IReadOnlyList<AuthFlowMessageDto> messages = new List<AuthFlowMessageDto>();
+    private int selectedStep = 1;
+
+    private AuthFlowMessageDto? CurrentMessage =>
+        messages.FirstOrDefault(m => m.StepNumber == selectedStep) ?? messages.FirstOrDefault();
+
+    protected override void OnInitialized()
+    {
+        messages = SecurityService.GetAuthenticationFlowMessages();
+    }
+
+    private void SelectMessage(int step)
+    {
+        selectedStep = step;
+    }
+}

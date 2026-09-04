@@ -1,0 +1,294 @@
+@inject ISecurityAnalysisService SecurityService
+
+<div style="display:flex;flex-direction:column;gap:1.25rem;">
+    <!-- KDF Configuration Card -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <div>
+                <span class="noc-card-title">🧮 3GPP 5G KDF (Key Derivation Function) Analyzer</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-top:2px;">
+                    3GPP TS 33.501 Annex B & TS 33.220 Annex B — Generic HMAC-SHA-256 Key Derivation Pipeline
+                </span>
+            </div>
+            <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-weight:700;">
+                HMAC-SHA-256 (TS 33.220)
+            </span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0.85rem;">
+            <!-- Presets Selector -->
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+                    <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-right:2px;">KDF Presets:</span>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "kausf" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => LoadPreset("kausf"))">
+                        K_AUSF (FC=0x6A)
+                    </button>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "kseaf" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => LoadPreset("kseaf"))">
+                        K_SEAF (FC=0x6C)
+                    </button>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "kamf" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => LoadPreset("kamf"))">
+                        K_AMF (FC=0x6D)
+                    </button>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "kgnb" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => LoadPreset("kgnb"))">
+                        K_gNB (FC=0x6E)
+                    </button>
+                    <button type="button" class="btn btn-sm @(selectedPreset == "knas" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.7rem;padding:2px 8px;"
+                            @onclick="@(() => LoadPreset("knas"))">
+                        K_NASenc (FC=0x69)
+                    </button>
+                </div>
+
+                <button class="btn btn-primary btn-sm" @onclick="CalculateKdf">
+                    ⚡ Execute KDF Calculation
+                </button>
+            </div>
+
+            <!-- Key & FC Inputs -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:0.75rem;">
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">
+                        Input Key (Hexadecimal Key bytes):
+                    </label>
+                    <input type="text" class="input-field" style="width:100%;font-family:var(--font-mono);font-size:0.75rem;padding:5px 8px;"
+                           @bind="inputKeyHex" @bind:event="oninput" />
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">
+                        Function Code FC (1 Byte Hex, e.g. 0x6A):
+                    </label>
+                    <input type="text" class="input-field" style="width:100%;font-family:var(--font-mono);font-size:0.75rem;padding:5px 8px;"
+                           @bind="fcHexInput" @bind:event="oninput" />
+                </div>
+            </div>
+
+            <!-- Dynamic Parameters List -->
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);">
+                        Derivation Parameters (P_0/L_0, P_1/L_1, ...):
+                    </label>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-size:0.65rem;padding:2px 6px;"
+                            @onclick="AddParameter">
+                        + Add Parameter
+                    </button>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                    @for (int i = 0; i < parameters.Count; i++)
+                    {
+                        int idx = i;
+                        var p = parameters[idx];
+                        <div style="display:flex;gap:0.5rem;align-items:center;background:var(--bg-secondary);padding:0.5rem 0.75rem;border-radius:6px;border:1px solid var(--border-color);flex-wrap:wrap;">
+                            <span class="badge" style="background:var(--bg-primary);color:var(--accent-cyan);font-family:var(--font-mono);">
+                                P_@idx
+                            </span>
+                            <input type="text" class="input-field" style="width:160px;font-size:0.75rem;padding:3px 6px;"
+                                   placeholder="Label e.g. SN Name" @bind="p.Label" />
+                            <input type="text" class="input-field" style="flex:1;min-width:200px;font-family:var(--font-mono);font-size:0.75rem;padding:3px 6px;"
+                                   placeholder="Hex or UTF-8 string" @bind="p.Value" />
+                            <select class="input-field" style="width:90px;font-size:0.75rem;padding:3px 4px;" @bind="p.IsUtf8">
+                                <option value="true">UTF-8</option>
+                                <option value="false">HEX</option>
+                            </select>
+                            <button type="button" class="btn btn-outline btn-sm" style="color:#ef4444;font-size:0.7rem;padding:2px 6px;"
+                                    @onclick="@(() => RemoveParameter(idx))">
+                                ✕
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:6px 10px;border-radius:6px;font-size:0.75rem;">
+                    ⚠️ @errorMessage
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (kdfResult != null)
+    {
+        <!-- Input String S Construction Matrix -->
+        <div class="noc-card">
+            <div class="noc-card-header">
+                <span class="noc-card-title">Concatenated KDF Input String S Breakdown</span>
+                <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);">
+                    S = FC || P_0 || L_0 || P_1 || L_1 ...
+                </span>
+            </div>
+
+            <!-- Parameters Table -->
+            <div class="noc-table-container" style="margin-bottom:1rem;">
+                <table class="noc-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Description</th>
+                            <th>ASCII / Text</th>
+                            <th>Hex Value (P_i)</th>
+                            <th>Length L_i (2 Bytes)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background:rgba(245,158,11,0.08);">
+                            <td><strong style="color:#f59e0b;">FC</strong></td>
+                            <td>Function Code</td>
+                            <td>-</td>
+                            <td style="font-family:var(--font-mono);color:#f59e0b;font-weight:700;">@kdfResult.FunctionCodeHex</td>
+                            <td style="font-family:var(--font-mono);">1 Byte</td>
+                        </tr>
+                        @foreach (var p in kdfResult.Parameters)
+                        {
+                            <tr>
+                                <td><strong style="color:var(--accent-cyan);">P_@p.Index</strong></td>
+                                <td>@p.Label</td>
+                                <td style="color:var(--text-secondary);font-size:0.75rem;">@(string.IsNullOrEmpty(p.ValueAscii) ? "-" : p.ValueAscii)</td>
+                                <td style="font-family:var(--font-mono);color:var(--accent-cyan);word-break:break-all;">@p.ValueHex</td>
+                                <td style="font-family:var(--font-mono);color:#10b981;font-weight:700;">@p.LengthBytes Bytes (@p.LengthHex)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <HexViewer HexValue="@kdfResult.StringSHex" Label="Full Input Stream S (Passed to HMAC-SHA-256)" />
+        </div>
+
+        <!-- Resulting Derived Keys -->
+        <div class="noc-card">
+            <div class="noc-card-header">
+                <span class="noc-card-title">HMAC-SHA-256 Calculation Output</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);">@kdfResult.SpecificationClause</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:0.85rem;">
+                <HexViewer HexValue="@kdfResult.DerivedKeyHex" Label="Full 256-bit Derived Key (HMAC-SHA-256)" />
+                <HexViewer HexValue="@kdfResult.TruncatedKeyHex" Label="128-bit Truncated Key (Least Significant 128 Bits)" />
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string inputKeyHex = "b40ba9a3c58b2a05bbf0d987b21bf8cbf769bcd751044604127672711c6d3441";
+    private string fcHexInput = "0x6A";
+    private string selectedPreset = "kausf";
+    private string? errorMessage;
+    private KdfCalculationDto? kdfResult;
+
+    private class ParamModel
+    {
+        public string Label { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public bool IsUtf8 { get; set; } = true;
+    }
+
+    private List<ParamModel> parameters = new();
+
+    protected override void OnInitialized()
+    {
+        LoadPreset("kausf");
+    }
+
+    private void LoadPreset(string preset)
+    {
+        selectedPreset = preset;
+        parameters.Clear();
+
+        if (preset == "kausf")
+        {
+            inputKeyHex = "b40ba9a3c58b2a05bbf0d987b21bf8cbf769bcd751044604127672711c6d3441";
+            fcHexInput = "0x6A";
+            parameters.Add(new ParamModel { Label = "Serving Network Name", Value = "5G:mnc410.mcc310.3gppnetwork.org", IsUtf8 = true });
+            parameters.Add(new ParamModel { Label = "SQN ^ AK", Value = "55f328b41517", IsUtf8 = false });
+        }
+        else if (preset == "kseaf")
+        {
+            inputKeyHex = "d6e355c328ca1a94157529fd13eef49195325ff9c3a3736780dc9b908eb8b2c4";
+            fcHexInput = "0x6C";
+            parameters.Add(new ParamModel { Label = "Serving Network Name", Value = "5G:mnc410.mcc310.3gppnetwork.org", IsUtf8 = true });
+        }
+        else if (preset == "kamf")
+        {
+            inputKeyHex = "1b228f411b61bb5e33d266e855c829e2f9d8463e2603810c9c34f5979f425f16";
+            fcHexInput = "0x6D";
+            parameters.Add(new ParamModel { Label = "SUPI", Value = "imsi-310410123456789", IsUtf8 = true });
+            parameters.Add(new ParamModel { Label = "ABBA", Value = "0000", IsUtf8 = false });
+        }
+        else if (preset == "kgnb")
+        {
+            inputKeyHex = "f339cf0decae88d0bd4b4b2e84d49a37ad1e4f4bb42617a26f53ca833f024479";
+            fcHexInput = "0x6E";
+            parameters.Add(new ParamModel { Label = "Uplink NAS COUNT", Value = "00000001", IsUtf8 = false });
+            parameters.Add(new ParamModel { Label = "Access Type", Value = "01", IsUtf8 = false });
+        }
+        else if (preset == "knas")
+        {
+            inputKeyHex = "f339cf0decae88d0bd4b4b2e84d49a37ad1e4f4bb42617a26f53ca833f024479";
+            fcHexInput = "0x69";
+            parameters.Add(new ParamModel { Label = "Distinguisher (0x01 NAS-enc)", Value = "01", IsUtf8 = false });
+            parameters.Add(new ParamModel { Label = "Algorithm ID (0x02 128-AES)", Value = "02", IsUtf8 = false });
+        }
+
+        CalculateKdf();
+    }
+
+    private void AddParameter()
+    {
+        parameters.Add(new ParamModel { Label = $"Param {parameters.Count}", Value = "", IsUtf8 = true });
+    }
+
+    private void RemoveParameter(int index)
+    {
+        if (index >= 0 && index < parameters.Count)
+        {
+            parameters.RemoveAt(index);
+        }
+    }
+
+    private void CalculateKdf()
+    {
+        errorMessage = null;
+        try
+        {
+            string cleanKey = inputKeyHex.Replace(" ", "").Replace("0x", "").Trim();
+            byte[] keyBytes = Convert.FromHexString(cleanKey);
+
+            string cleanFc = fcHexInput.Replace(" ", "").Replace("0x", "").Trim();
+            byte fc = Convert.ToByte(cleanFc, 16);
+
+            var paramList = new List<(byte[] Param, string Label)>();
+            foreach (var p in parameters)
+            {
+                byte[] val;
+                if (p.IsUtf8)
+                {
+                    val = System.Text.Encoding.UTF8.GetBytes(p.Value.Trim());
+                }
+                else
+                {
+                    string cleanHex = p.Value.Replace(" ", "").Replace("0x", "").Trim();
+                    val = Convert.FromHexString(cleanHex);
+                }
+                paramList.Add((val, p.Label));
+            }
+
+            kdfResult = SecurityService.ComputeKdf(keyBytes, fc, paramList);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"KDF Computation Failed: {ex.Message}";
+        }
+    }
+}

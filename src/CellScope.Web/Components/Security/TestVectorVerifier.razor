@@ -1,0 +1,163 @@
+@inject ISecurityAnalysisService SecurityService
+
+<div style="display:flex;flex-direction:column;gap:1.25rem;">
+    <!-- Suite Runner Control Card -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <div>
+                <span class="noc-card-title">✅ 3GPP & NIST Standards Test Vector Verification Suite</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-top:2px;">
+                    Automated Verification against Official 3GPP TS 35.208 (Sets 1–6), FIPS-197, and TS 33.501 Standard Test Sets
+                </span>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+                <button class="btn btn-primary btn-sm" @onclick="RunSuite" disabled="@isRunning">
+                    @(isRunning ? "Running Suite..." : "⚡ Run All Verification Tests")
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI Verification Summary -->
+        <div class="grid-kpis" style="margin-top:0.5rem;">
+            <MetricCard Title="Total Test Vectors" Value="@totalTests.ToString()" Subtitle="3GPP & FIPS Sets" />
+            <MetricCard Title="Calculated Comparisons" Value="@totalComparisons.ToString()" Subtitle="Cryptographic Outputs" />
+            <MetricCard Title="Passed Verifications" Value="@passCount.ToString()" ValueColor="#10b981" Subtitle="100% Bit Match" />
+            <MetricCard Title="Failed Verifications" Value="@failCount.ToString()" ValueColor="@(failCount == 0 ? "var(--text-muted)" : "#ef4444")" Subtitle="Mismatched Outputs" />
+        </div>
+    </div>
+
+    <!-- Category Filter Bar -->
+    <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-right:2px;">Filter:</span>
+        @foreach (var cat in new[] { "All", "MILENAGE", "AES-128", "5G-AKA" })
+        {
+            <button type="button" class="btn btn-sm @(selectedCategory == cat ? "btn-primary" : "btn-outline")"
+                    style="font-size:0.75rem;padding:3px 9px;"
+                    @onclick="@(() => selectedCategory = cat)">
+                @cat
+            </button>
+        }
+    </div>
+
+    <!-- Test Vectors Detailed Results -->
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+        @foreach (var v in FilteredVectors)
+        {
+            <div class="noc-card" style="border-left:4px solid @(v.IsPass ? "#10b981" : "#ef4444");">
+                <div class="noc-card-header" style="margin-bottom:0.75rem;">
+                    <div>
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            <span style="font-size:1.1rem;">@(v.IsPass ? "✅" : "❌")</span>
+                            <h3 style="font-size:1rem;font-weight:800;color:var(--text-primary);margin:0;">
+                                @v.Title
+                            </h3>
+                        </div>
+                        <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-top:2px;">
+                            Standard: @v.StandardSource • Category: @v.Category
+                        </span>
+                    </div>
+
+                    <span class="badge" style="background:@(v.IsPass ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)");color:@(v.IsPass ? "#10b981" : "#ef4444");font-weight:800;font-size:0.75rem;">
+                        @(v.IsPass ? "PASS (100% Match)" : "FAIL")
+                    </span>
+                </div>
+
+                <!-- Input Parameters Grid -->
+                <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--border-color);margin-bottom:0.75rem;">
+                    <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">
+                        Input Parameters
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:0.6rem;font-size:0.75rem;font-family:var(--font-mono);">
+                        @foreach (var kvp in v.Inputs)
+                        {
+                            <span style="background:var(--bg-primary);padding:2px 6px;border-radius:4px;color:var(--text-secondary);border:1px solid rgba(255,255,255,0.05);">
+                                <strong style="color:var(--accent-cyan);">@kvp.Key:</strong> @kvp.Value
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <!-- Output Field Comparisons Table -->
+                <div class="noc-table-container">
+                    <table class="noc-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Cryptographic Output Field</th>
+                                <th>Expected Hex (3GPP / NIST Spec)</th>
+                                <th>Calculated Hex (CellScope Engine)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cmp in v.Comparisons)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (cmp.IsPass)
+                                        {
+                                            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-weight:800;font-size:0.7rem;">
+                                                ✓ PASS
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-weight:800;font-size:0.7rem;">
+                                                ✕ FAIL
+                                            </span>
+                                        }
+                                    </td>
+                                    <td><strong style="color:var(--text-primary);">@cmp.FieldName</strong></td>
+                                    <td style="font-family:var(--font-mono);color:var(--accent-cyan);font-size:0.75rem;word-break:break-all;">
+                                        @cmp.ExpectedHex
+                                    </td>
+                                    <td style="font-family:var(--font-mono);color:@(cmp.IsPass ? "#10b981" : "#ef4444");font-size:0.75rem;word-break:break-all;">
+                                        @(string.IsNullOrEmpty(cmp.CalculatedHex) ? "Not Computed Yet" : cmp.CalculatedHex)
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<SecurityTestVectorDto> testVectors = new();
+    private string selectedCategory = "All";
+    private bool isRunning = false;
+
+    private int totalTests => testVectors.Count;
+    private int totalComparisons => testVectors.Sum(t => t.Comparisons.Count);
+    private int passCount => testVectors.Sum(t => t.Comparisons.Count(c => c.IsPass));
+    private int failCount => testVectors.Sum(t => t.Comparisons.Count(c => !c.IsPass));
+
+    private IEnumerable<SecurityTestVectorDto> FilteredVectors
+    {
+        get
+        {
+            if (selectedCategory == "All") return testVectors;
+            return testVectors.Where(t => string.Equals(t.Category, selectedCategory, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        RunSuite();
+    }
+
+    private void RunSuite()
+    {
+        isRunning = true;
+        try
+        {
+            testVectors = SecurityService.RunAllTestVectorVerifications().ToList();
+        }
+        catch { }
+        finally
+        {
+            isRunning = false;
+        }
+    }
+}

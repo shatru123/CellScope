@@ -99,3 +99,15 @@ public interface INotificationPublisher
     Task PublishDeviceStatusAsync(DeviceDto device, CancellationToken cancellationToken = default);
     Task PublishNetworkScanAsync(LocalNetworkDto network, CancellationToken cancellationToken = default);
 }
+
+public interface ISecurityAnalysisService
+{
+    AesTraceResultDto TraceAes128(byte[] key, byte[] plaintext);
+    MilenageResultDto ComputeMilenage(byte[] key, byte[] opOrOpc, bool isOpc, byte[] rand, byte[] sqn, byte[] amf);
+    FiveGAkaResultDto Compute5GAka(byte[] key, byte[] opOrOpc, bool isOpc, byte[] rand, byte[] sqn, byte[] amf, string servingNetworkName, string supi);
+    KdfCalculationDto ComputeKdf(byte[] key, byte fc, List<(byte[] Param, string Label)> parameters);
+    IReadOnlyList<SecurityTestVectorDto> GetPredefinedTestVectors();
+    IReadOnlyList<SecurityTestVectorDto> RunAllTestVectorVerifications();
+    IReadOnlyList<AuthFlowMessageDto> GetAuthenticationFlowMessages();
+}
+

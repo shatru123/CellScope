@@ -6,6 +6,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\CellScope.Domain\CellScope.Domain.csproj" />
     <ProjectReference Include="..\..\src\CellScope.Application\CellScope.Application.csproj" />
+    <ProjectReference Include="..\..\src\CellScope.Infrastructure\CellScope.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
