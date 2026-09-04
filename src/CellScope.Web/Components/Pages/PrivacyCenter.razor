@@ -144,7 +144,7 @@
         {
             settings = await AuthService.GetSettingsAsync(Guid.Empty);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             errorMessage = "Loaded default privacy settings.";
         }

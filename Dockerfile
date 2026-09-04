@@ -23,7 +23,7 @@ RUN dotnet build "CellScope.Web.csproj" -c Release -o /app/build
 
 # Stage 3: Publish
 FROM build AS publish
-RUN dotnet publish "CellScope.Web.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "CellScope.Web.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:ErrorOnDuplicatePublishOutputFiles=false
 
 # Stage 4: Final Image
 FROM base AS final
