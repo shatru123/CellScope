@@ -75,11 +75,25 @@ using (var scope = app.Services.CreateScope())
     try
     {
         await db.Database.EnsureCreatedAsync();
-        try
+        
+        var schemaMigrations = new[]
         {
-            await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"NetworkDevices\" ADD COLUMN \"PhoneNumber\" TEXT;");
+            "ALTER TABLE \"NetworkDevices\" ADD COLUMN \"PhoneNumber\" TEXT;",
+            "ALTER TABLE \"TowerLocations\" ADD COLUMN \"Area\" TEXT;",
+            "ALTER TABLE \"TowerLocations\" ADD COLUMN \"StreetAddress\" TEXT;",
+            "ALTER TABLE \"TowerLocations\" ADD COLUMN \"City\" TEXT;",
+            "ALTER TABLE \"TowerLocations\" ADD COLUMN \"PostalCode\" TEXT;"
+        };
+
+        foreach (var sql in schemaMigrations)
+        {
+            try
+            {
+                await db.Database.ExecuteSqlRawAsync(sql);
+            }
+            catch { }
         }
-        catch { }
+
         var towerService = scope.ServiceProvider.GetRequiredService<ITowerService>();
         await towerService.SeedDefaultTowersAsync();
     }

@@ -398,8 +398,29 @@ public class TowerService : ITowerService
 
     public async Task SeedDefaultTowersAsync(CancellationToken cancellationToken = default)
     {
-        if (await _dbContext.TowerLocations.AnyAsync(cancellationToken))
+        var existingTowers = await _dbContext.TowerLocations.ToListAsync(cancellationToken);
+        if (existingTowers.Count > 0)
+        {
+            bool modified = false;
+            int idx = 0;
+            foreach (var t in existingTowers)
+            {
+                if (string.IsNullOrEmpty(t.Area) || string.IsNullOrEmpty(t.StreetAddress))
+                {
+                    var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(t.Latitude, t.Longitude, idx++, t.RadioTechnology);
+                    t.Area = area;
+                    t.StreetAddress = street;
+                    t.City = city;
+                    t.PostalCode = postal;
+                    modified = true;
+                }
+            }
+            if (modified)
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
             return;
+        }
 
         // Realistic seed public tower locations in major urban telecom clusters
         var seedTowers = new List<TowerLocation>
