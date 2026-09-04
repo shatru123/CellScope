@@ -215,15 +215,15 @@
 
     private async Task LoadDataAsync()
     {
+        localNetwork = await NetworkService.GetLatestNetworkScanAsync() ?? await NetworkService.ScanLocalSubnetAsync();
+
         if (DemoService.IsDemoModeActive)
         {
             currentSnapshot = DemoService.GenerateNextTick();
-            localNetwork = DemoService.GetDemoLocalNetwork();
         }
         else
         {
             currentSnapshot = await CellularService.GetCurrentSnapshotAsync();
-            localNetwork = await NetworkService.GetLatestNetworkScanAsync();
         }
     }
 

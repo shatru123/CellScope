@@ -329,10 +329,11 @@
 
     private async Task LoadDataAsync()
     {
+        localNetwork = await NetworkService.GetLatestNetworkScanAsync() ?? await NetworkService.ScanLocalSubnetAsync();
+
         if (DemoService.IsDemoModeActive)
         {
             snapshot = DemoService.GenerateNextTick();
-            localNetwork = DemoService.GetDemoLocalNetwork();
             currentLat = snapshot.Latitude ?? 37.7749;
             currentLon = snapshot.Longitude ?? -122.4194;
             towersList = DemoService.GetDemoTowers().ToList();
@@ -340,7 +341,6 @@
         else
         {
             snapshot = await CellularService.GetCurrentSnapshotAsync();
-            localNetwork = await NetworkService.GetLatestNetworkScanAsync();
             if (snapshot?.Latitude != null && snapshot?.Longitude != null)
             {
                 currentLat = snapshot.Latitude.Value;
@@ -366,10 +366,9 @@
     }
 
     [JSInvokable]
-    public void OnTowerSelected(string cellId)
+    public async Task OnTowerSelected(string cellId)
     {
-        SelectTower(cellId);
-        StateHasChanged();
+        await SelectTowerAsync(cellId);
     }
 
     [JSInvokable]
@@ -389,13 +388,29 @@
         }
     }
 
-    public void SelectTower(string cellId)
+    public async Task SelectTowerAsync(string cellId)
     {
         selectedTower = towersList.FirstOrDefault(t => t.CellId == cellId);
+        if (selectedTower == null)
+        {
+            selectedTower = await TowerService.GetTowerForCellAsync(cellId);
+        }
         if (selectedTower == null && towersList.Count > 0)
         {
             selectedTower = towersList[0];
         }
+
+        if (selectedTower != null && (selectedTower.ConnectedDevices == null || selectedTower.ConnectedDevices.Count == 0))
+        {
+            var devs = await TowerService.GetConnectedDevicesForTowerAsync(selectedTower.CellId);
+            selectedTower.ConnectedDevices = devs.ToList();
+        }
+        StateHasChanged();
+    }
+
+    public void SelectTower(string cellId)
+    {
+        _ = SelectTowerAsync(cellId);
     }
 
     public void SelectDevice(string ipAddress)
@@ -405,26 +420,13 @@
 
     public async Task ToggleLanDevice(NetworkDeviceDto dev)
     {
-        if (DemoService.IsDemoModeActive)
+        var updated = await NetworkService.ToggleDeviceConnectionAsync(dev.Id);
+        if (updated != null)
         {
-            var updated = DemoService.ToggleDemoDeviceConnection(dev.Id);
-            if (updated != null)
-            {
-                dev.IsOnline = updated.IsOnline;
-                if (selectedLanDevice?.Id == dev.Id) selectedLanDevice = updated;
-            }
-            localNetwork = DemoService.GetDemoLocalNetwork();
+            dev.IsOnline = updated.IsOnline;
+            if (selectedLanDevice?.Id == dev.Id) selectedLanDevice = updated;
         }
-        else
-        {
-            var updated = await NetworkService.ToggleDeviceConnectionAsync(dev.Id);
-            if (updated != null)
-            {
-                dev.IsOnline = updated.IsOnline;
-                if (selectedLanDevice?.Id == dev.Id) selectedLanDevice = updated;
-            }
-            localNetwork = await NetworkService.GetLatestNetworkScanAsync();
-        }
+        localNetwork = await NetworkService.GetLatestNetworkScanAsync();
         await UpdateMapAsync();
         StateHasChanged();
     }

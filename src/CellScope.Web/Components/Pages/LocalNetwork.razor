@@ -307,16 +307,8 @@
 
     private async Task LoadNetworkDataAsync()
     {
-        if (DemoService.IsDemoModeActive)
-        {
-            network = DemoService.GetDemoLocalNetwork();
-            isAdapterActive = DemoService.IsDemoAdapterConnected;
-        }
-        else
-        {
-            network = await NetworkService.GetLatestNetworkScanAsync() ?? await NetworkService.ScanLocalSubnetAsync();
-            isAdapterActive = network.IsAdapterConnected;
-        }
+        network = await NetworkService.GetLatestNetworkScanAsync() ?? await NetworkService.ScanLocalSubnetAsync();
+        isAdapterActive = network.IsAdapterConnected;
     }
 
     private async Task ScanNetwork()
@@ -324,14 +316,10 @@
         isScanning = true;
         StateHasChanged();
 
-        if (DemoService.IsDemoModeActive)
+        network = await NetworkService.ScanLocalSubnetAsync();
+        if (network != null)
         {
-            await Task.Delay(500);
-            network = DemoService.GetDemoLocalNetwork();
-        }
-        else
-        {
-            network = await NetworkService.ScanLocalSubnetAsync();
+            isAdapterActive = network.IsAdapterConnected;
         }
 
         isScanning = false;
@@ -340,39 +328,19 @@
 
     private async Task ToggleDeviceConnection(NetworkDeviceDto dev)
     {
-        if (DemoService.IsDemoModeActive)
+        var updated = await NetworkService.ToggleDeviceConnectionAsync(dev.Id);
+        if (updated != null)
         {
-            var updated = DemoService.ToggleDemoDeviceConnection(dev.Id);
-            if (updated != null)
-            {
-                dev.IsOnline = updated.IsOnline;
-                if (selectedDevice?.Id == dev.Id) selectedDevice = updated;
-            }
-            network = DemoService.GetDemoLocalNetwork();
+            dev.IsOnline = updated.IsOnline;
+            if (selectedDevice?.Id == dev.Id) selectedDevice = updated;
         }
-        else
-        {
-            var updated = await NetworkService.ToggleDeviceConnectionAsync(dev.Id);
-            if (updated != null)
-            {
-                dev.IsOnline = updated.IsOnline;
-                if (selectedDevice?.Id == dev.Id) selectedDevice = updated;
-            }
-            network = await NetworkService.GetLatestNetworkScanAsync();
-        }
+        network = await NetworkService.GetLatestNetworkScanAsync();
         StateHasChanged();
     }
 
     private async Task ConnectAllDevices()
     {
-        if (DemoService.IsDemoModeActive)
-        {
-            network = DemoService.SetAllDemoDevicesConnection(true);
-        }
-        else
-        {
-            network = await NetworkService.SetAllDevicesConnectionAsync(true);
-        }
+        network = await NetworkService.SetAllDevicesConnectionAsync(true);
         if (selectedDevice != null)
         {
             selectedDevice.IsOnline = true;
@@ -382,14 +350,7 @@
 
     private async Task DisconnectAllDevices()
     {
-        if (DemoService.IsDemoModeActive)
-        {
-            network = DemoService.SetAllDemoDevicesConnection(false);
-        }
-        else
-        {
-            network = await NetworkService.SetAllDevicesConnectionAsync(false);
-        }
+        network = await NetworkService.SetAllDevicesConnectionAsync(false);
         if (selectedDevice != null)
         {
             selectedDevice.IsOnline = false;
@@ -399,14 +360,9 @@
 
     private async Task ToggleAdapterLink()
     {
-        if (DemoService.IsDemoModeActive)
+        network = await NetworkService.ToggleAdapterConnectionAsync();
+        if (network != null)
         {
-            isAdapterActive = DemoService.ToggleDemoAdapter();
-            network = DemoService.GetDemoLocalNetwork();
-        }
-        else
-        {
-            network = await NetworkService.ToggleAdapterConnectionAsync();
             isAdapterActive = network.IsAdapterConnected;
         }
         StateHasChanged();
