@@ -1,0 +1,56 @@
+@inherits LayoutComponentBase
+@inject IDemoDataService DemoService
+@inject NavigationManager NavManager
+
+<div class="app-container">
+    <NavMenu />
+
+    <div class="main-content">
+        <header class="top-navbar">
+            <div style="display:flex;align-items:center;gap:1rem;">
+                <StatusIndicator Text="@(DemoService.IsDemoModeActive ? "Demo Mode Active" : "Live Stream")" IsWarning="@DemoService.IsDemoModeActive" />
+                @if (DemoService.IsDemoModeActive)
+                {
+                    <span class="badge badge-demo">DEMO DATA</span>
+                }
+            </div>
+
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="btn btn-outline btn-sm" @onclick="ToggleDemoMode">
+                    @(DemoService.IsDemoModeActive ? "🔴 Live Mode" : "🟡 Demo Mode")
+                </button>
+                <button class="btn btn-outline btn-sm" @onclick="ToggleTheme">
+                    🌓 @(isDarkTheme ? "Dark" : "Light")
+                </button>
+                <a href="/devices" class="btn btn-primary btn-sm">
+                    + Pair Android
+                </a>
+            </div>
+        </header>
+
+        <main class="page-body">
+            @Body
+        </main>
+    </div>
+
+    <MobileBottomNavigation />
+</div>
+
+@code {
+    private bool isDarkTheme = true;
+
+    private void ToggleDemoMode()
+    {
+        DemoService.IsDemoModeActive = !DemoService.IsDemoModeActive;
+        if (DemoService.IsDemoModeActive)
+        {
+            DemoService.InitializeDemoState();
+        }
+        StateHasChanged();
+    }
+
+    private void ToggleTheme()
+    {
+        isDarkTheme = !isDarkTheme;
+    }
+}

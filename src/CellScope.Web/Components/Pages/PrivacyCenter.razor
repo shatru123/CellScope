@@ -1,0 +1,151 @@
+@page "/privacy"
+@inject IAuthService AuthService
+
+<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">Privacy & Data Controls</h1>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">Manage telemetry collection permissions, retention policies, and data purging</p>
+    </div>
+    <div>
+        <button class="btn btn-primary btn-sm" @onclick="SaveSettings">💾 Save Preferences</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(statusMessage))
+{
+    <div style="background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#10b981;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1.5rem;font-size:0.875rem;">
+        ✓ @statusMessage
+    </div>
+}
+
+<!-- Principles Card -->
+<div class="noc-card" style="margin-bottom:1.5rem;background:rgba(6,182,212,0.04);border-color:rgba(6,182,212,0.25);">
+    <h3 style="font-size:1.05rem;font-weight:700;color:var(--accent-cyan);margin-bottom:0.5rem;">🔒 Core Privacy Principles</h3>
+    <ul style="padding-left:1.25rem;font-size:0.875rem;color:var(--text-secondary);display:flex;flex-direction:column;gap:0.4rem;">
+        <li><b>User-Owned Telemetry Only:</b> CellScope only reads cellular information legitimately exposed by your device's Android TelephonyManager API.</li>
+        <li><b>No Carrier Surveillance:</b> Never intercepts phone calls, SMS, encrypted payload traffic, or unauthorized subscriber identities.</li>
+        <li><b>Safe Local Network Scope:</b> LAN discovery is strictly restricted to your current Wi-Fi/Ethernet subnet—no invasive vulnerability scans.</li>
+        <li><b>Zero Unconsented Tracking:</b> Location and telemetry tracking can be toggled off at any moment.</li>
+    </ul>
+</div>
+
+<!-- Toggles Grid -->
+<div class="grid-equal-2col">
+    <!-- Permissions Toggles -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Collection Controls</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1.25rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-weight:600;">GPS Location Tracking</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Attaches GPS coordinates to cellular snapshots</div>
+                </div>
+                <input type="checkbox" @bind="settings.LocationCollectionEnabled" style="width:20px;height:20px;accent-color:var(--accent-cyan);" />
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-weight:600;">Cellular Telemetry Logging</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Records serving cell, signal strength, and TAC/PCI</div>
+                </div>
+                <input type="checkbox" @bind="settings.CellularCollectionEnabled" style="width:20px;height:20px;accent-color:var(--accent-cyan);" />
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-weight:600;">Local Network Discovery</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Allows discovery of devices on your authorized Wi-Fi/LAN</div>
+                </div>
+                <input type="checkbox" @bind="settings.LocalNetworkDiscoveryEnabled" style="width:20px;height:20px;accent-color:var(--accent-cyan);" />
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-weight:600;">Cloud Synchronization</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Syncs telemetry across your connected clients</div>
+                </div>
+                <input type="checkbox" @bind="settings.CloudSyncEnabled" style="width:20px;height:20px;accent-color:var(--accent-cyan);" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Retention & Battery Settings -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Retention & Power Policy</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1.25rem;">
+            <div>
+                <label style="display:block;font-size:0.875rem;font-weight:600;margin-bottom:0.35rem;">Data Retention Period</label>
+                <select class="input-field" style="width:100%;" @bind="settings.DataRetentionDays">
+                    <option value="7">7 Days</option>
+                    <option value="30">30 Days</option>
+                    <option value="90">90 Days (Recommended)</option>
+                    <option value="365">1 Year</option>
+                </select>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;">Observations older than this period are automatically purged.</div>
+            </div>
+
+            <div>
+                <label style="display:block;font-size:0.875rem;font-weight:600;margin-bottom:0.35rem;">Sampling Frequency</label>
+                <select class="input-field" style="width:100%;" @bind="settings.CollectionIntervalSeconds">
+                    <option value="10">10 Seconds (High Precision)</option>
+                    <option value="30">30 Seconds</option>
+                    <option value="60">1 Minute (Default / Balanced)</option>
+                    <option value="300">5 Minutes (Battery Saver)</option>
+                </select>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-weight:600;">Battery Saving Mode</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Pauses GPS updates when device is stationary</div>
+                </div>
+                <input type="checkbox" @bind="settings.BatterySavingMode" style="width:20px;height:20px;accent-color:var(--accent-cyan);" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Danger Zone: Purge Data -->
+<div class="noc-card" style="margin-top:1.5rem;border-color:rgba(239,68,68,0.3);">
+    <div class="noc-card-header">
+        <span class="noc-card-title" style="color:#ef4444;">⚠️ Data Purge & Erasure</span>
+    </div>
+    <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1rem;">
+        Permanently delete your stored observations from the local and remote databases. This action cannot be undone.
+    </p>
+
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <button class="btn btn-danger btn-sm" @onclick='() => PurgeData("cellular")'>Delete Cellular History</button>
+        <button class="btn btn-danger btn-sm" @onclick='() => PurgeData("locations")'>Delete Location Trail</button>
+        <button class="btn btn-danger btn-sm" @onclick='() => PurgeData("devices")'>Delete LAN Devices</button>
+        <button class="btn btn-danger btn-sm" @onclick='() => PurgeData("all")'>Purge All Data</button>
+    </div>
+</div>
+
+@code {
+    private UserSettingsDto settings = new();
+    private string? statusMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        settings = await AuthService.GetSettingsAsync(Guid.Empty);
+    }
+
+    private async Task SaveSettings()
+    {
+        settings = await AuthService.UpdateSettingsAsync(Guid.Empty, settings);
+        statusMessage = "Privacy preferences saved successfully.";
+        StateHasChanged();
+    }
+
+    private async Task PurgeData(string target)
+    {
+        await AuthService.PurgeTelemetryDataAsync(Guid.Empty, target);
+        statusMessage = $"Successfully purged {target} data.";
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,40 @@
+@inject IJSRuntime JS
+
+<div class="noc-card" style="padding:0;overflow:hidden;position:relative;">
+    <div class="noc-card-header" style="padding:1rem 1.25rem;margin-bottom:0;border-bottom:1px solid var(--border-color);background-color:var(--bg-secondary);">
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span class="noc-card-title">@Title</span>
+            <span class="badge" style="background:rgba(6, 182, 212, 0.12);color:var(--accent-cyan);">GIS OpenStreetMap</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+            <button class="btn btn-outline btn-sm" @onclick="CenterMap">📍 Recenter</button>
+        </div>
+    </div>
+    <div id="@MapElementId" class="@(IsFullScreen ? "leaflet-map-fullscreen" : "leaflet-map-host")"></div>
+</div>
+
+@code {
+    [Parameter] public string MapElementId { get; set; } = "cellscope-main-map";
+    [Parameter] public string Title { get; set; } = "Cellular Observations & Towers";
+    [Parameter] public bool IsFullScreen { get; set; } = false;
+    [Parameter] public double InitialLat { get; set; } = 37.7749;
+    [Parameter] public double InitialLon { get; set; } = -122.4194;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("cellScopeMap.initMap", MapElementId, InitialLat, InitialLon, 14);
+        }
+    }
+
+    public async Task UpdateMapDataAsync(object mapData)
+    {
+        await JS.InvokeVoidAsync("cellScopeMap.updateMap", MapElementId, mapData);
+    }
+
+    private async Task CenterMap()
+    {
+        await JS.InvokeVoidAsync("cellScopeMap.initMap", MapElementId, InitialLat, InitialLon, 15);
+    }
+}

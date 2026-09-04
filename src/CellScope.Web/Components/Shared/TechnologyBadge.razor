@@ -1,0 +1,20 @@
+@if (!string.IsNullOrEmpty(Technology) && Technology.Contains("5G", StringComparison.OrdinalIgnoreCase))
+{
+    <span class="badge badge-5g">⚡ 5G NR</span>
+}
+else if (!string.IsNullOrEmpty(Technology) && Technology.Contains("LTE", StringComparison.OrdinalIgnoreCase))
+{
+    <span class="badge badge-4g">📶 4G LTE</span>
+}
+else if (!string.IsNullOrEmpty(Technology) && (Technology.Contains("WCDMA", StringComparison.OrdinalIgnoreCase) || Technology.Contains("3G", StringComparison.OrdinalIgnoreCase)))
+{
+    <span class="badge" style="background:rgba(139, 92, 246, 0.15);color:#8b5cf6;border:1px solid rgba(139, 92, 246, 0.4);">3G WCDMA</span>
+}
+else
+{
+    <span class="badge" style="background:rgba(107, 114, 128, 0.15);color:#94a3b8;border:1px solid rgba(107, 114, 128, 0.4);">@(Technology ?? "Cellular")</span>
+}
+
+@code {
+    [Parameter] public string? Technology { get; set; }
+}

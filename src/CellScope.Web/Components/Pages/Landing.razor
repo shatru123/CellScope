@@ -1,0 +1,78 @@
+@page "/landing"
+
+<div style="max-width:1100px;margin:0 auto;padding:2rem 0;">
+    <!-- Hero Banner -->
+    <div style="text-align:center;padding:3rem 1rem;background:radial-gradient(ellipse at top, rgba(6,182,212,0.15), transparent 70%);border-radius:16px;border:1px solid var(--border-color);margin-bottom:3rem;">
+        <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.35rem 0.85rem;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.3);border-radius:20px;font-size:0.8rem;font-weight:700;color:var(--accent-cyan);margin-bottom:1rem;">
+            📡 .NET 10 TELECOM & NETWORK INTELLIGENCE
+        </div>
+        <h1 style="font-size:2.75rem;font-weight:900;letter-spacing:-0.03em;margin-bottom:0.75rem;color:var(--text-primary);">
+            CellScope
+        </h1>
+        <p style="font-size:1.25rem;color:var(--accent-cyan);font-weight:600;margin-bottom:1rem;">
+            "See your cellular world."
+        </p>
+        <p style="font-size:1rem;color:var(--text-secondary);max-width:640px;margin:0 auto 2rem auto;line-height:1.6;">
+            A professional, cross-platform cellular network and local-network observability platform. Observe serving cells, correlate public towers, track cell handovers, analyze coverage quality, and safely discover local LAN devices.
+        </p>
+
+        <div style="display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;">
+            <a href="/" class="btn btn-primary" style="padding:0.75rem 1.75rem;font-size:1rem;">⚡ Launch Dashboard (Demo)</a>
+            <a href="/devices" class="btn btn-outline" style="padding:0.75rem 1.75rem;font-size:1rem;">📱 Pair Android Device</a>
+            <a href="/map" class="btn btn-outline" style="padding:0.75rem 1.75rem;font-size:1rem;">🗺️ GIS Cell Map</a>
+        </div>
+    </div>
+
+    <!-- Feature Grid -->
+    <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:1.5rem;text-align:center;">Comprehensive Architecture & Capabilities</h2>
+    
+    <div class="grid-3col" style="margin-bottom:3rem;">
+        <div class="noc-card">
+            <div style="font-size:2rem;margin-bottom:0.75rem;">📡</div>
+            <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">Cellular Intelligence</h3>
+            <p style="font-size:0.875rem;color:var(--text-secondary);">
+                Captures carrier, radio technology (5G NR, LTE, 3G), Cell ID, PCI, TAC, frequencies, signal strength (dBm), and neighboring 3GPP cells.
+            </p>
+        </div>
+
+        <div class="noc-card">
+            <div style="font-size:2rem;margin-bottom:0.75rem;">🗺️</div>
+            <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">GIS Cell & Tower Mapping</h3>
+            <p style="font-size:0.875rem;color:var(--text-secondary);">
+                Interactive Leaflet map overlaying device GPS trail, active serving cells, neighbor candidate cells, and curated OpenCellID public tower locations.
+            </p>
+        </div>
+
+        <div class="noc-card">
+            <div style="font-size:2rem;margin-bottom:0.75rem;">🔄</div>
+            <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">Cell Handover Tracking</h3>
+            <p style="font-size:0.875rem;color:var(--text-secondary);">
+                Automatic detection of serving cell switches, radio frequency reselection, and signal deltas with geo-located handover timeline logs.
+            </p>
+        </div>
+
+        <div class="noc-card">
+            <div style="font-size:2rem;margin-bottom:0.75rem;">🌐</div>
+            <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">Safe Local Network Scan</h3>
+            <p style="font-size:0.875rem;color:var(--text-secondary);">
+                Subnet inventory with ARP/ping host discovery, IEEE OUI MAC vendor lookup (Apple, TP-Link, Samsung, LG, Raspberry Pi), and latency checks.
+            </p>
+        </div>
+
+        <div class="noc-card">
+            <div style="font-size:2rem;margin-bottom:0.75rem;">📱</div>
+            <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">Three-Client Architecture</h3>
+            <p style="font-size:0.875rem;color:var(--text-secondary);">
+                Blazor Web App, Native .NET MAUI Desktop client (macOS/Windows), and .NET MAUI Android Telephony Collector sharing unified domain & API.
+            </p>
+        </div>
+
+        <div class="noc-card">
+            <div style="font-size:2rem;margin-bottom:0.75rem;">🔒</div>
+            <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">Privacy-First Engineering</h3>
+            <p style="font-size:0.875rem;color:var(--text-secondary);">
+                Strict boundary enforcement: no carrier surveillance, no call/traffic interception, granular privacy toggles, and one-click data erasure.
+            </p>
+        </div>
+    </div>
+</div>

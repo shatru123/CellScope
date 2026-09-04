@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: cellscope
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: cellscope-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: cellscope-db
+    plan: free
+    databaseName: cellscope
+    user: cellscope_user

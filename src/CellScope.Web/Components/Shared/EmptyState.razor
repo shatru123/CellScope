@@ -1,0 +1,17 @@
+<div class="noc-card" style="text-align:center;padding:3rem 1.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+    <div style="font-size:2.5rem;margin-bottom:0.75rem;">@Icon</div>
+    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-primary);">@Title</h3>
+    <p style="font-size:0.875rem;color:var(--text-secondary);max-width:420px;margin-bottom:1.25rem;">@Description</p>
+    @if (!string.IsNullOrEmpty(ActionText))
+    {
+        <button class="btn btn-primary" @onclick="OnAction">@ActionText</button>
+    }
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "📡";
+    [Parameter] public string Title { get; set; } = "No Data Available";
+    [Parameter] public string Description { get; set; } = "Telemetry observation will appear here once connected.";
+    [Parameter] public string? ActionText { get; set; }
+    [Parameter] public EventCallback OnAction { get; set; }
+}

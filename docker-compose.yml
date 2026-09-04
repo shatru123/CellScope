@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  cellscope-db:
+    image: postgres:16-alpine
+    container_name: cellscope-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cellscope
+      POSTGRES_USER: cellscope_user
+      POSTGRES_PASSWORD: cellscope_secure_pass_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - cellscope_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cellscope_user -d cellscope"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  cellscope-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cellscope-web
+    restart: unless-stopped
+    depends_on:
+      cellscope-db:
+        condition: service_healthy
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=cellscope-db;Port=5432;Database=cellscope;Username=cellscope_user;Password=cellscope_secure_pass_2026;SSL Mode=Prefer;
+      - JWT_SECRET=CellScope-Production-Secure-Key-For-Signing-JWT-Tokens-2026
+    volumes:
+      - cellscope_appdata:/app/data
+
+volumes:
+  cellscope_pgdata:
+  cellscope_appdata:

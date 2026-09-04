@@ -1,0 +1,25 @@
+@using CellScope.Domain.Services
+@using CellScope.Domain.Enums
+
+<span class="badge" style="background-color:rgba(@RgbColor, 0.15);color:@HexColor;border:1px solid rgba(@RgbColor, 0.4);">
+    <span class="pulse-dot" style="background-color:@HexColor;box-shadow:0 0 6px @HexColor;"></span>
+    @Dbm dBm • @RatingText
+</span>
+
+@code {
+    [Parameter] public int? Dbm { get; set; }
+    [Parameter] public string? Technology { get; set; }
+
+    private SignalQualityRating Rating => SignalClassifier.Classify(Dbm, Technology);
+    private string RatingText => SignalClassifier.GetRatingText(Rating);
+    private string HexColor => SignalClassifier.GetRatingColor(Rating);
+    
+    private string RgbColor => Rating switch
+    {
+        SignalQualityRating.Excellent => "16, 185, 129",
+        SignalQualityRating.Good => "6, 182, 212",
+        SignalQualityRating.Fair => "245, 158, 11",
+        SignalQualityRating.Poor => "239, 68, 68",
+        _ => "107, 114, 128"
+    };
+}

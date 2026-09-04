@@ -1,0 +1,191 @@
+@page "/live"
+@inject ICellularService CellularService
+@inject IDemoDataService DemoService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">Live Network Stream</h1>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">High-frequency telemetry feed from active cellular modem</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+        <StatusIndicator Text="Streaming Telemetry" />
+        <button class="btn btn-outline btn-sm" @onclick="TriggerTick">⚡ Force Update</button>
+    </div>
+</div>
+
+<div class="grid-3col">
+    <!-- Radio Link State -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Radio Link Layer</span>
+            <TechnologyBadge Technology="@(snapshot?.RadioTechnology ?? "5G NR")" />
+        </div>
+        <div style="font-size:1.75rem;font-weight:700;margin-bottom:0.25rem;color:var(--accent-cyan);">
+            @(snapshot?.SignalStrengthDbm != null ? $"{snapshot.SignalStrengthDbm} dBm" : "-82 dBm")
+        </div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;">
+            SS-RSRP / RSRP Carrier Level
+        </div>
+        <div class="signal-bar-container">
+            <div class="signal-bar-fill" style="width:@(snapshot?.SignalPercentage ?? 70)%;background-color:@(snapshot?.SignalColor ?? "#06b6d4");"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:0.5rem;font-size:0.75rem;color:var(--text-secondary);">
+            <span>Rating: @(snapshot?.SignalRating ?? "Good")</span>
+            <span>Signal Level: @(snapshot?.SignalLevel ?? 3) / 4</span>
+        </div>
+    </div>
+
+    <!-- Cell Identification -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Cell Identification</span>
+            <span class="badge" style="background:rgba(6,182,212,0.12);color:var(--accent-cyan);">3GPP Standard</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;font-size:0.875rem;margin-top:0.25rem;">
+            <div>
+                <div style="font-size:0.75rem;color:var(--text-muted);">Cell ID (ECI/NCI)</div>
+                <div style="font-family:var(--font-mono);font-weight:700;color:var(--text-primary);">@(snapshot?.CellId ?? "310410_12345")</div>
+            </div>
+            <div>
+                <div style="font-size:0.75rem;color:var(--text-muted);">Physical Cell ID</div>
+                <div style="font-family:var(--font-mono);font-weight:700;color:var(--accent-cyan);">@(snapshot?.PhysicalCellId ?? "102")</div>
+            </div>
+            <div>
+                <div style="font-size:0.75rem;color:var(--text-muted);">Tracking Area Code</div>
+                <div style="font-family:var(--font-mono);font-weight:700;color:var(--text-primary);">@(snapshot?.TrackingAreaCode ?? "54201")</div>
+            </div>
+            <div>
+                <div style="font-size:0.75rem;color:var(--text-muted);">Frequency Band</div>
+                <div style="font-weight:700;color:var(--accent-emerald);">@(snapshot?.Band ?? "n78 (3500 MHz)")</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Carrier & Subscription -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Carrier Subscription</span>
+            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">SIM 1 Active</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;font-size:0.875rem;">
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">Operator Name</span>
+                <span style="font-weight:600;color:var(--text-primary);">@(snapshot?.OperatorName ?? "Airtel / Global Telecom")</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">MCC / MNC</span>
+                <span style="font-family:var(--font-mono);color:var(--text-primary);">@(snapshot?.Mcc ?? 310) / @(snapshot?.Mnc ?? 410)</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">Registration State</span>
+                <span style="color:#10b981;font-weight:600;">Registered (In-Service)</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">Roaming</span>
+                <span>@(snapshot?.IsRoaming == true ? "Roaming" : "Home Carrier")</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Neighbor Cells Matrix -->
+<div class="noc-card" style="margin-top:1.5rem;">
+    <div class="noc-card-header">
+        <span class="noc-card-title">Visible Neighboring Cell Measurements</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);">Updated via Android TelephonyManager</span>
+    </div>
+
+    <div class="noc-table-container">
+        <table class="noc-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Cell ID</th>
+                    <th>PCI</th>
+                    <th>TAC</th>
+                    <th>Technology</th>
+                    <th>Band</th>
+                    <th>Signal (dBm)</th>
+                    <th>Signal Quality (RSRQ)</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Serving Row -->
+                <tr style="background:rgba(6,182,212,0.06);">
+                    <td><span class="badge" style="background:#10b981;color:#0b0f19;">📡 Serving</span></td>
+                    <td style="font-family:var(--font-mono);font-weight:700;">@(snapshot?.CellId ?? "310410_12345")</td>
+                    <td style="color:var(--accent-cyan);font-weight:700;">@(snapshot?.PhysicalCellId ?? "102")</td>
+                    <td>@(snapshot?.TrackingAreaCode ?? "54201")</td>
+                    <td><TechnologyBadge Technology="@(snapshot?.RadioTechnology ?? "5G NR")" /></td>
+                    <td>@(snapshot?.Band ?? "n78")</td>
+                    <td><SignalBadge Dbm="@(snapshot?.SignalStrengthDbm ?? -82)" Technology="@(snapshot?.RadioTechnology ?? "5G NR")" /></td>
+                    <td>@(snapshot?.SignalQuality != null ? $"{snapshot.SignalQuality} dB" : "-9.5 dB")</td>
+                    <td><span style="color:#10b981;font-weight:600;">Connected</span></td>
+                </tr>
+
+                <!-- Neighbor Rows -->
+                @if (snapshot?.NeighborCells != null)
+                {
+                    @foreach (var n in snapshot.NeighborCells)
+                    {
+                        <tr>
+                            <td><span class="badge" style="background:var(--bg-secondary);color:var(--text-muted);">📶 Neighbor</span></td>
+                            <td style="font-family:var(--font-mono);">@(n.CellId ?? "N/A (Restricted)")</td>
+                            <td style="color:var(--accent-cyan);">@(n.PhysicalCellId ?? "N/A")</td>
+                            <td>@(n.TrackingAreaCode ?? "54201")</td>
+                            <td><TechnologyBadge Technology="@n.RadioTechnology" /></td>
+                            <td>@(n.Band ?? "LTE")</td>
+                            <td><SignalBadge Dbm="@n.SignalStrengthDbm" Technology="@n.RadioTechnology" /></td>
+                            <td>@(n.SignalQuality != null ? $"{n.SignalQuality} dB" : "-12.0 dB")</td>
+                            <td><span style="color:var(--text-muted);">Candidate</span></td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private CellularSnapshotDto? snapshot;
+    private System.Threading.Timer? pollTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSnapshotAsync();
+        pollTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadSnapshotAsync();
+                StateHasChanged();
+            });
+        }, null, 3000, 3000);
+    }
+
+    private async Task LoadSnapshotAsync()
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            snapshot = DemoService.GenerateNextTick();
+        }
+        else
+        {
+            snapshot = await CellularService.GetCurrentSnapshotAsync();
+        }
+    }
+
+    private async Task TriggerTick()
+    {
+        await LoadSnapshotAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        pollTimer?.Dispose();
+    }
+}

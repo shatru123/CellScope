@@ -1,0 +1,39 @@
+<div class="noc-card">
+    <div class="noc-card-header">
+        <span class="noc-card-title">@Title</span>
+        @if (!string.IsNullOrEmpty(BadgeText))
+        {
+            <span class="badge @BadgeClass">@BadgeText</span>
+        }
+    </div>
+    <div style="display:flex;align-items:baseline;gap:0.5rem;">
+        <span style="font-size:1.85rem;font-weight:700;letter-spacing:-0.03em;color:@(ValueColor ?? "var(--text-primary)");">@Value</span>
+        @if (!string.IsNullOrEmpty(Unit))
+        {
+            <span style="font-size:0.95rem;color:var(--text-muted);font-weight:600;">@Unit</span>
+        }
+    </div>
+    @if (!string.IsNullOrEmpty(Subtitle))
+    {
+        <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.35rem;">@Subtitle</div>
+    }
+    @if (ShowProgressBar)
+    {
+        <div class="signal-bar-container">
+            <div class="signal-bar-fill" style="width:@ProgressPercentage%;background-color:@(ProgressBarColor ?? "var(--accent-cyan)");"></div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public string? Unit { get; set; }
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string? ValueColor { get; set; }
+    [Parameter] public string? BadgeText { get; set; }
+    [Parameter] public string? BadgeClass { get; set; }
+    [Parameter] public bool ShowProgressBar { get; set; } = false;
+    [Parameter] public int ProgressPercentage { get; set; } = 0;
+    [Parameter] public string? ProgressBarColor { get; set; }
+}

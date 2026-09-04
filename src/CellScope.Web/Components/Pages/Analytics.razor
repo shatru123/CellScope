@@ -1,0 +1,142 @@
+@page "/analytics"
+@inject IAnalyticsService AnalyticsService
+@inject IDemoDataService DemoService
+@inject IJSRuntime JS
+
+<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">Signal Analytics</h1>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">Historical signal trends, carrier comparison, and technology breakdowns</p>
+    </div>
+    <div style="display:flex;gap:0.5rem;">
+        <button class="btn @(selectedRange == "1h" ? "btn-primary" : "btn-outline") btn-sm" @onclick='() => ChangeRange("1h")'>Last Hour</button>
+        <button class="btn @(selectedRange == "24h" ? "btn-primary" : "btn-outline") btn-sm" @onclick='() => ChangeRange("24h")'>Today</button>
+        <button class="btn @(selectedRange == "7d" ? "btn-primary" : "btn-outline") btn-sm" @onclick='() => ChangeRange("7d")'>7 Days</button>
+        <button class="btn @(selectedRange == "30d" ? "btn-primary" : "btn-outline") btn-sm" @onclick='() => ChangeRange("30d")'>30 Days</button>
+    </div>
+</div>
+
+<!-- Stats Summary -->
+<div class="grid-kpis">
+    <MetricCard Title="Total Observations" Value="@(analytics?.TotalObservations.ToString() ?? "180")" Subtitle="Recorded Telemetry Samples" />
+    <MetricCard Title="Average Signal" Value="@(analytics?.AverageSignalStrength.ToString() ?? "-81.4")" Unit="dBm" ValueColor="#06b6d4" Subtitle="Across all serving cells" />
+    <MetricCard Title="Min / Max Signal" Value="@($"{analytics?.MinSignalStrength ?? -102} / {analytics?.MaxSignalStrength ?? -68}")" Unit="dBm" Subtitle="Dynamic carrier span" />
+    <MetricCard Title="Cell Handovers" Value="@(analytics?.TotalHandovers.ToString() ?? "4")" Unit="Transitions" Subtitle="Serving cell switches" />
+</div>
+
+<!-- Main Trend Line Chart -->
+<div class="noc-card" style="margin-bottom:1.5rem;">
+    <div class="noc-card-header">
+        <span class="noc-card-title">Signal Strength (dBm) vs Time</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);">Range: @selectedRange</span>
+    </div>
+    <div id="analytics-signal-trend" style="width:100%;height:240px;"></div>
+</div>
+
+<!-- Secondary Charts Grid -->
+<div class="grid-equal-2col">
+    <!-- Technology Distribution -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Technology Distribution</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">
+            @if (analytics?.TechnologyDistribution != null)
+            {
+                @foreach (var kvp in analytics.TechnologyDistribution)
+                {
+                    int total = Math.Max(1, analytics.TotalObservations);
+                    int pct = (int)Math.Round((double)kvp.Value / total * 100);
+                    <div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.875rem;margin-bottom:0.25rem;">
+                            <span style="font-weight:600;">@kvp.Key</span>
+                            <span style="color:var(--text-secondary);">@kvp.Value samples (@pct%)</span>
+                        </div>
+                        <div class="signal-bar-container" style="margin-top:0;">
+                            <div class="signal-bar-fill" style="width:@pct%;background-color:@(kvp.Key.Contains("5G") ? "var(--accent-cyan)" : "var(--accent-blue)");"></div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Rating Distribution -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Signal Quality Interpretation Breakdown</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">
+            @if (analytics?.RatingDistribution != null)
+            {
+                @foreach (var kvp in analytics.RatingDistribution)
+                {
+                    int total = Math.Max(1, analytics.TotalObservations);
+                    int pct = (int)Math.Round((double)kvp.Value / total * 100);
+                    string color = kvp.Key switch
+                    {
+                        "Excellent" => "#10b981",
+                        "Good" => "#06b6d4",
+                        "Fair" => "#f59e0b",
+                        _ => "#ef4444"
+                    };
+                    <div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.875rem;margin-bottom:0.25rem;">
+                            <span style="font-weight:600;color:@color;">@kvp.Key</span>
+                            <span style="color:var(--text-secondary);">@kvp.Value samples (@pct%)</span>
+                        </div>
+                        <div class="signal-bar-container" style="margin-top:0;">
+                            <div class="signal-bar-fill" style="width:@pct%;background-color:@color;"></div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private SignalAnalyticsDto? analytics;
+    private string selectedRange = "24h";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAnalyticsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && analytics != null && analytics.SignalStrengthTrend.Count > 0)
+        {
+            await RenderChartAsync();
+        }
+    }
+
+    private async Task ChangeRange(string range)
+    {
+        selectedRange = range;
+        await LoadAnalyticsAsync();
+        await RenderChartAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAnalyticsAsync()
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            analytics = DemoService.GetDemoAnalytics(selectedRange);
+        }
+        else
+        {
+            analytics = await AnalyticsService.GetAnalyticsAsync(selectedRange);
+        }
+    }
+
+    private async Task RenderChartAsync()
+    {
+        if (analytics?.SignalStrengthTrend != null && analytics.SignalStrengthTrend.Count > 0)
+        {
+            await JS.InvokeVoidAsync("cellScopeCharts.renderSignalTrend", "analytics-signal-trend", analytics.SignalStrengthTrend, "Signal Strength (dBm)", "#06b6d4");
+        }
+    }
+}

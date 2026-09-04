@@ -1,0 +1,36 @@
+name: CellScope CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    name: Build & Run Automated Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore CellScope.slnx
+
+    - name: Build Solution
+      run: dotnet build CellScope.slnx -c Release --no-restore
+
+    - name: Run Unit Tests
+      run: dotnet test tests/CellScope.UnitTests/CellScope.UnitTests.csproj -c Release --no-restore --verbosity normal
+
+    - name: Run Integration Tests
+      run: dotnet test tests/CellScope.IntegrationTests/CellScope.IntegrationTests.csproj -c Release --no-restore --verbosity normal
+
+    - name: Run API Tests
+      run: dotnet test tests/CellScope.ApiTests/CellScope.ApiTests.csproj -c Release --no-restore --verbosity normal

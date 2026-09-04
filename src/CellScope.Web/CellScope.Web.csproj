@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>CellScope.Web</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CellScope.Infrastructure\CellScope.Infrastructure.csproj" />
+    <ProjectReference Include="..\CellScope.Application\CellScope.Application.csproj" />
+    <ProjectReference Include="..\CellScope.Domain\CellScope.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.2" />
+  </ItemGroup>
+</Project>

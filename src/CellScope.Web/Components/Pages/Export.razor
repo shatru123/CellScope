@@ -1,0 +1,77 @@
+@page "/export"
+@inject IExportService ExportService
+@inject IJSRuntime JS
+
+<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">Data Export</h1>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">Download your cellular observations, location history, and LAN inventory in CSV or JSON</p>
+    </div>
+</div>
+
+<div class="noc-card" style="max-width:680px;">
+    <div class="noc-card-header">
+        <span class="noc-card-title">Export Dataset Configuration</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+        <div>
+            <label style="display:block;font-size:0.875rem;font-weight:600;margin-bottom:0.5rem;">Select Dataset</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+                <label style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;">
+                    <input type="radio" name="dataset" value="everything" checked="@(selectedDataset == "everything")" @onchange='() => selectedDataset = "everything"' />
+                    <div>
+                        <div style="font-weight:600;font-size:0.875rem;">Everything</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);">Cellular, GPS & LAN</div>
+                    </div>
+                </label>
+                <label style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;">
+                    <input type="radio" name="dataset" value="cellular" checked="@(selectedDataset == "cellular")" @onchange='() => selectedDataset = "cellular"' />
+                    <div>
+                        <div style="font-weight:600;font-size:0.875rem;">Cellular Data</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);">Serving & neighbor cells</div>
+                    </div>
+                </label>
+                <label style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;">
+                    <input type="radio" name="dataset" value="locations" checked="@(selectedDataset == "locations")" @onchange='() => selectedDataset = "locations"' />
+                    <div>
+                        <div style="font-weight:600;font-size:0.875rem;">Location Trail</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);">GPS track coordinates</div>
+                    </div>
+                </label>
+                <label style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;">
+                    <input type="radio" name="dataset" value="devices" checked="@(selectedDataset == "devices")" @onchange='() => selectedDataset = "devices"' />
+                    <div>
+                        <div style="font-weight:600;font-size:0.875rem;">Local Network</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);">LAN device inventory</div>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <label style="display:block;font-size:0.875rem;font-weight:600;margin-bottom:0.5rem;">Select Format</label>
+            <div style="display:flex;gap:1rem;">
+                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                    <input type="radio" name="format" value="csv" checked="@(selectedFormat == "csv")" @onchange='() => selectedFormat = "csv"' />
+                    <span>CSV (Spreadsheets / Analysis)</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                    <input type="radio" name="format" value="json" checked="@(selectedFormat == "json")" @onchange='() => selectedFormat = "json"' />
+                    <span>JSON (Structured Objects)</span>
+                </label>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+            <a href="/api/export/@selectedFormat?type=@selectedDataset" target="_blank" class="btn btn-primary" download>
+                📥 Download Export File (@selectedFormat.ToUpperInvariant())
+            </a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string selectedDataset = "everything";
+    private string selectedFormat = "json";
+}

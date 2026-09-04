@@ -1,0 +1,10 @@
+<div style="display:inline-flex;align-items:center;gap:0.45rem;font-size:0.8rem;font-weight:600;color:var(--text-secondary);">
+    <span class="pulse-dot @(IsWarning ? "amber" : (IsError ? "red" : ""))"></span>
+    @Text
+</div>
+
+@code {
+    [Parameter] public string Text { get; set; } = "Live";
+    [Parameter] public bool IsWarning { get; set; } = false;
+    [Parameter] public bool IsError { get; set; } = false;
+}

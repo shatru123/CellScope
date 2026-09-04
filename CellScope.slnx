@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CellScope.Api/CellScope.Api.csproj" />
+    <Project Path="src/CellScope.Application/CellScope.Application.csproj" />
+    <Project Path="src/CellScope.Desktop/CellScope.Desktop.csproj" />
+    <Project Path="src/CellScope.Domain/CellScope.Domain.csproj" />
+    <Project Path="src/CellScope.Infrastructure/CellScope.Infrastructure.csproj" />
+    <Project Path="src/CellScope.Mobile/CellScope.Mobile.csproj" />
+    <Project Path="src/CellScope.Web/CellScope.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CellScope.ApiTests/CellScope.ApiTests.csproj" />
+    <Project Path="tests/CellScope.IntegrationTests/CellScope.IntegrationTests.csproj" />
+    <Project Path="tests/CellScope.UnitTests/CellScope.UnitTests.csproj" />
+  </Folder>
+</Solution>

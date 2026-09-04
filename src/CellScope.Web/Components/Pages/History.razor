@@ -1,0 +1,85 @@
+@page "/history"
+@inject ICellularService CellularService
+@inject IDemoDataService DemoService
+
+<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">Cellular History</h1>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">Historical log of serving cell observations and coordinates</p>
+    </div>
+    <div style="display:flex;gap:0.5rem;">
+        <a href="/export" class="btn btn-outline btn-sm">💾 Export History</a>
+    </div>
+</div>
+
+<div class="noc-card">
+    <div class="noc-table-container">
+        <table class="noc-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Operator</th>
+                    <th>Technology</th>
+                    <th>Cell ID</th>
+                    <th>PCI</th>
+                    <th>TAC</th>
+                    <th>Band</th>
+                    <th>Signal Strength</th>
+                    <th>Quality</th>
+                    <th>Coordinates</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (snapshots.Count > 0)
+                {
+                    @foreach (var s in snapshots)
+                    {
+                        <tr>
+                            <td style="font-size:0.8rem;color:var(--text-muted);">@s.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td style="font-weight:600;">@s.OperatorName</td>
+                            <td><TechnologyBadge Technology="@s.RadioTechnology" /></td>
+                            <td style="font-family:var(--font-mono);font-weight:600;">@s.CellId</td>
+                            <td style="color:var(--accent-cyan);font-family:var(--font-mono);">@s.PhysicalCellId</td>
+                            <td>@s.TrackingAreaCode</td>
+                            <td>@(s.Band ?? "n78")</td>
+                            <td><SignalBadge Dbm="@s.SignalStrengthDbm" Technology="@s.RadioTechnology" /></td>
+                            <td>@(s.SignalQuality != null ? $"{s.SignalQuality} dB" : "N/A")</td>
+                            <td style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary);">
+                                @(s.Latitude.HasValue && s.Longitude.HasValue ? $"{s.Latitude.Value:F4}, {s.Longitude.Value:F4}" : "Unavailable")
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">
+                            No cellular history recorded yet. Connect a collector device or switch to Demo Mode.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<CellularSnapshotDto> snapshots = new List<CellularSnapshotDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            var list = new List<CellularSnapshotDto>();
+            for (int i = 0; i < 15; i++)
+            {
+                list.Add(DemoService.GenerateNextTick());
+            }
+            snapshots = list;
+        }
+        else
+        {
+            snapshots = await CellularService.GetHistoryAsync(limit: 100);
+        }
+    }
+}

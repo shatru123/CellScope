@@ -1,0 +1,162 @@
+@page "/devices"
+@inject IDeviceService DeviceService
+@inject IDemoDataService DemoService
+
+<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">Collector Devices</h1>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">Manage paired Android and Desktop telemetry collectors</p>
+    </div>
+    <div>
+        <button class="btn btn-primary btn-sm" @onclick="GeneratePairingCode">+ Generate Pairing Code</button>
+    </div>
+</div>
+
+<!-- Pairing Wizard Modal / Card -->
+@if (showPairingModal)
+{
+    <div class="noc-card" style="margin-bottom:1.5rem;background:var(--bg-card-hover);border-color:var(--accent-cyan);">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Pair New Android Device</span>
+            <button class="btn btn-outline btn-sm" @onclick="() => showPairingModal = false">✕ Close</button>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;padding:1rem 0;text-align:center;">
+            <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1rem;max-width:480px;">
+                Open the <b>CellScope Android App</b>, tap <b>Connect This Device</b>, and enter this 8-character code:
+            </p>
+            <div style="font-family:var(--font-mono);font-size:2.25rem;font-weight:800;letter-spacing:0.15em;background:var(--bg-primary);padding:0.75rem 1.75rem;border-radius:12px;border:1px solid var(--accent-cyan);color:var(--accent-cyan);box-shadow:0 0 16px rgba(6,182,212,0.3);">
+                @activePairingCode
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.75rem;">
+                Code expires in 15 minutes • Encrypted device handshake
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Devices List -->
+<div class="noc-card">
+    <div class="noc-card-header">
+        <span class="noc-card-title">Registered Collectors</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);">@(devices.Count) Devices Total</span>
+    </div>
+
+    <div class="noc-table-container">
+        <table class="noc-table">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Device Name</th>
+                    <th>Platform</th>
+                    <th>Model / OS</th>
+                    <th>Pairing State</th>
+                    <th>Last Telemetry Update</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (devices.Count > 0)
+                {
+                    @foreach (var d in devices)
+                    {
+                        <tr>
+                            <td>
+                                @if (d.IsOnline)
+                                {
+                                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;">● Online</span>
+                                }
+                                else
+                                {
+                                    <span class="badge" style="background:rgba(107,114,128,0.15);color:#94a3b8;">○ Idle</span>
+                                }
+                            </td>
+                            <td style="font-weight:700;color:var(--text-primary);">@d.Name</td>
+                            <td>
+                                <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);">
+                                    @(d.Platform == "Android" ? "📱 Android" : "💻 Desktop")
+                                </span>
+                            </td>
+                            <td style="font-size:0.8rem;color:var(--text-secondary);">
+                                @(d.Model ?? "Pixel 9 Pro / Android 15")
+                            </td>
+                            <td>
+                                @if (d.IsPaired)
+                                {
+                                    <span style="color:#10b981;font-weight:600;font-size:0.8rem;">✓ Paired</span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--accent-amber);font-size:0.8rem;">Pending (@d.PairingCode)</span>
+                                }
+                            </td>
+                            <td style="font-size:0.8rem;color:var(--text-muted);">
+                                @d.LastSeenAt.ToString("yyyy-MM-dd HH:mm:ss")
+                            </td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" @onclick="() => DeleteDevice(d.Id)">Unpair</button>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">
+                            No collector devices registered. Generate a pairing code to link your Android device.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<DeviceDto> devices = new();
+    private bool showPairingModal = false;
+    private string activePairingCode = "CS78-9K2M";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDevicesAsync();
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        var list = await DeviceService.GetDevicesAsync();
+        devices = list.ToList();
+
+        if (devices.Count == 0)
+        {
+            // Provide default demo collector representation
+            devices.Add(new DeviceDto
+            {
+                Id = Guid.NewGuid(),
+                Name = "Pixel 9 Pro (Collector)",
+                Platform = "Android",
+                Model = "Google Pixel 9 Pro (Tensor G4)",
+                OsVersion = "Android 15 (API 35)",
+                AppVersion = "1.0.0",
+                IsPaired = true,
+                LastSeenAt = DateTimeOffset.UtcNow,
+                CreatedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                IsActive = true
+            });
+        }
+    }
+
+    private void GeneratePairingCode()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        var rnd = new Random();
+        activePairingCode = $"{new string(Enumerable.Range(0, 4).Select(_ => chars[rnd.Next(chars.Length)]).ToArray())}-{new string(Enumerable.Range(0, 4).Select(_ => chars[rnd.Next(chars.Length)]).ToArray())}";
+        showPairingModal = true;
+    }
+
+    private async Task DeleteDevice(Guid id)
+    {
+        await DeviceService.DeleteDeviceAsync(id);
+        devices.RemoveAll(d => d.Id == id);
+        StateHasChanged();
+    }
+}

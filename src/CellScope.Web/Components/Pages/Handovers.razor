@@ -1,0 +1,88 @@
+@page "/handovers"
+@inject ICellularService CellularService
+@inject IDemoDataService DemoService
+
+<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">Cell Handovers</h1>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">Serving-cell transitions, radio technology changes, and signal deltas</p>
+    </div>
+    <div>
+        <span class="badge" style="background:rgba(139,92,246,0.15);color:#8b5cf6;border:1px solid rgba(139,92,246,0.3);">
+            @(handovers.Count) Recorded Handovers
+        </span>
+    </div>
+</div>
+
+<div class="noc-card">
+    <div class="noc-table-container">
+        <table class="noc-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Previous Cell</th>
+                    <th>Transition</th>
+                    <th>New Serving Cell</th>
+                    <th>Signal Before</th>
+                    <th>Signal After</th>
+                    <th>Delta</th>
+                    <th>Trigger Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (handovers.Count > 0)
+                {
+                    @foreach (var h in handovers)
+                    {
+                        int delta = (h.NewSignalDbm ?? 0) - (h.PreviousSignalDbm ?? 0);
+                        string deltaColor = delta >= 0 ? "#10b981" : "#ef4444";
+                        <tr>
+                            <td style="font-size:0.8rem;color:var(--text-muted);">@h.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>
+                                <div style="font-family:var(--font-mono);font-weight:600;">@h.PreviousCellId</div>
+                                <div style="font-size:0.75rem;color:var(--text-muted);">@(h.PreviousRadioTechnology ?? "5G NR")</div>
+                            </td>
+                            <td style="text-align:center;font-size:1.1rem;color:var(--accent-cyan);">➔</td>
+                            <td>
+                                <div style="font-family:var(--font-mono);font-weight:600;color:var(--accent-emerald);">@h.NewCellId</div>
+                                <div style="font-size:0.75rem;color:var(--text-muted);">@(h.NewRadioTechnology ?? "5G NR")</div>
+                            </td>
+                            <td><span style="color:var(--text-secondary);">@(h.PreviousSignalDbm != null ? $"{h.PreviousSignalDbm} dBm" : "N/A")</span></td>
+                            <td><span style="font-weight:600;color:var(--text-primary);">@(h.NewSignalDbm != null ? $"{h.NewSignalDbm} dBm" : "N/A")</span></td>
+                            <td>
+                                <span style="font-weight:700;color:@deltaColor;">
+                                    @(delta > 0 ? $"+{delta}" : $"{delta}") dB
+                                </span>
+                            </td>
+                            <td style="font-size:0.8rem;color:var(--text-secondary);">@h.TriggerReason</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">
+                            No cell handover events recorded yet. Handovers are triggered when the serving Cell ID changes.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<CellHandoverDto> handovers = new List<CellHandoverDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            handovers = DemoService.GetDemoHandovers();
+        }
+        else
+        {
+            handovers = await CellularService.GetHandoversAsync();
+        }
+    }
+}

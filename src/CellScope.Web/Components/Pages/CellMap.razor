@@ -1,0 +1,94 @@
+@page "/map"
+@inject ICellularService CellularService
+@inject ITowerService TowerService
+@inject IDemoDataService DemoService
+@inject IJSRuntime JS
+
+<div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">GIS Cell & Tower Map</h1>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">OpenStreetMap layers for serving cells, neighbor cells, known towers, and GPS path</p>
+    </div>
+    <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-outline btn-sm" @onclick="ReloadMap">🔄 Refresh Map</button>
+    </div>
+</div>
+
+<div class="noc-card" style="padding:0;overflow:hidden;position:relative;">
+    <!-- Map Header / Layer Toggles -->
+    <div style="padding:0.75rem 1.25rem;background-color:var(--bg-secondary);border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+            <span style="font-size:0.8rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;">Active Layers:</span>
+            <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);border:1px solid rgba(6,182,212,0.3);">📍 User GPS</span>
+            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);">📡 Serving Cell</span>
+            <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);">🗼 Known Towers</span>
+            <span class="badge" style="background:rgba(139,92,246,0.15);color:#8b5cf6;border:1px solid rgba(139,92,246,0.3);">〰️ GPS Trail</span>
+        </div>
+        <div style="font-size:0.8rem;color:var(--text-secondary);">
+            Coordinates: <span style="font-family:var(--font-mono);color:var(--text-primary);">@(snapshot?.Latitude?.ToString("F5") ?? "37.77490"), @(snapshot?.Longitude?.ToString("F5") ?? "-122.41940")</span>
+        </div>
+    </div>
+
+    <!-- Full Map Viewport -->
+    <div id="fullscreen-leaflet-map" style="width:100%;height:calc(100vh - 220px);background:#111827;"></div>
+</div>
+
+@code {
+    private CellularSnapshotDto? snapshot;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            double lat = snapshot?.Latitude ?? 37.7749;
+            double lon = snapshot?.Longitude ?? -122.4194;
+            await JS.InvokeVoidAsync("cellScopeMap.initMap", "fullscreen-leaflet-map", lat, lon, 14);
+            await UpdateMapAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            snapshot = DemoService.GenerateNextTick();
+        }
+        else
+        {
+            snapshot = await CellularService.GetCurrentSnapshotAsync();
+        }
+    }
+
+    private async Task ReloadMapAsync()
+    {
+        await LoadDataAsync();
+        await UpdateMapAsync();
+    }
+
+    private async Task ReloadMap() => await ReloadMapAsync();
+
+    private async Task UpdateMapAsync()
+    {
+        if (snapshot == null) return;
+
+        double lat = snapshot.Latitude ?? 37.7749;
+        double lon = snapshot.Longitude ?? -122.4194;
+
+        var towers = DemoService.IsDemoModeActive ? DemoService.GetDemoTowers() : await TowerService.GetNearbyTowersAsync(lat, lon);
+        var trail = DemoService.IsDemoModeActive ? DemoService.GetDemoTrail() : await CellularService.GetLocationTrailAsync();
+
+        await JS.InvokeVoidAsync("cellScopeMap.updateMap", "fullscreen-leaflet-map", new
+        {
+            userLat = lat,
+            userLon = lon,
+            servingCell = snapshot,
+            towers = towers,
+            trail = trail
+        });
+    }
+}

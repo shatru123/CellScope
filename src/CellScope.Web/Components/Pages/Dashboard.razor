@@ -1,0 +1,213 @@
+@page "/"
+@inject ICellularService CellularService
+@inject ITowerService TowerService
+@inject IDemoDataService DemoService
+@inject IJSRuntime JS
+
+<div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:0.25rem;">Network Overview</h1>
+        <p style="font-size:0.875rem;color:var(--text-secondary);">Real-time cellular metrics, serving cell details, and telemetry map</p>
+    </div>
+    <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-outline btn-sm" @onclick="RefreshSnapshot">🔄 Refresh</button>
+        <a href="/map" class="btn btn-primary btn-sm">🗺️ Full Map</a>
+    </div>
+</div>
+
+<!-- Top KPI Summary Cards -->
+<div class="grid-kpis">
+    <MetricCard Title="Current Technology" 
+                Value="@(currentSnapshot?.RadioTechnology ?? "5G NR")" 
+                BadgeText="Active" 
+                BadgeClass="badge-5g" 
+                Subtitle="@(currentSnapshot?.Band ?? "Band n78")" />
+
+    <MetricCard Title="Signal Strength" 
+                Value="@(currentSnapshot?.SignalStrengthDbm?.ToString() ?? "-82")" 
+                Unit="dBm" 
+                BadgeText="@(currentSnapshot?.SignalRating ?? "Good")" 
+                BadgeClass="badge-5g" 
+                ValueColor="@(currentSnapshot?.SignalColor ?? "#06B6D4")"
+                ShowProgressBar="true" 
+                ProgressPercentage="@(currentSnapshot?.SignalPercentage ?? 75)"
+                ProgressBarColor="@(currentSnapshot?.SignalColor ?? "#06B6D4")"
+                Subtitle="@($"Level {currentSnapshot?.SignalLevel ?? 3}/4 • Quality: {currentSnapshot?.SignalQuality ?? -9.5} dB")" />
+
+    <MetricCard Title="Operator" 
+                Value="@(currentSnapshot?.OperatorName ?? "Airtel / Global")" 
+                Subtitle="@($"MCC: {currentSnapshot?.Mcc ?? 310} • MNC: {currentSnapshot?.Mnc ?? 410}")" />
+
+    <MetricCard Title="Neighboring Cells" 
+                Value="@((currentSnapshot?.NeighborCells?.Count ?? 3).ToString())" 
+                Unit="Visible" 
+                Subtitle="3GPP Candidate Cells" />
+</div>
+
+<!-- Middle Section: Serving Cell & Mini Map -->
+<div class="grid-2col">
+    <!-- Mini Map -->
+    <MapPanel @ref="mapPanel" 
+              MapElementId="dashboard-mini-map" 
+              Title="Active Cell Geolocation & Nearby Towers" 
+              InitialLat="@(currentSnapshot?.Latitude ?? 37.7749)" 
+              InitialLon="@(currentSnapshot?.Longitude ?? -122.4194)" />
+
+    <!-- Serving Cell Inspector Card -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Serving Cell Telemetry</span>
+            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4);">● Serving</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0.85rem;font-size:0.875rem;">
+            <div style="display:flex;justify-content:space-between;padding-bottom:0.5rem;border-bottom:1px solid var(--border-color);">
+                <span style="color:var(--text-muted);">Cell ID (eNodeB / gNodeB)</span>
+                <span style="font-family:var(--font-mono);font-weight:600;color:var(--text-primary);">@(currentSnapshot?.CellId ?? "310410_12345")</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding-bottom:0.5rem;border-bottom:1px solid var(--border-color);">
+                <span style="color:var(--text-muted);">Physical Cell ID (PCI)</span>
+                <span style="font-family:var(--font-mono);font-weight:600;color:var(--accent-cyan);">@(currentSnapshot?.PhysicalCellId ?? "102")</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding-bottom:0.5rem;border-bottom:1px solid var(--border-color);">
+                <span style="color:var(--text-muted);">Tracking Area Code (TAC)</span>
+                <span style="font-family:var(--font-mono);font-weight:600;color:var(--text-primary);">@(currentSnapshot?.TrackingAreaCode ?? "54201")</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding-bottom:0.5rem;border-bottom:1px solid var(--border-color);">
+                <span style="color:var(--text-muted);">Frequency Channel</span>
+                <span style="font-weight:600;color:var(--text-primary);">@(currentSnapshot?.Frequency ?? "3500 MHz (n78)")</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding-bottom:0.5rem;border-bottom:1px solid var(--border-color);">
+                <span style="color:var(--text-muted);">Signal Quality (RSRQ)</span>
+                <span style="font-weight:600;color:var(--accent-cyan);">@(currentSnapshot?.SignalQuality != null ? $"{currentSnapshot.SignalQuality} dB" : "-9.2 dB")</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding-bottom:0.5rem;border-bottom:1px solid var(--border-color);">
+                <span style="color:var(--text-muted);">Roaming Status</span>
+                <span style="font-weight:600;color:var(--text-primary);">@(currentSnapshot?.IsRoaming == true ? "Roaming" : "Home Network")</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">Data Source</span>
+                <span style="font-size:0.75rem;background:var(--bg-secondary);padding:2px 6px;border-radius:4px;color:var(--text-secondary);">@(currentSnapshot?.DataSource ?? "Demo Generator")</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Section: Signal Trend & Neighbor Cells -->
+<div class="grid-equal-2col">
+    <!-- Signal Trend Card -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Live Signal Trend (Last 60 Minutes)</span>
+            <span style="font-size:0.75rem;color:var(--text-muted);">Sampling: 1 min</span>
+        </div>
+        <div id="dashboard-signal-chart" style="width:100%;height:180px;"></div>
+    </div>
+
+    <!-- Neighbor Cells Table -->
+    <div class="noc-card">
+        <div class="noc-card-header">
+            <span class="noc-card-title">Visible Neighbor Cells</span>
+            <a href="/live" class="btn btn-outline btn-sm">Inspect</a>
+        </div>
+        <div class="noc-table-container">
+            <table class="noc-table">
+                <thead>
+                    <tr>
+                        <th>Cell ID</th>
+                        <th>PCI</th>
+                        <th>Band</th>
+                        <th>Signal</th>
+                        <th>Quality</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (currentSnapshot?.NeighborCells != null && currentSnapshot.NeighborCells.Count > 0)
+                    {
+                        @foreach (var n in currentSnapshot.NeighborCells)
+                        {
+                            <tr>
+                                <td style="font-family:var(--font-mono);font-weight:600;">@n.CellId</td>
+                                <td style="color:var(--accent-cyan);">@n.PhysicalCellId</td>
+                                <td>@n.Band</td>
+                                <td><SignalBadge Dbm="@n.SignalStrengthDbm" Technology="@n.RadioTechnology" /></td>
+                                <td>@(n.SignalQuality != null ? $"{n.SignalQuality} dB" : "N/A")</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" style="text-align:center;color:var(--text-muted);">No neighbor cells reported by modem.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CellularSnapshotDto? currentSnapshot;
+    private MapPanel? mapPanel;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && currentSnapshot != null)
+        {
+            await RenderChartAndMapAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (DemoService.IsDemoModeActive)
+        {
+            currentSnapshot = DemoService.GenerateNextTick();
+        }
+        else
+        {
+            currentSnapshot = await CellularService.GetCurrentSnapshotAsync();
+        }
+    }
+
+    private async Task RefreshSnapshot()
+    {
+        await LoadDataAsync();
+        await RenderChartAndMapAsync();
+        StateHasChanged();
+    }
+
+    private async Task RenderChartAndMapAsync()
+    {
+        if (currentSnapshot == null) return;
+
+        // Render Map
+        var towers = DemoService.IsDemoModeActive ? DemoService.GetDemoTowers() : await TowerService.GetNearbyTowersAsync(currentSnapshot.Latitude ?? 37.7749, currentSnapshot.Longitude ?? -122.4194);
+        var trail = DemoService.IsDemoModeActive ? DemoService.GetDemoTrail() : await CellularService.GetLocationTrailAsync();
+
+        if (mapPanel != null)
+        {
+            await mapPanel.UpdateMapDataAsync(new
+            {
+                userLat = currentSnapshot.Latitude ?? 37.7749,
+                userLon = currentSnapshot.Longitude ?? -122.4194,
+                servingCell = currentSnapshot,
+                towers = towers,
+                trail = trail
+            });
+        }
+
+        // Render Chart
+        var analytics = DemoService.IsDemoModeActive ? DemoService.GetDemoAnalytics("1h") : null;
+        if (analytics != null && analytics.SignalStrengthTrend.Count > 0)
+        {
+            await JS.InvokeVoidAsync("cellScopeCharts.renderSignalTrend", "dashboard-signal-chart", analytics.SignalStrengthTrend, "Signal (dBm)", "#06b6d4");
+        }
+    }
+}
