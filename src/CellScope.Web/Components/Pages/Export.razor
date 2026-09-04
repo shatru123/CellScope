@@ -17,7 +17,7 @@
     <div style="display:flex;flex-direction:column;gap:1.25rem;">
         <div>
             <label style="display:block;font-size:0.875rem;font-weight:600;margin-bottom:0.5rem;">Select Dataset</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:0.75rem;">
                 <label style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;">
                     <input type="radio" name="dataset" value="everything" checked="@(selectedDataset == "everything")" @onchange='() => selectedDataset = "everything"' />
                     <div>
@@ -51,7 +51,7 @@
 
         <div>
             <label style="display:block;font-size:0.875rem;font-weight:600;margin-bottom:0.5rem;">Select Format</label>
-            <div style="display:flex;gap:1rem;">
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;">
                 <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
                     <input type="radio" name="format" value="csv" checked="@(selectedFormat == "csv")" @onchange='() => selectedFormat = "csv"' />
                     <span>CSV (Spreadsheets / Analysis)</span>

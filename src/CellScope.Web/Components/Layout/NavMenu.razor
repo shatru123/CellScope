@@ -11,6 +11,7 @@
     </div>
 
     <ul class="nav-links">
+        <li class="nav-section-title">Telemetry & Air Interface</li>
         <li class="nav-item" @onclick="CloseMenu">
             <NavLink href="" Match="NavLinkMatch.All">
                 <span class="nav-icon">📊</span>
@@ -21,12 +22,6 @@
             <NavLink href="live">
                 <span class="nav-icon">⚡</span>
                 <span>Live Network</span>
-            </NavLink>
-        </li>
-        <li class="nav-item" @onclick="CloseMenu">
-            <NavLink href="map">
-                <span class="nav-icon">🗺️</span>
-                <span>Cell Map</span>
             </NavLink>
         </li>
         <li class="nav-item" @onclick="CloseMenu">
@@ -42,21 +37,37 @@
             </NavLink>
         </li>
         <li class="nav-item" @onclick="CloseMenu">
+            <NavLink href="history">
+                <span class="nav-icon">📜</span>
+                <span>Cellular History</span>
+            </NavLink>
+        </li>
+
+        <li class="nav-section-title">Mapping & Local Network</li>
+        <li class="nav-item" @onclick="CloseMenu">
+            <NavLink href="map">
+                <span class="nav-icon">🗺️</span>
+                <span>Cell Map</span>
+            </NavLink>
+        </li>
+        <li class="nav-item" @onclick="CloseMenu">
+            <NavLink href="radio">
+                <span class="nav-icon">📡</span>
+                <span>Radio Workbench</span>
+            </NavLink>
+        </li>
+        <li class="nav-item" @onclick="CloseMenu">
             <NavLink href="network">
                 <span class="nav-icon">🌐</span>
                 <span>My Local Network</span>
             </NavLink>
         </li>
+
+        <li class="nav-section-title">Security & Collectors</li>
         <li class="nav-item" @onclick="CloseMenu">
-            <NavLink href="devices">
-                <span class="nav-icon">📱</span>
-                <span>Collector Devices</span>
-            </NavLink>
-        </li>
-        <li class="nav-item" @onclick="CloseMenu">
-            <NavLink href="history">
-                <span class="nav-icon">📜</span>
-                <span>Cellular History</span>
+            <NavLink href="security">
+                <span class="nav-icon">🛡️</span>
+                <span>3GPP Security</span>
             </NavLink>
         </li>
         <li class="nav-item" @onclick="CloseMenu">
@@ -66,17 +77,13 @@
             </NavLink>
         </li>
         <li class="nav-item" @onclick="CloseMenu">
-            <NavLink href="security">
-                <span class="nav-icon">🛡️</span>
-                <span>3GPP Security</span>
+            <NavLink href="devices">
+                <span class="nav-icon">📱</span>
+                <span>Collector Devices</span>
             </NavLink>
         </li>
-        <li class="nav-item" @onclick="CloseMenu">
-            <NavLink href="radio">
-                <span class="nav-icon">📡</span>
-                <span>Radio Workbench</span>
-            </NavLink>
-        </li>
+
+        <li class="nav-section-title">System & Tools</li>
         <li class="nav-item" @onclick="CloseMenu">
             <NavLink href="diagnostics">
                 <span class="nav-icon">🩺</span>

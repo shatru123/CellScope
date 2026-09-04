@@ -54,10 +54,11 @@
 <!-- Filter & Search Bar -->
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
     <!-- Category Pills -->
-    <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+    <div class="mobile-scroll-tabs" style="gap:0.4rem;padding-bottom:2px;">
         @foreach (var category in new[] { "All", "Router", "AccessPoint", "Laptop", "Phone", "TV", "IoT", "Server", "Printer" })
         {
             <button class="btn btn-sm @(selectedCategory == category ? "btn-primary" : "btn-outline")"
+                    style="white-space:nowrap;flex-shrink:0;"
                     @onclick="@(() => selectedCategory = category)">
                 @category
             </button>

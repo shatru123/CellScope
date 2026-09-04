@@ -1,4 +1,9 @@
-<div class="mobile-bottom-nav">
+@inject IDemoDataService DemoService
+@inject NavigationManager NavManager
+@implements IDisposable
+
+<!-- Fixed Mobile Bottom Navigation Bar -->
+<nav class="mobile-bottom-nav" aria-label="Mobile Navigation">
     <NavLink href="" Match="NavLinkMatch.All" class="mobile-nav-item">
         <span class="mobile-nav-icon">📊</span>
         <span>Overview</span>
@@ -11,28 +16,254 @@
         <span class="mobile-nav-icon">🗺️</span>
         <span>Map</span>
     </NavLink>
-    <NavLink href="analytics" class="mobile-nav-item">
-        <span class="mobile-nav-icon">📈</span>
-        <span>Signal</span>
+    <NavLink href="security" class="mobile-nav-item">
+        <span class="mobile-nav-icon">🛡️</span>
+        <span>Security</span>
     </NavLink>
     <NavLink href="network" class="mobile-nav-item">
         <span class="mobile-nav-icon">🌐</span>
         <span>LAN</span>
     </NavLink>
-    <button type="button" class="mobile-nav-item" @onclick="ToggleMenu">
-        <span class="mobile-nav-icon">☰</span>
-        <span>Menu</span>
+    <button type="button" class="mobile-nav-item @(isToolsSheetOpen ? "active" : "")" @onclick="ToggleToolsSheet" aria-label="Open Functions Hub">
+        <span class="mobile-nav-icon">🚀</span>
+        <span>Tools</span>
     </button>
-</div>
+</nav>
+
+<!-- Mobile Functions Hub Bottom Sheet & Backdrop -->
+@if (isToolsSheetOpen)
+{
+    <div class="mobile-tools-backdrop" @onclick="CloseToolsSheet"></div>
+    <div class="mobile-tools-sheet" role="dialog" aria-modal="true" aria-label="CellScope Tools & Functions Hub">
+        <div class="mobile-tools-header">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <span style="font-size:1.25rem;">🚀</span>
+                <div>
+                    <h3 style="font-size:0.95rem;font-weight:800;color:var(--text-primary);margin:0;letter-spacing:-0.01em;">
+                        CellScope Functions & Tools
+                    </h3>
+                    <span style="font-size:0.65rem;color:var(--text-muted);">
+                        All 14 telecom telemetry & cryptanalysis modules
+                    </span>
+                </div>
+            </div>
+            <button type="button" class="mobile-drawer-close-btn" @onclick="CloseToolsSheet" aria-label="Close Functions Hub">✕</button>
+        </div>
+
+        <div class="mobile-tools-scroll">
+            <!-- Fast Mobile Mode & Action Switcher -->
+            <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:0.75rem;display:flex;flex-direction:column;gap:0.5rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;">Hardware / NOC Mode</span>
+                    <span class="badge" style="font-size:0.65rem;@(DemoService.IsDemoModeActive ? "background:rgba(245,158,11,0.2);color:#f59e0b;" : "background:rgba(16,185,129,0.2);color:#10b981;")">
+                        @(DemoService.IsDemoModeActive ? "📡 Simulation Active" : "🔒 Real Hardware Active")
+                    </span>
+                </div>
+                <div style="display:flex;gap:0.4rem;">
+                    <button type="button" class="btn btn-sm" 
+                            style="flex:1;font-size:0.725rem;border-radius:8px;font-weight:700;@(!DemoService.IsDemoModeActive ? "background:#10b981;color:#0b0f19;border:none;" : "background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-color);")"
+                            @onclick="@(() => SetMode(false))">
+                        🔒 Strict Real Mode
+                    </button>
+                    <button type="button" class="btn btn-sm" 
+                            style="flex:1;font-size:0.725rem;border-radius:8px;font-weight:700;@(DemoService.IsDemoModeActive ? "background:#f59e0b;color:#0b0f19;border:none;" : "background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-color);")"
+                            @onclick="@(() => SetMode(true))">
+                        📡 NOC Simulation
+                    </button>
+                </div>
+            </div>
+
+            <!-- Group 1: Telemetry & Air Interface -->
+            <div>
+                <div class="mobile-tools-category-title">
+                    <span>📡</span> Telemetry & Air Interface
+                </div>
+                <div class="mobile-tools-grid">
+                    <a href="" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:var(--accent-cyan);">📊</div>
+                        <div>
+                            <div class="mobile-tool-name">Overview</div>
+                            <div class="mobile-tool-desc">NOC Dashboard & KPIs</div>
+                        </div>
+                    </a>
+                    <a href="live" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#f59e0b;">⚡</div>
+                        <div>
+                            <div class="mobile-tool-name">Live Stream</div>
+                            <div class="mobile-tool-desc">High-Frequency Modem</div>
+                        </div>
+                    </a>
+                    <a href="analytics" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#10b981;">📈</div>
+                        <div>
+                            <div class="mobile-tool-name">Signal Analytics</div>
+                            <div class="mobile-tool-desc">RSRP Trends & Charts</div>
+                        </div>
+                    </a>
+                    <a href="handovers" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#8b5cf6;">🔄</div>
+                        <div>
+                            <div class="mobile-tool-name">Cell Handovers</div>
+                            <div class="mobile-tool-desc">Cell Switching & Deltas</div>
+                        </div>
+                    </a>
+                    <a href="history" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#3b82f6;">📜</div>
+                        <div>
+                            <div class="mobile-tool-name">Cellular History</div>
+                            <div class="mobile-tool-desc">Archive & Coordinates</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Group 2: Mapping & Local Network -->
+            <div>
+                <div class="mobile-tools-category-title">
+                    <span>🗺️</span> Mapping & Local Network
+                </div>
+                <div class="mobile-tools-grid">
+                    <a href="map" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:var(--accent-cyan);">🗺️</div>
+                        <div>
+                            <div class="mobile-tool-name">GIS Cell Map</div>
+                            <div class="mobile-tool-desc">Towers & Geolocation</div>
+                        </div>
+                    </a>
+                    <a href="radio" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#f59e0b;">📡</div>
+                        <div>
+                            <div class="mobile-tool-name">Radio Workbench</div>
+                            <div class="mobile-tool-desc">Carrier Aggregation</div>
+                        </div>
+                    </a>
+                    <a href="network" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#10b981;">🌐</div>
+                        <div>
+                            <div class="mobile-tool-name">My Local LAN</div>
+                            <div class="mobile-tool-desc">Subnet & Host Control</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Group 3: Security & Collectors -->
+            <div>
+                <div class="mobile-tools-category-title">
+                    <span>🛡️</span> Security & Collectors
+                </div>
+                <div class="mobile-tools-grid">
+                    <a href="security" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#ef4444;">🛡️</div>
+                        <div>
+                            <div class="mobile-tool-name">3GPP Security</div>
+                            <div class="mobile-tool-desc">5G-AKA, AES & KDF</div>
+                        </div>
+                    </a>
+                    <a href="privacy" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#10b981;">🔒</div>
+                        <div>
+                            <div class="mobile-tool-name">Privacy Center</div>
+                            <div class="mobile-tool-desc">Sandbox & Local Privacy</div>
+                        </div>
+                    </a>
+                    <a href="devices" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:var(--accent-cyan);">📱</div>
+                        <div>
+                            <div class="mobile-tool-name">Collector Devices</div>
+                            <div class="mobile-tool-desc">Android Pairing Hub</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Group 4: System & Tools -->
+            <div>
+                <div class="mobile-tools-category-title">
+                    <span>⚙️</span> System & Tools
+                </div>
+                <div class="mobile-tools-grid">
+                    <a href="diagnostics" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#10b981;">🩺</div>
+                        <div>
+                            <div class="mobile-tool-name">Diagnostics</div>
+                            <div class="mobile-tool-desc">API, DB & SignalR Health</div>
+                        </div>
+                    </a>
+                    <a href="export" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#3b82f6;">💾</div>
+                        <div>
+                            <div class="mobile-tool-name">Export Data</div>
+                            <div class="mobile-tool-desc">CSV & JSON Downloads</div>
+                        </div>
+                    </a>
+                    <a href="landing" class="mobile-tool-tile" @onclick="CloseToolsSheet">
+                        <div class="mobile-tool-icon" style="color:#8b5cf6;">🚀</div>
+                        <div>
+                            <div class="mobile-tool-name">Product Vision</div>
+                            <div class="mobile-tool-desc">AI Autonomous NOC</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Developer Attribution Card -->
+            <div style="background:rgba(11,15,25,0.7);padding:0.75rem 1rem;border-radius:10px;border:1px solid var(--border-color);font-size:0.7rem;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-weight:700;color:var(--text-secondary);">Created by Shatrughna Ambhore</div>
+                    <div>+91 9604466334</div>
+                </div>
+                <a href="mailto:ambhoreshatrughna@gmail.com" class="btn btn-outline btn-sm" style="font-size:0.65rem;padding:3px 7px;">
+                    Email Author
+                </a>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter] public EventCallback OnToggleMenu { get; set; }
 
-    private async Task ToggleMenu()
+    private bool isToolsSheetOpen = false;
+
+    protected override void OnInitialized()
     {
-        if (OnToggleMenu.HasDelegate)
+        DemoService.OnModeChanged += HandleModeChanged;
+        NavManager.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleModeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (isToolsSheetOpen)
         {
-            await OnToggleMenu.InvokeAsync();
+            isToolsSheetOpen = false;
+            InvokeAsync(StateHasChanged);
         }
+    }
+
+    private void ToggleToolsSheet()
+    {
+        isToolsSheetOpen = !isToolsSheetOpen;
+    }
+
+    private void CloseToolsSheet()
+    {
+        isToolsSheetOpen = false;
+    }
+
+    private void SetMode(bool isDemoMode)
+    {
+        DemoService.SetMode(isDemoMode);
+    }
+
+    public void Dispose()
+    {
+        DemoService.OnModeChanged -= HandleModeChanged;
+        NavManager.LocationChanged -= HandleLocationChanged;
     }
 }
