@@ -11,6 +11,8 @@ namespace CellScope.Desktop;
 
 public class Program
 {
+    private static Process? _serverProcess;
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -27,13 +29,18 @@ public class Program
         Console.WriteLine(@"
 ╔════════════════════════════════════════════════════════════════════════════════════════════╗
 ║                                     CELLSCOPE DESKTOP                                      ║
-║                     Carrier-Grade Cellular & Network Intelligence Engine                   ║
+║                     Cross-Platform Native Desktop Application (macOS & Windows)            ║
 ║                     Created by: Shatrughna Ambhore (ambhoreshatrughna@gmail.com)          ║
 ║                                  Phone: +91 96044 66334                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════════════╝");
         Console.ResetColor();
 
-        Console.WriteLine($"Starting native Desktop Window pointing to {targetUrl}...");
+        // 1. Check if backend is running; if not, auto-launch it
+        EnsureBackendServerRunning(targetUrl);
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"\n🚀 Launching Native Desktop GUI Window ({RuntimeInformation.OSDescription})...");
+        Console.ResetColor();
 
         try
         {
@@ -51,7 +58,7 @@ public class Program
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"\n[Native Window Notification] {ex.Message}");
-            Console.WriteLine($"Opening default system browser window to: {targetUrl}");
+            Console.WriteLine($"Opening application interface in default browser: {targetUrl}");
             Console.ResetColor();
 
             try
@@ -68,6 +75,66 @@ public class Program
                 {
                     Process.Start("xdg-open", targetUrl);
                 }
+            }
+            catch { }
+        }
+        finally
+        {
+            CleanupServer();
+        }
+    }
+
+    private static void EnsureBackendServerRunning(string targetUrl)
+    {
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(1) };
+            var res = client.GetAsync($"{targetUrl.TrimEnd('/')}/health").GetAwaiter().GetResult();
+            if (res.IsSuccessStatusCode)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"✓ CellScope Backend Server is already active on {targetUrl}.");
+                Console.ResetColor();
+                return;
+            }
+        }
+        catch { }
+
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"Starting backend server engine on {targetUrl}...");
+        Console.ResetColor();
+
+        try
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string webProjPath = Path.GetFullPath(Path.Combine(baseDir, "../../../src/CellScope.Web/CellScope.Web.csproj"));
+            
+            if (File.Exists(webProjPath))
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"run --project \"{webProjPath}\" --urls \"{targetUrl}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                _serverProcess = Process.Start(psi);
+                Thread.Sleep(2500);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Notice: {ex.Message}");
+        }
+    }
+
+    private static void CleanupServer()
+    {
+        if (_serverProcess != null && !_serverProcess.HasExited)
+        {
+            try
+            {
+                _serverProcess.Kill(true);
             }
             catch { }
         }
