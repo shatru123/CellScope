@@ -50,5 +50,28 @@ public class TowerServiceIntegrationTests
         devices[0].DeviceName.Should().NotBeNullOrWhiteSpace();
         devices[0].ConnectionState.Should().NotBeNullOrWhiteSpace();
     }
+
+    [Fact]
+    public async Task GetActiveCallsForTower_ReturnsOngoingVoiceAndVideoCalls()
+    {
+        var options = new DbContextOptionsBuilder<CellScopeDbContext>()
+            .UseSqlite($"Data Source=file:{Guid.NewGuid()}?mode=memory&cache=shared")
+            .Options;
+
+        using var db = new CellScopeDbContext(options);
+        db.Database.OpenConnection();
+        db.Database.EnsureCreated();
+
+        var towerService = new TowerService(db);
+        var calls = await towerService.GetActiveCallsForTowerAsync("310410_12345");
+
+        calls.Should().NotBeNull();
+        calls.Should().NotBeEmpty();
+        calls.Should().HaveCountGreaterThanOrEqualTo(10);
+        calls.All(c => !string.IsNullOrEmpty(c.CallerNumber) && !string.IsNullOrEmpty(c.ReceiverNumber)).Should().BeTrue();
+        calls.All(c => c.MosScore >= 1.0 && c.MosScore <= 5.0).Should().BeTrue();
+        calls.Any(c => c.CallType.Contains("VoNR") || c.CallType.Contains("VoLTE")).Should().BeTrue();
+    }
 }
+
 

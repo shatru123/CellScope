@@ -58,4 +58,17 @@ public class TowersController : ControllerBase
         var devices = await _towerService.GetConnectedDevicesForTowerAsync(cellId, cancellationToken);
         return Ok(devices);
     }
+
+    [HttpGet("{cellId}/calls")]
+    public async Task<ActionResult<IReadOnlyList<ActiveCallSessionDto>>> GetTowerCalls(string cellId, CancellationToken cancellationToken)
+    {
+        if (_demoDataService.IsDemoModeActive)
+        {
+            return Ok(_demoDataService.GetDemoActiveCallsForTower(cellId));
+        }
+
+        var calls = await _towerService.GetActiveCallsForTowerAsync(cellId, cancellationToken);
+        return Ok(calls);
+    }
 }
+

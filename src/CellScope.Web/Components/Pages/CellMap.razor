@@ -137,139 +137,392 @@
     </div>
 </div>
 
-<!-- Modal / Drawer: Detailed Connected Devices Inspector for Selected Tower -->
+<!-- Modal / Drawer: Detailed Connected Devices & Ongoing Calls Inspector for Selected Tower -->
 @if (selectedTower != null)
 {
     <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(5px);">
-        <div class="noc-card" style="width:100%;max-width:920px;max-height:90vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--accent-amber);box-shadow:0 24px 60px rgba(0,0,0,0.85);position:relative;">
+        <div class="noc-card" style="width:100%;max-width:980px;max-height:92vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--accent-amber);box-shadow:0 24px 60px rgba(0,0,0,0.85);position:relative;display:flex;flex-direction:column;">
             
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;">
+            <!-- Modal Header -->
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;">
                 <div>
                     <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
                         <span style="font-size:1.4rem;">🗼</span>
                         <h2 style="font-size:1.35rem;font-weight:800;color:var(--text-primary);margin:0;">
-                            @(selectedTower.OperatorName ?? "Macro Base Station") — Sector Subscribers
+                            @(selectedTower.OperatorName ?? "Macro Base Station") — Sector Telemetry
                         </h2>
                     </div>
                     <p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">
-                        Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedTower.CellId</span> • PCI: @(selectedTower.PhysicalCellId ?? "N/A") • Tech: <span style="color:var(--accent-amber);font-weight:700;">@selectedTower.RadioTechnology</span> • Distance: @Math.Round(selectedTower.DistanceMeters)m
+                        Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedTower.CellId</span> • PCI: @(selectedTower.PhysicalCellId ?? "N/A") • Tech: <span style="color:var(--accent-amber);font-weight:700;">@selectedTower.RadioTechnology</span> • Distance: @Math.Round(selectedTower.DistanceMeters)m • Location: <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@selectedTower.Latitude.ToString("F4"), @selectedTower.Longitude.ToString("F4")</span>
                     </p>
                 </div>
                 <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">✕ Close</button>
             </div>
 
             <!-- Sector High-Density Capacity KPIs -->
-            <div class="grid-kpis" style="margin-bottom:1.25rem;">
+            <div class="grid-kpis" style="margin-bottom:1rem;">
                 <MetricCard Title="Total Connected UEs" Value="@selectedTower.TotalConnectedDevices.ToString("N0")" Unit="Active" ValueColor="#10b981" Subtitle="Connected Devices in Sector" />
+                <MetricCard Title="Active Voice & Video Calls" Value="@((selectedTower.ActiveCalls?.Count ?? selectedTower.VoLteVoiceChannels).ToString("N0"))" Unit="Calls" ValueColor="#f59e0b" Subtitle="VoNR / VoLTE Active Calls" />
                 <MetricCard Title="Active Data Bearers" Value="@selectedTower.ActiveDataSessions.ToString("N0")" Unit="Sessions" ValueColor="var(--accent-cyan)" Subtitle="5G/4G High-Speed Sessions" />
-                <MetricCard Title="VoLTE / VoNR Channels" Value="@selectedTower.VoLteVoiceChannels.ToString("N0")" Unit="Calls" ValueColor="#f59e0b" Subtitle="Active Voice Channels" />
                 <MetricCard Title="Sector Throughput" Value="@($"{selectedTower.AggregateThroughputMbps}")" Unit="Mbps" ValueColor="#8b5cf6" Subtitle="@($"PRB Load: {selectedTower.PrbUtilizationPercent}%")" />
             </div>
 
-            <!-- Subscriber Filter & Search -->
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
-                <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
-                    @foreach (var cat in new[] { "All", "Smartphone", "Laptop", "IoT", "Drone" })
-                    {
-                        <button class="btn btn-sm @(towerCategoryFilter == cat ? "btn-primary" : "btn-outline")"
-                                style="font-size:0.75rem;padding:3px 8px;"
-                                @onclick="@(() => towerCategoryFilter = cat)">
-                            @cat
-                        </button>
-                    }
-                </div>
-                <div style="min-width:200px;">
-                    <input type="text" class="input-field" style="width:100%;font-size:0.75rem;padding:3px 8px;"
-                           placeholder="🔎 Search subscriber, model, IMEI..."
-                           @bind="towerSearchTerm" @bind:event="oninput" />
-                </div>
+            <!-- Modal Sub-Tabs Navigation -->
+            <div style="display:flex;gap:0.5rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+                <button class="btn btn-sm @(towerModalTab == "subscribers" ? "btn-primary" : "btn-outline")"
+                        style="font-size:0.8rem;font-weight:700;"
+                        @onclick="@(() => towerModalTab = "subscribers")">
+                    📱 Connected UEs (@(selectedTower.ConnectedDevices?.Count ?? 0) Nodes / @selectedTower.TotalConnectedDevices.ToString("N0") Sector UEs)
+                </button>
+                <button class="btn btn-sm @(towerModalTab == "calls" ? "btn-primary" : "btn-outline")"
+                        style="font-size:0.8rem;font-weight:700;"
+                        @onclick="@(() => towerModalTab = "calls")">
+                    📞 Ongoing Voice & Video Calls (@(selectedTower.ActiveCalls?.Count ?? 0) Active Sessions)
+                </button>
+                <button class="btn btn-sm @(towerModalTab == "bearers" ? "btn-primary" : "btn-outline")"
+                        style="font-size:0.8rem;font-weight:700;"
+                        @onclick="@(() => towerModalTab = "bearers")">
+                    📶 5G Bearers & 5QI/QCI Policies
+                </button>
             </div>
 
-            <!-- Connected Devices Table -->
-            <div style="margin-bottom:1rem;">
-                <div class="noc-table-container" style="max-height:320px;overflow-y:auto;">
-                    <table class="noc-table">
-                        <thead>
-                            <tr>
-                                <th>Status</th>
-                                <th>Subscriber / Device</th>
-                                <th>Mobile No. (MSISDN)</th>
-                                <th>Masked IMEI / IMSI</th>
-                                <th>Type</th>
-                                <th>Modulation & Speed</th>
-                                <th>Signal Strength</th>
-                                <th>Distance / TA</th>
-                                <th>Band</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (FilteredTowerDevices.Any())
-                            {
-                                @foreach (var dev in FilteredTowerDevices)
+            <!-- SUB-TAB 1: Connected Subscriber Devices (50+ UEs) -->
+            @if (towerModalTab == "subscribers")
+            {
+                <!-- Subscriber Filter & Search -->
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+                    <div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;">
+                        <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-right:2px;">Filter:</span>
+                        @foreach (var cat in new[] { "All", "Smartphone", "Laptop", "IoT", "Drone" })
+                        {
+                            <button class="btn btn-sm @(towerCategoryFilter == cat ? "btn-primary" : "btn-outline")"
+                                    style="font-size:0.725rem;padding:2px 7px;"
+                                    @onclick="@(() => towerCategoryFilter = cat)">
+                                @cat
+                            </button>
+                        }
+                    </div>
+                    <div style="display:flex;gap:0.5rem;align-items:center;">
+                        <span style="font-size:0.725rem;color:var(--text-muted);">Rows:</span>
+                        <select class="input-field" style="font-size:0.725rem;padding:2px 6px;width:auto;" @bind="towerPageSize">
+                            <option value="15">15 rows</option>
+                            <option value="30">30 rows</option>
+                            <option value="50">50 rows</option>
+                            <option value="999">All (@(selectedTower.ConnectedDevices?.Count ?? 0))</option>
+                        </select>
+                        <div style="min-width:210px;">
+                            <input type="text" class="input-field" style="width:100%;font-size:0.75rem;padding:3px 8px;"
+                                   placeholder="🔎 Search subscriber, number, IMEI..."
+                                   @bind="towerSearchTerm" @bind:event="oninput" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connected Devices Table -->
+                <div style="margin-bottom:1rem;flex:1;">
+                    <div class="noc-table-container" style="max-height:360px;overflow-y:auto;">
+                        <table class="noc-table">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Subscriber / Device</th>
+                                    <th>Mobile No. (MSISDN)</th>
+                                    <th>Masked IMEI / IMSI</th>
+                                    <th>Type</th>
+                                    <th>Modulation & Speed</th>
+                                    <th>Signal Strength</th>
+                                    <th>Distance / TA</th>
+                                    <th>Band</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (PaginatedTowerDevices.Any())
+                                {
+                                    @foreach (var dev in PaginatedTowerDevices)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;font-weight:700;">
+                                                    ● RRC_CONN
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight:700;color:var(--text-primary);font-size:0.8rem;">@dev.DeviceName</div>
+                                                <div style="font-size:0.7rem;color:var(--text-muted);">@dev.Model (@dev.Platform)</div>
+                                            </td>
+                                            <td>
+                                                <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-family:var(--font-mono);font-weight:700;font-size:0.75rem;">
+                                                    📱 @(dev.PhoneNumber ?? "+91 96044 66334")
+                                                </span>
+                                            </td>
+                                            <td style="font-family:var(--font-mono);font-size:0.75rem;color:var(--accent-cyan);">
+                                                @(dev.MaskedImei ?? "86491005****128")
+                                            </td>
+                                            <td>
+                                                <span class="badge" style="background:var(--bg-secondary);color:var(--text-secondary);font-size:0.7rem;">
+                                                    @dev.DeviceType
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight:700;color:var(--text-primary);font-size:0.75rem;">@dev.ThroughputMbps Mbps</div>
+                                                <div style="font-size:0.65rem;color:var(--text-muted);">@dev.Modulation</div>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight:700;color:@dev.SignalColor;font-size:0.8rem;">@dev.SignalStrengthDbm dBm</div>
+                                                <div style="font-size:0.65rem;color:var(--text-muted);">Quality: @(dev.SignalQuality != null ? $"{dev.SignalQuality} dB" : "Good")</div>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight:600;color:var(--text-primary);font-size:0.75rem;">@dev.EstimatedDistanceMeters m</div>
+                                                <div style="font-size:0.65rem;color:var(--text-muted);">TA: @dev.TimingAdvance</div>
+                                            </td>
+                                            <td style="font-size:0.75rem;color:var(--text-secondary);">
+                                                @dev.Band
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
                                 {
                                     <tr>
-                                        <td>
-                                            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;font-weight:700;">
-                                                ● RRC_CONN
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div style="font-weight:700;color:var(--text-primary);font-size:0.8rem;">@dev.DeviceName</div>
-                                            <div style="font-size:0.7rem;color:var(--text-muted);">@dev.Model (@dev.Platform)</div>
-                                        </td>
-                                        <td>
-                                            <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-family:var(--font-mono);font-weight:700;font-size:0.75rem;">
-                                                📱 @(dev.PhoneNumber ?? "+91 96044 66334")
-                                            </span>
-                                        </td>
-                                        <td style="font-family:var(--font-mono);font-size:0.75rem;color:var(--accent-cyan);">
-                                            @(dev.MaskedImei ?? "86491005****128")
-                                        </td>
-                                        <td>
-                                            <span class="badge" style="background:var(--bg-secondary);color:var(--text-secondary);font-size:0.7rem;">
-                                                @dev.DeviceType
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div style="font-weight:700;color:var(--text-primary);font-size:0.75rem;">@dev.ThroughputMbps Mbps</div>
-                                            <div style="font-size:0.65rem;color:var(--text-muted);">@dev.Modulation</div>
-                                        </td>
-                                        <td>
-                                            <div style="font-weight:700;color:@dev.SignalColor;font-size:0.8rem;">@dev.SignalStrengthDbm dBm</div>
-                                            <div style="font-size:0.65rem;color:var(--text-muted);">Quality: @(dev.SignalQuality != null ? $"{dev.SignalQuality} dB" : "Good")</div>
-                                        </td>
-                                        <td>
-                                            <div style="font-weight:600;color:var(--text-primary);font-size:0.75rem;">@dev.EstimatedDistanceMeters m</div>
-                                            <div style="font-size:0.65rem;color:var(--text-muted);">TA: @dev.TimingAdvance</div>
-                                        </td>
-                                        <td style="font-size:0.75rem;color:var(--text-secondary);">
-                                            @dev.Band
+                                        <td colspan="9" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
+                                            No active subscriber devices match the search criteria.
                                         </td>
                                     </tr>
                                 }
-                            }
-                            else
-                            {
-                                <tr>
-                                    <td colspan="9" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
-                                        No active subscriber devices match the search criteria.
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
 
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:0.75rem;color:var(--text-muted);">
-                    Showing @FilteredTowerDevices.Count() active telemetry nodes representing @selectedTower.TotalConnectedDevices.ToString("N0") sector UEs
-                </span>
-                <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
-            </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                    <span style="font-size:0.75rem;color:var(--text-muted);">
+                        Showing @PaginatedTowerDevices.Count() of @FilteredTowerDevices.Count() filtered telemetry nodes (Representing @selectedTower.TotalConnectedDevices.ToString("N0") sector UEs)
+                    </span>
+                    <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
+                </div>
+            }
+
+            <!-- SUB-TAB 2: Ongoing Voice & Video Calls (VoNR / VoLTE Sessions) -->
+            @if (towerModalTab == "calls")
+            {
+                <!-- Ongoing Call KPIs -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));gap:0.75rem;margin-bottom:0.75rem;">
+                    <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
+                        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Ongoing Voice Calls</div>
+                        <div style="font-size:1.25rem;font-weight:800;color:#10b981;">@(selectedTower.ActiveCalls?.Count ?? 0) Active</div>
+                    </div>
+                    <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
+                        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">5G VoNR Ultra-HD</div>
+                        <div style="font-size:1.25rem;font-weight:800;color:var(--accent-cyan);">@(selectedTower.ActiveCalls?.Count(c => c.CallType.Contains("VoNR")) ?? 0) Calls</div>
+                    </div>
+                    <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
+                        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">4G VoLTE / VoWiFi</div>
+                        <div style="font-size:1.25rem;font-weight:800;color:#f59e0b;">@(selectedTower.ActiveCalls?.Count(c => c.CallType.Contains("VoLTE") || c.CallType.Contains("VoWiFi")) ?? 0) Calls</div>
+                    </div>
+                    <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:8px;border:1px solid var(--border-color);">
+                        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Avg Audio Quality (MOS)</div>
+                        <div style="font-size:1.25rem;font-weight:800;color:#8b5cf6;">@(selectedTower.ActiveCalls != null && selectedTower.ActiveCalls.Any() ? selectedTower.ActiveCalls.Average(c => c.MosScore).ToString("F1") : "4.4") / 5.0 ⭐</div>
+                    </div>
+                </div>
+
+                <!-- Call Search & Filter -->
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+                    <div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;">
+                        <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-right:2px;">Call Type:</span>
+                        @foreach (var type in new[] { "All", "VoNR", "VoLTE", "VoWiFi", "Video", "MCPTT" })
+                        {
+                            <button class="btn btn-sm @(towerCallTypeFilter == type ? "btn-primary" : "btn-outline")"
+                                    style="font-size:0.725rem;padding:2px 7px;"
+                                    @onclick="@(() => towerCallTypeFilter = type)">
+                                @type
+                            </button>
+                        }
+                    </div>
+                    <div style="min-width:240px;">
+                        <input type="text" class="input-field" style="width:100%;font-size:0.75rem;padding:3px 8px;"
+                               placeholder="🔎 Search caller, recipient, phone #, codec..."
+                               @bind="towerCallSearchTerm" @bind:event="oninput" />
+                    </div>
+                </div>
+
+                <!-- Ongoing Calls Table -->
+                <div style="margin-bottom:1rem;flex:1;">
+                    <div class="noc-table-container" style="max-height:360px;overflow-y:auto;">
+                        <table class="noc-table">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Caller (From MSISDN)</th>
+                                    <th style="text-align:center;">Route</th>
+                                    <th>Recipient (To MSISDN)</th>
+                                    <th>Call Protocol / Type</th>
+                                    <th>Duration</th>
+                                    <th>Audio Codec</th>
+                                    <th>MOS Quality</th>
+                                    <th>Radio Bearer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (FilteredTowerCalls.Any())
+                                {
+                                    @foreach (var call in FilteredTowerCalls)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @if (call.Status.Contains("Active"))
+                                                {
+                                                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;font-weight:700;white-space:nowrap;">
+                                                        ● Active In-Call
+                                                    </span>
+                                                }
+                                                else if (call.Status.Contains("Ringing"))
+                                                {
+                                                    <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-size:0.7rem;font-weight:700;white-space:nowrap;">
+                                                        🔔 Ringing
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-size:0.7rem;font-weight:700;white-space:nowrap;">
+                                                        ⚡ @call.Status
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div style="font-family:var(--font-mono);font-weight:800;color:var(--accent-cyan);font-size:0.8rem;">
+                                                    📞 @call.CallerNumber
+                                                </div>
+                                                <div style="font-size:0.7rem;color:var(--text-secondary);">@call.CallerName</div>
+                                            </td>
+                                            <td style="text-align:center;font-size:1.1rem;color:var(--accent-amber);font-weight:800;">
+                                                ➔
+                                            </td>
+                                            <td>
+                                                <div style="font-family:var(--font-mono);font-weight:800;color:#10b981;font-size:0.8rem;">
+                                                    📱 @call.ReceiverNumber
+                                                </div>
+                                                <div style="font-size:0.7rem;color:var(--text-secondary);">@call.ReceiverName</div>
+                                            </td>
+                                            <td>
+                                                <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-weight:700;font-size:0.7rem;">
+                                                    @call.CallType
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span style="font-family:var(--font-mono);font-weight:700;color:var(--text-primary);font-size:0.75rem;">
+                                                    ⏱️ @call.Duration
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight:600;color:var(--text-primary);font-size:0.75rem;">@call.Codec</div>
+                                                <div style="font-size:0.65rem;color:var(--text-muted);">SIP/IMS Voice Profile</div>
+                                            </td>
+                                            <td>
+                                                <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-weight:800;font-size:0.75rem;">
+                                                    ★ @call.MosScore / 5.0
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span style="font-size:0.7rem;color:var(--text-muted);font-family:var(--font-mono);">
+                                                    @call.RadioBearer
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="9" style="text-align:center;padding:1.5rem;color:var(--text-muted);">
+                                            No active voice or video call sessions match the search filter.
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                    <span style="font-size:0.75rem;color:var(--text-muted);">
+                        Showing @FilteredTowerCalls.Count() ongoing voice/video calls on Sector Base Station @selectedTower.CellId
+                    </span>
+                    <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
+                </div>
+            }
+
+            <!-- SUB-TAB 3: 5G Bearers & 5QI/QCI Policies -->
+            @if (towerModalTab == "bearers")
+            {
+                <div style="padding:0.5rem 0;display:flex;flex-direction:column;gap:1rem;">
+                    <div style="background:var(--bg-secondary);padding:1rem;border-radius:8px;border:1px solid var(--border-color);">
+                        <h4 style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-top:0;margin-bottom:0.5rem;">
+                            📡 3GPP QoS Flow Allocations (5QI / QCI Bearers)
+                        </h4>
+                        <p style="font-size:0.775rem;color:var(--text-secondary);margin-bottom:0.75rem;">
+                            Radio Resource Control (RRC) assigns dedicated guaranteed bit rate (GBR) flows to ensure pristine voice clarity, ultra-low jitter, and high priority for mission-critical and voice subscribers.
+                        </p>
+                        
+                        <div class="noc-table-container">
+                            <table class="noc-table">
+                                <thead>
+                                    <tr>
+                                        <th>5QI / QCI</th>
+                                        <th>Resource Type</th>
+                                        <th>Priority</th>
+                                        <th>Packet Delay Budget</th>
+                                        <th>Packet Error Rate</th>
+                                        <th>Service Application</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="badge" style="background:rgba(16,185,129,0.2);color:#10b981;font-weight:800;">5QI 1 / QCI 1</span></td>
+                                        <td>GBR (Guaranteed)</td>
+                                        <td>20 (High)</td>
+                                        <td>100 ms</td>
+                                        <td>10⁻²</td>
+                                        <td><strong>Conversational IMS Voice (VoNR / VoLTE)</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge" style="background:rgba(6,182,212,0.2);color:var(--accent-cyan);font-weight:800;">5QI 2 / QCI 2</span></td>
+                                        <td>GBR (Guaranteed)</td>
+                                        <td>40</td>
+                                        <td>150 ms</td>
+                                        <td>10⁻³</td>
+                                        <td>Conversational Video (Live Video Calling)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge" style="background:rgba(245,158,11,0.2);color:#f59e0b;font-weight:800;">5QI 65 / QCI 65</span></td>
+                                        <td>GBR (Mission Critical)</td>
+                                        <td>7 (Highest)</td>
+                                        <td>75 ms</td>
+                                        <td>10⁻²</td>
+                                        <td>Mission Critical Push-to-Talk (MCPTT Voice)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge" style="background:var(--bg-card);color:var(--text-secondary);">5QI 9 / QCI 9</span></td>
+                                        <td>Non-GBR (Best Effort)</td>
+                                        <td>90</td>
+                                        <td>300 ms</td>
+                                        <td>10⁻⁶</td>
+                                        <td>Default Internet, TCP/UDP Browsing, PDU Sessions</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:flex-end;">
+                        <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
+                    </div>
+                </div>
+            }
+
         </div>
     </div>
 }
+
 
 <!-- Modal / Drawer: Detailed Connected Devices Inspector for Selected LAN Device -->
 @if (selectedLanDevice != null)
@@ -343,8 +596,12 @@
     private TowerLocationDto? selectedTower;
     private NetworkDeviceDto? selectedLanDevice;
     private string activeTab = "towers";
+    private string towerModalTab = "subscribers";
     private string towerCategoryFilter = "All";
     private string towerSearchTerm = "";
+    private int towerPageSize = 50;
+    private string towerCallTypeFilter = "All";
+    private string towerCallSearchTerm = "";
     private double currentLat = 37.7749;
     private double currentLon = -122.4194;
     private DotNetObjectReference<CellMap>? dotNetRef;
@@ -372,6 +629,46 @@
                     d.MaskedImei.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase) ||
                     d.Band.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase) ||
                     d.DeviceType.Contains(towerSearchTerm, StringComparison.OrdinalIgnoreCase)
+                );
+            }
+
+            return query;
+        }
+    }
+
+    private IEnumerable<TowerConnectedDeviceDto> PaginatedTowerDevices
+    {
+        get
+        {
+            var filtered = FilteredTowerDevices;
+            if (towerPageSize >= 999) return filtered;
+            return filtered.Take(towerPageSize);
+        }
+    }
+
+    private IEnumerable<ActiveCallSessionDto> FilteredTowerCalls
+    {
+        get
+        {
+            if (selectedTower?.ActiveCalls == null) return Enumerable.Empty<ActiveCallSessionDto>();
+
+            var query = selectedTower.ActiveCalls.AsEnumerable();
+
+            if (towerCallTypeFilter != "All")
+            {
+                query = query.Where(c => c.CallType.Contains(towerCallTypeFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(towerCallSearchTerm))
+            {
+                query = query.Where(c =>
+                    c.CallerNumber.Contains(towerCallSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    c.CallerName.Contains(towerCallSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    c.ReceiverNumber.Contains(towerCallSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    c.ReceiverName.Contains(towerCallSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    c.CallType.Contains(towerCallSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    c.Codec.Contains(towerCallSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    c.Status.Contains(towerCallSearchTerm, StringComparison.OrdinalIgnoreCase)
                 );
             }
 
@@ -467,11 +764,20 @@
             selectedTower = towersList[0];
         }
 
-        if (selectedTower != null && (selectedTower.ConnectedDevices == null || selectedTower.ConnectedDevices.Count == 0))
+        if (selectedTower != null)
         {
-            var devs = await TowerService.GetConnectedDevicesForTowerAsync(selectedTower.CellId);
-            selectedTower.ConnectedDevices = devs.ToList();
+            if (selectedTower.ConnectedDevices == null || selectedTower.ConnectedDevices.Count == 0)
+            {
+                var devs = await TowerService.GetConnectedDevicesForTowerAsync(selectedTower.CellId);
+                selectedTower.ConnectedDevices = devs.ToList();
+            }
+            if (selectedTower.ActiveCalls == null || selectedTower.ActiveCalls.Count == 0)
+            {
+                var calls = await TowerService.GetActiveCallsForTowerAsync(selectedTower.CellId);
+                selectedTower.ActiveCalls = calls.ToList();
+            }
         }
+        towerModalTab = "subscribers";
         StateHasChanged();
     }
 

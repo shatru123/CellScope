@@ -111,6 +111,27 @@ public class TowerLocationDto
     public double PrbUtilizationPercent { get; set; } = 76.5;
 
     public List<TowerConnectedDeviceDto> ConnectedDevices { get; set; } = new();
+    public List<ActiveCallSessionDto> ActiveCalls { get; set; } = new();
+}
+
+public class ActiveCallSessionDto
+{
+    public Guid SessionId { get; set; } = Guid.NewGuid();
+    public string CallerNumber { get; set; } = string.Empty; // From Number (MSISDN)
+    public string CallerName { get; set; } = string.Empty;
+    public string ReceiverNumber { get; set; } = string.Empty; // To Number (MSISDN)
+    public string ReceiverName { get; set; } = string.Empty;
+    public string CallType { get; set; } = "VoLTE HD"; // VoLTE HD, VoNR 5G Ultra-HD, VoWiFi, Video Call 5G, MCPTT
+    public string Status { get; set; } = "Active (Connected)"; // Active (Connected), Ringing, Establishing, Handover in Progress
+    public string Duration { get; set; } = "02:15";
+    public int DurationSeconds { get; set; } = 135;
+    public string Codec { get; set; } = "EVS-SWB 24.4 kbps";
+    public double MosScore { get; set; } = 4.4; // Mean opinion score (1.0 - 5.0)
+    public string RadioBearer { get; set; } = "QCI-1 / 5QI-1 (Conversational Voice)";
+    public string CellId { get; set; } = string.Empty;
+    public string SignalRating { get; set; } = "Excellent";
+    public string SignalColor { get; set; } = "#10B981";
+    public DateTimeOffset StartedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public class TowerConnectedDeviceDto

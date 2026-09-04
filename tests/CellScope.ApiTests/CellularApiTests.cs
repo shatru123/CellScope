@@ -75,5 +75,21 @@ public class CellularApiTests : IClassFixture<CellScopeTestFactory>
         devices.Should().NotBeEmpty();
         devices![0].DeviceName.Should().NotBeNullOrWhiteSpace();
     }
+
+    [Fact]
+    public async Task GetTowerCalls_ReturnsActiveCallSessions()
+    {
+        var response = await _client.GetAsync("/api/towers/310410_12345/calls");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var calls = await response.Content.ReadFromJsonAsync<List<ActiveCallSessionDto>>();
+        calls.Should().NotBeNull();
+        calls.Should().NotBeEmpty();
+        calls.Should().HaveCountGreaterThanOrEqualTo(10);
+        calls![0].CallerNumber.Should().NotBeNullOrWhiteSpace();
+        calls![0].ReceiverNumber.Should().NotBeNullOrWhiteSpace();
+        calls![0].CallType.Should().NotBeNullOrWhiteSpace();
+    }
 }
+
 

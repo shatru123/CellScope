@@ -208,7 +208,7 @@ window.cellScopeMap = {
             }
         }
 
-        // 3. Known Public Telecom Towers & Attached Connected Devices
+        // 3. Known Public Telecom Towers & Attached Connected Devices & Calls
         if (data.towers && Array.isArray(data.towers)) {
             entry.towerMarkers.forEach(m => m.remove());
             entry.towerMarkers = [];
@@ -219,6 +219,7 @@ window.cellScopeMap = {
                 const voLteChannels = (t.voLteVoiceChannels || t.VoLteVoiceChannels || 310).toLocaleString();
                 const throughput = (t.aggregateThroughputMbps || t.AggregateThroughputMbps || 540);
                 const devList = t.connectedDevices || t.ConnectedDevices || [];
+                const callList = t.activeCalls || t.ActiveCalls || [];
                 const distText = t.distanceMeters ? ` • ${Math.round(t.distanceMeters)}m` : '';
 
                 const towerIcon = L.divIcon({
@@ -227,9 +228,30 @@ window.cellScopeMap = {
                     iconAnchor: [50, 13]
                 });
 
-                // Build connected devices HTML snippet
+                // Build connected devices & active calls HTML snippet
+                let callSnippet = '';
+                if (callList.length > 0) {
+                    callSnippet = `
+                        <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);padding:6px;border-radius:6px;margin-bottom:6px;font-size:10px;">
+                            <div style="font-weight:800;color:#10b981;display:flex;justify-content:space-between;">
+                                <span>📞 Ongoing Calls (${callList.length} Active):</span>
+                                <span>VoNR / VoLTE</span>
+                            </div>
+                            <div style="margin-top:3px;display:flex;flex-direction:column;gap:2px;">
+                                ${callList.slice(0, 2).map(c => `
+                                    <div style="font-size:9px;color:#f8fafc;display:flex;justify-content:space-between;">
+                                        <span><b>${c.callerNumber || c.CallerNumber}</b> ➔ <b>${c.receiverNumber || c.ReceiverNumber}</b></span>
+                                        <span style="color:#fbbf24;">${c.callType || c.CallType}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
                 let devSnippet = `
                     <div style="margin-top:8px;padding-top:6px;border-top:1px solid #1f2d42;">
+                        ${callSnippet}
                         <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);padding:6px;border-radius:6px;margin-bottom:6px;font-size:10px;">
                             <div style="font-weight:800;color:#fbbf24;display:flex;justify-content:space-between;">
                                 <span>📱 Attached Sector Load:</span>
@@ -239,10 +261,10 @@ window.cellScopeMap = {
                                 Data Bearers: <b>${activeSessions}</b> • Voice: <b>${voLteChannels}</b> • <b>${throughput} Mbps</b> DL
                             </div>
                         </div>
-                        <div style="font-size:10px;font-weight:700;color:#f59e0b;text-transform:uppercase;margin-bottom:4px;">Active Telemetry Subscribers (${devList.length} Sample Nodes):</div>
-                        <div style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;">`;
+                        <div style="font-size:10px;font-weight:700;color:#f59e0b;text-transform:uppercase;margin-bottom:4px;">Sample Subscribers (${devList.length} Nodes):</div>
+                        <div style="display:flex;flex-direction:column;gap:4px;max-height:100px;overflow-y:auto;">`;
                 
-                devList.forEach(dev => {
+                devList.slice(0, 4).forEach(dev => {
                     const phoneText = (dev.phoneNumber || dev.PhoneNumber) ? `<span style="color:#06b6d4;font-family:monospace;font-size:8.5px;">• 📱 ${dev.phoneNumber || dev.PhoneNumber}</span>` : '';
                     devSnippet += `<div style="background:#111827;padding:3px 6px;border-radius:4px;border:1px solid #1f2d42;font-size:10px;">
                         <div style="display:flex;justify-content:space-between;font-weight:600;color:#f8fafc;">
@@ -259,7 +281,7 @@ window.cellScopeMap = {
                 devSnippet += `</div></div>`;
 
                 const popupHtml = `
-                    <div style="min-width:240px;">
+                    <div style="min-width:250px;">
                         <b>🗼 Macro Base Station / Cellular Tower</b><br>
                         <b>Cell ID:</b> <span style="font-family:monospace;color:#06b6d4;">${t.cellId}</span><br>
                         <b>Operator:</b> ${t.operatorName || 'Telecom Carrier'}<br>
@@ -268,14 +290,14 @@ window.cellScopeMap = {
                         <b>Distance:</b> ${t.distanceMeters ? Math.round(t.distanceMeters) + ' meters' : 'Nearby'}<br>
                         ${devSnippet}
                         <button onclick="window.cellScopeMap.selectTower('${elementId}', '${t.cellId}')" style="margin-top:8px;width:100%;background:#f59e0b;color:#0b0f19;border:none;border-radius:5px;padding:6px 8px;font-weight:800;font-size:11px;cursor:pointer;">
-                            ⚡ Inspect All ${totalUes} Connected UEs
+                            ⚡ Inspect All ${totalUes} UEs & Ongoing Calls
                         </button>
                     </div>
                 `;
 
                 const m = L.marker([t.latitude, t.longitude], { icon: towerIcon })
                     .addTo(map)
-                    .bindPopup(popupHtml, { maxWidth: 280 });
+                    .bindPopup(popupHtml, { maxWidth: 300 });
 
                 m.on('click', () => {
                     window.cellScopeMap.selectTower(elementId, t.cellId);
