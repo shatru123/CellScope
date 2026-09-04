@@ -4,6 +4,7 @@
 @inject ITowerService TowerService
 @inject ILocalNetworkService NetworkService
 @inject IDemoDataService DemoService
+@inject ICellularRadioAnalysisService RadioService
 @inject IJSRuntime JS
 
 <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
@@ -206,15 +207,35 @@
                         @onclick="@(() => towerModalTab = "subscribers")">
                     📱 Connected UEs (@(selectedTower.ConnectedDevices?.Count ?? 0) Nodes / @selectedTower.TotalConnectedDevices.ToString("N0") Sector UEs)
                 </button>
+                <button class="btn btn-sm @(towerModalTab == "capacity" ? "btn-primary" : "btn-outline")"
+                        style="font-size:0.8rem;font-weight:700;"
+                        @onclick="@(() => towerModalTab = "capacity")">
+                    ⚡ Cell Load & Capacity
+                </button>
+                <button class="btn btn-sm @(towerModalTab == "threat" ? "btn-primary" : "btn-outline")"
+                        style="font-size:0.8rem;font-weight:700;"
+                        @onclick="@(() => towerModalTab = "threat")">
+                    🛡️ Rogue Base Station Shield
+                </button>
+                <button class="btn btn-sm @(towerModalTab == "sib" ? "btn-primary" : "btn-outline")"
+                        style="font-size:0.8rem;font-weight:700;"
+                        @onclick="@(() => towerModalTab = "sib")">
+                    📡 SIB & Frequency
+                </button>
+                <button class="btn btn-sm @(towerModalTab == "propagation" ? "btn-primary" : "btn-outline")"
+                        style="font-size:0.8rem;font-weight:700;"
+                        @onclick="@(() => towerModalTab = "propagation")">
+                    🗺️ RF Sectors & Propagation
+                </button>
                 <button class="btn btn-sm @(towerModalTab == "calls" ? "btn-primary" : "btn-outline")"
                         style="font-size:0.8rem;font-weight:700;"
                         @onclick="@(() => towerModalTab = "calls")">
-                    📞 Ongoing Voice & Video Calls (@(selectedTower.ActiveCalls?.Count ?? 0) Active Sessions)
+                    📞 Voice & Video Calls (@(selectedTower.ActiveCalls?.Count ?? 0))
                 </button>
                 <button class="btn btn-sm @(towerModalTab == "bearers" ? "btn-primary" : "btn-outline")"
                         style="font-size:0.8rem;font-weight:700;"
                         @onclick="@(() => towerModalTab = "bearers")">
-                    📶 5G Bearers & 5QI/QCI Policies
+                    📶 5G Bearers & 5QI
                 </button>
             </div>
 
@@ -351,6 +372,247 @@
                     </span>
                     <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
                 </div>
+            }
+
+            <!-- SUB-TAB: Cell Load & Capacity Analysis -->
+            @if (towerModalTab == "capacity")
+            {
+                @if (selectedTowerCapacity != null)
+                {
+                    <div style="display:flex;flex-direction:column;gap:1rem;">
+                        <div class="grid-kpis">
+                            <MetricCard Title="Estimated Cell Load" Value="@($"{selectedTowerCapacity.EstimatedLoadPercent:F1}%")" Unit="@selectedTowerCapacity.CongestionLevel" ValueColor="@selectedTowerCapacity.CongestionColor" Subtitle="Derived from RSRQ relation" />
+                            <MetricCard Title="PRB Utilization" Value="@($"{selectedTowerCapacity.PrbUtilizationPercent:F1}%")" Unit="PRB" ValueColor="var(--accent-cyan)" Subtitle="Physical Resource Blocks in use" />
+                            <MetricCard Title="Channel Quality (CQI)" Value="@($"{selectedTowerCapacity.ChannelQualityIndicator}")" Unit="CQI / 15" ValueColor="#f59e0b" Subtitle="@($"Modulation: {selectedTowerCapacity.ModulationScheme}")" />
+                            <MetricCard Title="Available Throughput" Value="@($"{selectedTowerCapacity.EstimatedAvailableThroughputMbps:F0}")" Unit="Mbps" ValueColor="#10b981" Subtitle="@($"Max Peak: {selectedTowerCapacity.EstimatedMaxThroughputMbps:F0} Mbps")" />
+                        </div>
+
+                        <div style="background:var(--bg-secondary);padding:1rem;border-radius:8px;border:1px solid var(--border-color);">
+                            <h4 style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-top:0;margin-bottom:0.5rem;">
+                                📊 Radio Channel Quality & Spectral Efficiency
+                            </h4>
+                            <div class="noc-table-container">
+                                <table class="noc-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Radio Metric</th>
+                                            <th>Measured Value</th>
+                                            <th>Signal Quality Assessment</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><b>RSRP (Signal Power)</b></td>
+                                            <td style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:700;">@selectedTowerCapacity.RsrpDbm dBm</td>
+                                            <td>@(selectedTowerCapacity.RsrpDbm >= -90 ? "🟢 Strong Signal" : "🟡 Moderate")</td>
+                                        </tr>
+                                        <tr>
+                                            <td><b>RSRQ (Signal Quality)</b></td>
+                                            <td style="font-family:var(--font-mono);color:#f59e0b;font-weight:700;">@selectedTowerCapacity.RsrqDb dB</td>
+                                            <td>@(selectedTowerCapacity.RsrqDb >= -10 ? "🟢 Light Load" : (selectedTowerCapacity.RsrqDb >= -14 ? "🟡 Moderate Load" : "🔴 Heavy Traffic"))</td>
+                                        </tr>
+                                        <tr>
+                                            <td><b>SINR (Spectral Efficiency)</b></td>
+                                            <td style="font-family:var(--font-mono);color:#10b981;font-weight:700;">@selectedTowerCapacity.SinrDb dB</td>
+                                            <td>@(selectedTowerCapacity.SinrDb >= 15 ? "🟢 256-QAM Supported" : "🟡 64-QAM / QPSK")</td>
+                                        </tr>
+                                        <tr>
+                                            <td><b>Subscriber Density</b></td>
+                                            <td style="font-family:var(--font-mono);color:#8b5cf6;font-weight:700;">@selectedTowerCapacity.EstimatedActiveUeDensity UEs/km²</td>
+                                            <td>Estimated active users in sector</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-size:0.75rem;color:var(--text-muted);">
+                                💡 Verdict: @selectedTowerCapacity.PerformanceVerdict
+                            </span>
+                            <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
+                        </div>
+                    </div>
+                }
+            }
+
+            <!-- SUB-TAB: Rogue Base Station & Threat Shield -->
+            @if (towerModalTab == "threat")
+            {
+                @if (selectedTowerThreat != null)
+                {
+                    <div style="display:flex;flex-direction:column;gap:1rem;">
+                        <div style="padding:1rem;background:var(--bg-secondary);border-radius:8px;border-left:5px solid @selectedTowerThreat.StatusColor;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+                            <div>
+                                <div style="font-size:1.1rem;font-weight:800;color:@selectedTowerThreat.StatusColor;">
+                                    @(selectedTowerThreat.IsRogueBaseStationSuspected ? "⚠️ SUSPECTED ROGUE BASE STATION" : "🛡️ CELLULAR BASE STATION VERIFIED")
+                                </div>
+                                <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:2px;">
+                                    @selectedTowerThreat.SecurityStatus
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);font-weight:700;">Threat Risk Index</div>
+                                <div style="font-size:1.5rem;font-weight:900;color:@selectedTowerThreat.StatusColor;">
+                                    @selectedTowerThreat.ThreatScore <span style="font-size:0.8rem;color:var(--text-muted);">/ 100</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background:var(--bg-secondary);padding:1rem;border-radius:8px;border:1px solid var(--border-color);">
+                            <h4 style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-top:0;margin-bottom:0.5rem;">
+                                🔍 3GPP Security Anomaly Signatures
+                            </h4>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:0.75rem;">
+                                @foreach (var a in selectedTowerThreat.Anomalies)
+                                {
+                                    <div style="background:var(--bg-card);border:1px solid @(a.IsTriggered ? "#ef4444" : "rgba(16,185,129,0.3)");border-radius:6px;padding:0.75rem;">
+                                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                                            <strong style="font-size:0.8rem;color:var(--text-primary);">@a.RuleName</strong>
+                                            <span class="badge" style="background:@a.SeverityColor;color:#0b0f19;font-size:0.65rem;font-weight:800;">@a.Severity</span>
+                                        </div>
+                                        <div style="font-size:0.725rem;color:var(--text-secondary);margin-bottom:0.3rem;">@a.Description</div>
+                                        <div style="font-size:0.675rem;color:var(--text-muted);background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;"><b>Impact:</b> @a.TechnicalImpact</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-size:0.75rem;color:var(--text-muted);">
+                                🔒 Active Ciphering: <strong style="color:var(--accent-cyan);">@selectedTowerThreat.CipheringAlgorithm</strong> • Neighbors: <strong style="color:#f59e0b;">@selectedTowerThreat.NeighborCellCount cells</strong>
+                            </span>
+                            <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
+                        </div>
+                    </div>
+                }
+            }
+
+            <!-- SUB-TAB: SIB Broadcast & Frequency Parameters -->
+            @if (towerModalTab == "sib")
+            {
+                @if (selectedTowerSib != null)
+                {
+                    <div style="display:flex;flex-direction:column;gap:1rem;">
+                        <div class="grid-kpis">
+                            <MetricCard Title="3GPP Operating Band" Value="@selectedTowerSib.OperatingBand" Unit="@selectedTowerSib.RadioTechnology" ValueColor="var(--accent-cyan)" Subtitle="@selectedTowerSib.BandDescription" />
+                            <MetricCard Title="Downlink Frequency" Value="@($"{selectedTowerSib.DownlinkFrequencyMhz:F1}")" Unit="MHz" ValueColor="#10b981" Subtitle="@selectedTowerSib.DuplexMode" />
+                            <MetricCard Title="Channel Number" Value="@($"{selectedTowerSib.ChannelNumber}")" Unit="@selectedTowerSib.ChannelType" ValueColor="#f59e0b" Subtitle="@($"Bandwidth: {selectedTowerSib.ChannelBandwidthMhz} MHz")" />
+                            <MetricCard Title="Timing Advance Distance" Value="@($"{selectedTowerSib.TimingAdvanceDistanceMeters:F0}")" Unit="m" ValueColor="#8b5cf6" Subtitle="@($"Delay: {selectedTowerSib.PropagationDelayMicroseconds} µs")" />
+                        </div>
+
+                        <div style="background:var(--bg-secondary);padding:1rem;border-radius:8px;border:1px solid var(--border-color);">
+                            <h4 style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-top:0;margin-bottom:0.5rem;">
+                                📜 Decoded System Information Blocks (SIBs)
+                            </h4>
+                            <div class="noc-table-container" style="max-height:220px;overflow-y:auto;">
+                                <table class="noc-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width:200px;">SIB Message</th>
+                                            <th>Decoded 3GPP Information Elements (IEs)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var kvp in selectedTowerSib.DecodedSibBlocks)
+                                        {
+                                            <tr>
+                                                <td style="font-weight:700;color:var(--accent-cyan);">@kvp.Key</td>
+                                                <td style="font-family:var(--font-mono);font-size:0.75rem;">@kvp.Value</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-size:0.75rem;color:var(--text-muted);">
+                                📐 S-Criteria: Q-RxLevMin = <b>@selectedTowerSib.QRxLevMinDbm dBm</b> • <span style="color:#10b981;font-weight:700;">@(selectedTowerSib.IsCellSelectionCriteriaMet ? "✅ Suitable Cell" : "❌ Unsuitable")</span>
+                            </span>
+                            <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
+                        </div>
+                    </div>
+                }
+            }
+
+            <!-- SUB-TAB: RF Propagation & Antenna Sectors -->
+            @if (towerModalTab == "propagation")
+            {
+                @if (selectedTowerPropagation != null)
+                {
+                    <div style="display:flex;flex-direction:column;gap:1rem;">
+                        <div class="grid-kpis">
+                            <MetricCard Title="Antenna Height" Value="@($"{selectedTowerPropagation.AntennaHeightMeters}")" Unit="m" ValueColor="var(--accent-cyan)" Subtitle="Tower Mast Height" />
+                            <MetricCard Title="Max Coverage Radius" Value="@($"{selectedTowerPropagation.MaxCoverageRadiusMeters:F0}")" Unit="m" ValueColor="#10b981" Subtitle="COST-231 Urban Path Loss" />
+                            <MetricCard Title="Total EIRP" Value="@($"{selectedTowerPropagation.TotalEffectiveIsotropicRadiatedPowerDbm}")" Unit="dBm" ValueColor="#f59e0b" Subtitle="~40W Radiated Power" />
+                            <MetricCard Title="Path Loss Exponent" Value="@($"{selectedTowerPropagation.UrbanPathLossExponent}")" Unit="γ" ValueColor="#8b5cf6" Subtitle="Urban Clutter Environment" />
+                        </div>
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                            <!-- Sectors -->
+                            <div style="background:var(--bg-secondary);padding:1rem;border-radius:8px;border:1px solid var(--border-color);">
+                                <h4 style="font-size:0.85rem;font-weight:700;color:var(--text-primary);margin-top:0;margin-bottom:0.5rem;">
+                                    🗼 3-Sector Antenna Azimuths
+                                </h4>
+                                <div class="noc-table-container">
+                                    <table class="noc-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Sector</th>
+                                                <th>Azimuth</th>
+                                                <th>Gain</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var s in selectedTowerPropagation.Sectors)
+                                            {
+                                                <tr>
+                                                    <td style="font-weight:700;color:var(--accent-cyan);">@s.SectorName</td>
+                                                    <td style="font-family:var(--font-mono);color:#f59e0b;">@s.AzimuthDegrees°</td>
+                                                    <td style="color:#10b981;">@s.MainLobeGainDbi dBi</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Contour Rings -->
+                            <div style="background:var(--bg-secondary);padding:1rem;border-radius:8px;border:1px solid var(--border-color);">
+                                <h4 style="font-size:0.85rem;font-weight:700;color:var(--text-primary);margin-top:0;margin-bottom:0.5rem;">
+                                    📡 RSRP Signal Decay Contour Rings
+                                </h4>
+                                <div class="noc-table-container">
+                                    <table class="noc-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Signal Quality</th>
+                                                <th>Radius</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var r in selectedTowerPropagation.ContourRings)
+                                            {
+                                                <tr>
+                                                    <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:@r.ColorHex;margin-right:4px;"></span> <b>@r.Rating</b></td>
+                                                    <td style="font-family:var(--font-mono);color:var(--accent-cyan);">@r.RadiusMeters m</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <button class="btn btn-primary btn-sm" @onclick="ProjectSelectedTowerPropagationOnMapAsync">
+                                🗺️ Project Radiation Pattern & Rings onto Map
+                            </button>
+                            <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">Close Inspector</button>
+                        </div>
+                    </div>
+                }
             }
 
             <!-- SUB-TAB 2: Ongoing Voice & Video Calls (VoNR / VoLTE Sessions) -->
@@ -685,6 +947,10 @@
     private List<TowerLocationDto> towersList = new();
     private TowerLocationDto? selectedTower;
     private NetworkDeviceDto? selectedLanDevice;
+    private CellCapacityDto? selectedTowerCapacity;
+    private CellThreatAnalysisDto? selectedTowerThreat;
+    private SibAnalysisDto? selectedTowerSib;
+    private RfPropagationModelDto? selectedTowerPropagation;
     private string activeTab = "towers";
     private string towerModalTab = "subscribers";
     private string towerCategoryFilter = "All";
@@ -888,9 +1154,31 @@
                 var calls = await TowerService.GetActiveCallsForTowerAsync(selectedTower.CellId);
                 selectedTower.ActiveCalls = calls.ToList();
             }
+
+            // Compute 3GPP Radio Analytics for Selected Tower
+            selectedTowerCapacity = RadioService.CalculateCellLoad(snapshot, selectedTower);
+            selectedTowerThreat = RadioService.AnalyzeCellThreats(snapshot, selectedTower, snapshot?.NeighborCells);
+            selectedTowerSib = RadioService.DecodeSibAndChannel(snapshot, selectedTower);
+            selectedTowerPropagation = RadioService.CalculateRfPropagation(selectedTower);
         }
+        else
+        {
+            selectedTowerCapacity = null;
+            selectedTowerThreat = null;
+            selectedTowerSib = null;
+            selectedTowerPropagation = null;
+        }
+
         towerModalTab = "subscribers";
         StateHasChanged();
+    }
+
+    private async Task ProjectSelectedTowerPropagationOnMapAsync()
+    {
+        if (selectedTowerPropagation != null)
+        {
+            await JS.InvokeVoidAsync("cellScopeMap.renderPropagationLayers", "fullscreen-leaflet-map", selectedTowerPropagation);
+        }
     }
 
     public void SelectTower(string cellId)
