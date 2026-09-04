@@ -146,6 +146,17 @@ Access the dashboard at `http://localhost:5000`.
 
 ---
 
+## 👨‍💻 Author & Creator
+
+**Shatrughna Ambhore**
+- 📧 **Email:** [ambhoreshatrughna@gmail.com](mailto:ambhoreshatrughna@gmail.com)
+- 📞 **Phone:** [+91 9604466334](tel:+919604466334)
+- 🌐 **GitHub:** [@shatru123](https://github.com/shatru123)
+- 📦 **Repository:** [https://github.com/shatru123/CellScope](https://github.com/shatru123/CellScope)
+
+---
+
 ## ⚖️ License
 
 Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
+Copyright © 2026 Shatrughna Ambhore. All rights reserved.

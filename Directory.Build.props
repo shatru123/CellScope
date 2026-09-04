@@ -7,9 +7,9 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <NoWarn>$(NoWarn);NU1901;NU1902;NU1903;NU1904</NoWarn>
     <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
-    <Authors>CellScope Team</Authors>
-    <Company>CellScope</Company>
+    <Authors>Shatrughna Ambhore</Authors>
+    <Company>Shatrughna Ambhore</Company>
     <Product>CellScope - Cellular &amp; Local-Network Intelligence</Product>
-    <Copyright>Copyright © 2026 CellScope</Copyright>
+    <Copyright>Copyright © 2026 Shatrughna Ambhore (ambhoreshatrughna@gmail.com). All rights reserved.</Copyright>
   </PropertyGroup>
 </Project>
