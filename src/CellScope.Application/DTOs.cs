@@ -99,6 +99,10 @@ public class TowerLocationDto
     public string Confidence { get; set; } = "Medium";
     public string Source { get; set; } = "Open/public dataset";
     public string? SourceReference { get; set; }
+    public string Area { get; set; } = string.Empty;
+    public string StreetAddress { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public string PostalCode { get; set; } = string.Empty;
     public DateTimeOffset LastVerified { get; set; }
     public double DistanceMeters { get; set; }
 

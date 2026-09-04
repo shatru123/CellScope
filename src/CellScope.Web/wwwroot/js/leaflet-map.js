@@ -392,13 +392,33 @@ window.cellScopeMap = {
                     `;
                 }
 
+                const areaName = t.area || t.Area || '';
+                const streetAddr = t.streetAddress || t.StreetAddress || '';
+                const cityName = t.city || t.City || '';
+                const postalCode = t.postalCode || t.PostalCode || '';
+                
+                let locationHtml = '';
+                if (areaName || streetAddr || cityName) {
+                    locationHtml = `
+                        <div style="margin-top:4px;margin-bottom:6px;padding:5px 7px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.25);border-radius:5px;font-size:10px;">
+                            <div style="font-weight:800;color:#06b6d4;display:flex;align-items:center;gap:3px;">
+                                📍 <span>${areaName ? areaName : 'Telecom Sector Area'}</span>
+                            </div>
+                            <div style="color:#cbd5e1;font-size:9.5px;margin-top:2px;">
+                                ${streetAddr ? streetAddr + ', ' : ''}${cityName} ${postalCode}
+                            </div>
+                        </div>
+                    `;
+                }
+
                 const buttonText = isDemo ? `⚡ Inspect All ${totalUes} UEs & Ongoing Calls` : `🔍 Inspect Base Station Telemetry`;
                 const buttonBg = isDemo ? '#f59e0b' : '#10b981';
 
                 const popupHtml = `
-                    <div style="min-width:250px;">
+                    <div style="min-width:260px;">
                         <b>🗼 Macro Base Station / Cellular Tower</b><br>
                         <b>Cell ID:</b> <span style="font-family:monospace;color:#06b6d4;">${t.cellId}</span><br>
+                        ${locationHtml}
                         <b>Operator:</b> ${t.operatorName || 'Telecom Carrier'}<br>
                         <b>Radio Technology:</b> <span style="color:${isDemo ? '#f59e0b' : '#10b981'};font-weight:700;">${t.radioTechnology}</span><br>
                         <b>Physical Cell ID (PCI):</b> ${t.physicalCellId || 'N/A'}<br>

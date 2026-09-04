@@ -134,10 +134,13 @@ public class TowerService : ITowerService
             (DistFraction: 0.94, Angle: 295.0, Tech: "LTE", CellSuffix: "902", Pci: "920", Op: "Perimeter Macro LTE Mast (B3)", Conf: TowerConfidence.Medium)
         };
 
-        foreach (var c in configs)
+        for (int i = 0; i < configs.Length; i++)
         {
+            var c = configs[i];
             double dist = Math.Max(200.0, c.DistFraction * radiusMeters);
             var (tLat, tLon) = GeodesyUtils.CalculateOffsetCoordinates(latitude, longitude, dist, c.Angle);
+            var (area, street, city, zip) = DemoDataService.ResolveGeographicAddress(tLat, tLon, i, c.Tech);
+
             towers.Add(new TowerLocation
             {
                 CellId = $"310410_{c.CellSuffix}_{random.Next(1000, 9999)}",
@@ -149,6 +152,10 @@ public class TowerService : ITowerService
                 OperatorName = c.Op,
                 Latitude = Math.Round(tLat, 6),
                 Longitude = Math.Round(tLon, 6),
+                Area = area,
+                StreetAddress = street,
+                City = city,
+                PostalCode = zip,
                 RangeMeters = (int)(dist * 1.3),
                 Samples = random.Next(450, 2900),
                 Confidence = c.Conf,
@@ -408,6 +415,10 @@ public class TowerService : ITowerService
                 OperatorName = "Airtel / Global Telecom",
                 Latitude = 37.7749,
                 Longitude = -122.4194,
+                Area = "Financial District",
+                StreetAddress = "742 Market Street, Suite 400",
+                City = "San Francisco",
+                PostalCode = "CA 94103",
                 RangeMeters = 1200,
                 Samples = 1420,
                 Confidence = TowerConfidence.High,
@@ -426,6 +437,10 @@ public class TowerService : ITowerService
                 OperatorName = "Airtel / Global Telecom",
                 Latitude = 37.7785,
                 Longitude = -122.4140,
+                Area = "SoMa Tech Corridor",
+                StreetAddress = "500 Howard Street / 1st St",
+                City = "San Francisco",
+                PostalCode = "CA 94105",
                 RangeMeters = 1500,
                 Samples = 980,
                 Confidence = TowerConfidence.High,
@@ -444,6 +459,10 @@ public class TowerService : ITowerService
                 OperatorName = "Airtel / Global Telecom",
                 Latitude = 37.7830,
                 Longitude = -122.4230,
+                Area = "Civic Center / Hayes Valley",
+                StreetAddress = "450 Hayes Street",
+                City = "San Francisco",
+                PostalCode = "CA 94102",
                 RangeMeters = 2000,
                 Samples = 3200,
                 Confidence = TowerConfidence.High,
@@ -462,6 +481,10 @@ public class TowerService : ITowerService
                 OperatorName = "Metro Wireless",
                 Latitude = 37.7710,
                 Longitude = -122.4260,
+                Area = "Mission District",
+                StreetAddress = "2196 Mission Street",
+                City = "San Francisco",
+                PostalCode = "CA 94110",
                 RangeMeters = 1800,
                 Samples = 2100,
                 Confidence = TowerConfidence.Medium,
@@ -480,6 +503,10 @@ public class TowerService : ITowerService
                 OperatorName = "Metro Wireless",
                 Latitude = 37.7760,
                 Longitude = -122.4080,
+                Area = "Potrero Hill / Dogpatch",
+                StreetAddress = "800 16th Street",
+                City = "San Francisco",
+                PostalCode = "CA 94107",
                 RangeMeters = 900,
                 Samples = 750,
                 Confidence = TowerConfidence.High,

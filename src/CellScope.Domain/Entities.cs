@@ -135,6 +135,10 @@ public class TowerLocation
     public TowerConfidence Confidence { get; set; } = TowerConfidence.Medium;
     public string Source { get; set; } = "Open/public dataset";
     public string? SourceReference { get; set; }
+    public string? Area { get; set; }
+    public string? StreetAddress { get; set; }
+    public string? City { get; set; }
+    public string? PostalCode { get; set; }
     public DateTimeOffset LastVerified { get; set; } = DateTimeOffset.UtcNow;
 }
 

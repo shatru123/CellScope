@@ -80,6 +80,10 @@ public static class DtoMapper
             Confidence = entity.Confidence.ToString(),
             Source = entity.Source,
             SourceReference = entity.SourceReference,
+            Area = entity.Area ?? string.Empty,
+            StreetAddress = entity.StreetAddress ?? string.Empty,
+            City = entity.City ?? string.Empty,
+            PostalCode = entity.PostalCode ?? string.Empty,
             LastVerified = entity.LastVerified,
             DistanceMeters = Math.Round(distanceMeters, 1)
         };

@@ -201,10 +201,12 @@ public class DemoDataService : IDemoDataService
             (0.90, 290.0, "LTE", "Band 3 (1800 MHz)", "920", "Perimeter Macro LTE Mast", "902", "Medium", 1540)
         };
 
-        foreach (var s in sectorTemplates)
+        for (int i = 0; i < sectorTemplates.Length; i++)
         {
+            var s = sectorTemplates[i];
             double dist = Math.Max(180.0, s.DistFraction * radiusMeters);
             var (tLat, tLon) = GeodesyUtils.CalculateOffsetCoordinates(centerLat, centerLon, dist, s.Angle);
+            var (area, street, city, zip) = ResolveGeographicAddress(tLat, tLon, i, s.Tech);
 
             towers.Add(new TowerLocationDto
             {
@@ -218,6 +220,10 @@ public class DemoDataService : IDemoDataService
                 OperatorName = s.Op,
                 Latitude = Math.Round(tLat, 6),
                 Longitude = Math.Round(tLon, 6),
+                Area = area,
+                StreetAddress = street,
+                City = city,
+                PostalCode = zip,
                 RangeMeters = (int)(dist * 1.3),
                 Samples = s.Samples,
                 Confidence = s.Conf,
@@ -229,6 +235,176 @@ public class DemoDataService : IDemoDataService
         }
 
         return towers.OrderBy(t => t.DistanceMeters).ToList();
+    }
+
+    public static (string Area, string StreetAddress, string City, string PostalCode) ResolveGeographicAddress(double lat, double lon, int index, string tech)
+    {
+        // San Francisco Bay Area (Lat 37.65 .. 37.90, Lon -122.55 .. -122.30)
+        if (lat >= 37.65 && lat <= 37.90 && lon >= -122.55 && lon <= -122.30)
+        {
+            var sfLocations = new (string Area, string Address, string Zip)[]
+            {
+                ("Financial District", "742 Market Street, Suite 400", "CA 94103"),
+                ("SoMa Tech Corridor", "500 Howard Street / 1st St", "CA 94105"),
+                ("Mission District", "2196 Mission Street", "CA 94110"),
+                ("Castro & Twin Peaks", "400 Castro Street", "CA 94114"),
+                ("Marina & Presidio", "1800 Chestnut Street", "CA 94123"),
+                ("Sunset District", "1250 9th Avenue", "CA 94122"),
+                ("Fisherman's Wharf", "Pier 39 The Embarcadero", "CA 94133"),
+                ("Nob Hill Central", "1000 California Street", "CA 94108"),
+                ("Outer Richmond", "320 Geary Boulevard", "CA 94118"),
+                ("Potrero Hill", "800 16th Street", "CA 94107"),
+                ("Dogpatch Waterfront", "2200 3rd Street", "CA 94107"),
+                ("Hayes Valley", "450 Hayes Street", "CA 94102"),
+                ("Embarcadero Center", "4 Embarcadero Center", "CA 94111"),
+                ("Chinatown Central", "700 Grant Avenue", "CA 94108"),
+                ("North Beach", "550 Columbus Avenue", "CA 94133"),
+                ("Union Square", "333 Post Street", "CA 94108"),
+                ("Mission Bay BioTech", "550 16th Street", "CA 94158"),
+                ("Pacific Heights", "2400 Broadway Street", "CA 94115")
+            };
+            var pick = sfLocations[index % sfLocations.Length];
+            return (pick.Area, pick.Address, "San Francisco", pick.Zip);
+        }
+
+        // Mumbai Metro (Lat 18.85 .. 19.35, Lon 72.75 .. 73.10)
+        if (lat >= 18.85 && lat <= 19.35 && lon >= 72.75 && lon <= 73.10)
+        {
+            var mumbaiLocations = new (string Area, string Address, string Zip)[]
+            {
+                ("BKC (Bandra Kurla Complex)", "G-Block, Bandra Kurla Complex Road", "MH 400051"),
+                ("Bandra West", "Hill Road, Near Bandra Station", "MH 400050"),
+                ("Andheri East Tech Hub", "MIDC Central Road, Chakala", "MH 400093"),
+                ("Nariman Point", "Marine Drive Financial Center", "MH 400021"),
+                ("Dadar TT Circle", "Dr. Babasaheb Ambedkar Road", "MH 400014"),
+                ("Lower Parel Commercial", "Senapati Bapat Marg, One World Center", "MH 400013"),
+                ("Powai Cybercity", "Hiranandani Central Avenue", "MH 400076"),
+                ("Borivali West", "S.V. Road, Near Shimpoli", "MH 400092"),
+                ("Colaba Heritage District", "Shahid Bhagat Singh Road", "MH 400005"),
+                ("Malad West Mindspace", "Mindspace IT Park, Link Road", "MH 400064"),
+                ("Goregaon East", "Nesco Complex, Western Express Hwy", "MH 400063"),
+                ("Fort / South Mumbai", "DN Road, Near CST Terminus", "MH 400001"),
+                ("Kurla West", "LBS Marg, Near Phoenix Marketcity", "MH 400070"),
+                ("Vikhroli East", "Godrej One Commercial Hub", "MH 400079"),
+                ("Thane West", "Ghodbunder Road Sector 2", "MH 400607"),
+                ("Navi Mumbai Vashi", "Sector 30A, Near Vashi Station", "MH 400703"),
+                ("Worli Sea Face", "Dr. Annie Besant Road", "MH 400018"),
+                ("Juhu Beachfront", "Juhu Tara Road", "MH 400049")
+            };
+            var pick = mumbaiLocations[index % mumbaiLocations.Length];
+            return (pick.Area, pick.Address, "Mumbai", pick.Zip);
+        }
+
+        // Pune Metro (Lat 18.40 .. 18.75, Lon 73.70 .. 74.05)
+        if (lat >= 18.40 && lat <= 18.75 && lon >= 73.70 && lon <= 74.05)
+        {
+            var puneLocations = new (string Area, string Address, string Zip)[]
+            {
+                ("Hinjewadi IT Park Phase 1", "Rajiv Gandhi Infotech Park Main Rd", "MH 411057"),
+                ("Shivajinagar Central", "Fergusson College Road", "MH 411005"),
+                ("Koregaon Park", "North Main Road, Lane 5", "MH 411001"),
+                ("Kothrud", "Paud Road, Near Vanaz Metro", "MH 411038"),
+                ("Viman Nagar Airport Hub", "Symbiosis Road, Near Phoenix", "MH 411014"),
+                ("Magarpatta Cybercity", "Tower 7 Cybercity Circle", "MH 411028"),
+                ("Baner High Street", "Baner-Pashan Link Road", "MH 411045"),
+                ("Aundh", "ITI Road, Near Parihar Chowk", "MH 411007"),
+                ("Swargate Transport Hub", "Pune-Satara Road Chowk", "MH 411042"),
+                ("Wakad Telecom Corridor", "Dange Chowk Road", "MH 411057"),
+                ("Hadapsar Industrial", "Solapur Road Industrial Zone", "MH 411028"),
+                ("Pimpri-Chinchwad (PCMC)", "Old Mumbai-Pune Highway", "MH 411018"),
+                ("Kalyani Nagar", "East Avenue, Near Bishop's School", "MH 411006"),
+                ("Bavdhan Tech Node", "NDA-Pashan Road", "MH 411021"),
+                ("Kharadi EON Free Zone", "EON IT Park Phase 2", "MH 411014"),
+                ("Camp / MG Road", "Mahatma Gandhi Road", "MH 411001"),
+                ("Katraj Tech Sector", "Near Bharati Vidyapeeth", "MH 411046"),
+                ("Nigdi Pradhikaran", "Sector 24, Spine Road", "MH 411044")
+            };
+            var pick = puneLocations[index % puneLocations.Length];
+            return (pick.Area, pick.Address, "Pune", pick.Zip);
+        }
+
+        // New York Metro (Lat 40.50 .. 40.95, Lon -74.25 .. -73.70)
+        if (lat >= 40.50 && lat <= 40.95 && lon >= -74.25 && lon <= -73.70)
+        {
+            var nyLocations = new (string Area, string Address, string Zip)[]
+            {
+                ("Midtown Manhattan", "350 5th Avenue (Empire State)", "NY 10118"),
+                ("Financial District", "11 Wall Street / Broadway", "NY 10005"),
+                ("Hudson Yards", "500 West 33rd Street", "NY 10001"),
+                ("Central Park South", "200 Central Park South", "NY 10019"),
+                ("Brooklyn Heights", "100 Montague Street", "NY 11201"),
+                ("Williamsburg", "250 Bedford Avenue", "NY 11211"),
+                ("DUMBO Tech Sector", "55 Water Street", "NY 11201"),
+                ("Astoria, Queens", "31-00 30th Avenue", "NY 11106"),
+                ("Upper East Side", "1000 Madison Avenue", "NY 10075"),
+                ("SoHo Creative District", "450 Broadway", "NY 10013"),
+                ("Chelsea Arts District", "200 10th Avenue", "NY 10011"),
+                ("Times Square", "1500 Broadway / 43rd St", "NY 10036"),
+                ("Long Island City", "1 Court Square", "NY 11101"),
+                ("Greenwich Village", "70 Washington Square South", "NY 10012"),
+                ("Harlem Central", "200 West 125th Street", "NY 10027"),
+                ("Flushing, Queens", "136-20 Roosevelt Avenue", "NY 11354"),
+                ("Downtown Brooklyn", "300 Jay Street", "NY 11201"),
+                ("Battery Park City", "250 Vesey Street", "NY 10281")
+            };
+            var pick = nyLocations[index % nyLocations.Length];
+            return (pick.Area, pick.Address, "New York", pick.Zip);
+        }
+
+        // London Metro (Lat 51.35 .. 51.65, Lon -0.45 .. 0.15)
+        if (lat >= 51.35 && lat <= 51.65 && lon >= -0.45 && lon <= 0.15)
+        {
+            var londonLocations = new (string Area, string Address, string Zip)[]
+            {
+                ("Westminster", "Parliament Square, Westminster", "SW1A 2PW"),
+                ("Canary Wharf Financial", "1 Canada Square", "E14 5AB"),
+                ("City of London", "100 Bishopsgate", "EC2N 4AG"),
+                ("King's Cross Tech Hub", "York Way / Pancras Square", "N1C 4AX"),
+                ("Soho / Oxford St", "100 Oxford Street", "W1D 1BS"),
+                ("Kensington High St", "220 Kensington High Street", "W8 7RG"),
+                ("Shoreditch High St", "Great Eastern Street", "EC2A 3NT"),
+                ("Greenwich", "Greenwich High Road", "SE10 8JA"),
+                ("Camden Town", "Camden High Street", "NW1 7JE"),
+                ("Paddington Basin", "Merchant Square", "W2 1AS"),
+                ("Southwark / London Bridge", "More London Riverside", "SE1 2DB"),
+                ("Stratford Olympic Park", "Westfield Avenue", "E20 1HZ"),
+                ("Clapham Junction", "St John's Hill", "SW11 1SA"),
+                ("Marylebone", "Baker Street 221B", "NW1 6XE"),
+                ("Whitechapel", "Commercial Road", "E1 1PX"),
+                ("Hammersmith", "King Street", "W6 9JU"),
+                ("Wimbledon", "The Broadway", "SW19 1QB"),
+                ("Richmond Riverside", "George Street", "TW9 1JY")
+            };
+            var pick = londonLocations[index % londonLocations.Length];
+            return (pick.Area, pick.Address, "London", pick.Zip);
+        }
+
+        // Tokyo Metro (Lat 35.50 .. 35.85, Lon 139.50 .. 139.90)
+        if (lat >= 35.50 && lat <= 35.85 && lon >= 139.50 && lon <= 139.90)
+        {
+            var tokyoLocations = new (string Area, string Address, string Zip)[]
+            {
+                ("Shibuya Crossing", "1-1 Dogenzaka, Shibuya-ku", "150-0043"),
+                ("Shinjuku Central", "2-8 Nishi-Shinjuku, Shinjuku-ku", "160-0023"),
+                ("Ginza District", "4-5 Ginza, Chuo-ku", "104-0061"),
+                ("Roppongi Hills", "6-10 Roppongi, Minato-ku", "106-0032"),
+                ("Akihabara Electric Town", "1-1 Soto-Kanda, Chiyoda-ku", "101-0021"),
+                ("Marunouchi / Tokyo Station", "1-9 Marunouchi, Chiyoda-ku", "100-0005"),
+                ("Shinagawa Station", "Konan 2-Chome, Minato-ku", "108-0075"),
+                ("Ikebukuro", "Higashi-Ikebukuro, Toshima-ku", "170-0013"),
+                ("Odaiba Waterfront", "Daiba 1-Chome, Minato-ku", "135-0091")
+            };
+            var pick = tokyoLocations[index % tokyoLocations.Length];
+            return (pick.Area, pick.Address, "Tokyo", pick.Zip);
+        }
+
+        // Generic / Custom Global Coordinates
+        string[] quadrantNames = { "North Commercial Sector", "North-East Gateway", "East Innovation Zone", "South-East Metro", "South Corridor", "South-West District", "West Tech Corridor", "North-West Industrial" };
+        string quad = quadrantNames[index % quadrantNames.Length];
+        string street = $"Telecom Sector Mast #{index + 101}, Cellular Ave";
+        string city = $"Metropolitan Area ({lat:F2}°, {lon:F2}°)";
+        string zip = $"LOC-{(Math.Abs((int)(lat * 100)) + Math.Abs((int)(lon * 100))):D5}";
+        return (quad, street, city, zip);
     }
 
     public IReadOnlyList<TowerConnectedDeviceDto> GetDemoConnectedDevicesForTower(string cellId)

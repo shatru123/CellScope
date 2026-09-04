@@ -77,18 +77,33 @@
         <!-- Global City Jump & Live Discovery Toolbar -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.6rem;padding-top:0.4rem;border-top:1px solid rgba(255,255,255,0.06);font-size:0.775rem;">
             <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-                <span style="font-weight:700;color:var(--text-muted);">🌍 Quick Jump:</span>
-                <select class="input-field" style="padding:2px 8px;font-size:0.75rem;border-radius:6px;width:auto;height:28px;"
-                        @onchange="@(async (e) => await JumpToPresetCity(e.Value?.ToString() ?? "San Francisco"))">
-                    @foreach (var city in cityPresets.Keys)
-                    {
-                        <option value="@city" selected="@(selectedPresetCity == city)">@city</option>
-                    }
-                </select>
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="font-weight:700;color:var(--text-muted);">🌍 Region:</span>
+                    <select class="input-field" style="padding:2px 8px;font-size:0.75rem;border-radius:6px;width:auto;height:28px;"
+                            value="@selectedPresetCity"
+                            @onchange="@(async (e) => await JumpToPresetCity(e.Value?.ToString() ?? "San Francisco"))">
+                        @foreach (var city in regionSubAreas.Keys)
+                        {
+                            <option value="@city">@city</option>
+                        }
+                    </select>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="font-weight:700;color:var(--accent-cyan);">📍 Nearby Areas:</span>
+                    <select class="input-field" style="padding:2px 8px;font-size:0.75rem;border-radius:6px;width:auto;min-width:180px;height:28px;border-color:rgba(6,182,212,0.4);"
+                            value="@selectedSubAreaName"
+                            @onchange="@(async (e) => await JumpToSubArea(e.Value?.ToString() ?? ""))">
+                        @foreach (var area in CurrentRegionAreas)
+                        {
+                            <option value="@area.Name">@area.Name</option>
+                        }
+                    </select>
+                </div>
 
                 <div style="display:flex;align-items:center;gap:3px;">
-                    <input type="text" class="input-field" style="padding:2px 8px;font-size:0.75rem;border-radius:6px;width:190px;height:28px;"
-                           placeholder="Lat, Lon (e.g. 40.7128, -74.0060)"
+                    <input type="text" class="input-field" style="padding:2px 8px;font-size:0.75rem;border-radius:6px;width:170px;height:28px;"
+                           placeholder="Lat, Lon"
                            @bind="coordinatesSearchInput" @onkeydown="@(async (e) => { if (e.Key == "Enter") await JumpToCustomCoordinates(); })" />
                     <button class="btn btn-outline btn-sm" style="padding:2px 8px;height:28px;font-size:0.75rem;"
                             @onclick="JumpToCustomCoordinates" title="Fly to specified coordinates and scan towers">
@@ -159,7 +174,10 @@
                                     <span>🗼 @(t.OperatorName ?? "Base Station")</span>
                                     <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-size:0.7rem;">@(t.RadioTechnology)</span>
                                 </div>
-                                <div style="display:flex;justify-content:space-between;color:var(--text-secondary);font-size:0.725rem;margin-top:4px;">
+                                <div style="font-size:0.7rem;color:var(--accent-cyan);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="@t.Area - @t.StreetAddress, @t.City">
+                                    📍 @(string.IsNullOrEmpty(t.Area) ? "Local Sector" : t.Area) • @(string.IsNullOrEmpty(t.StreetAddress) ? $"{t.City} {t.PostalCode}" : t.StreetAddress)
+                                </div>
+                                <div style="display:flex;justify-content:space-between;color:var(--text-secondary);font-size:0.725rem;margin-top:3px;">
                                     <span>Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@t.CellId</span></span>
                                     <span>@Math.Round(t.DistanceMeters)m away</span>
                                 </div>
@@ -239,8 +257,15 @@
                             @(selectedTower.OperatorName ?? "Macro Base Station") — Sector Telemetry
                         </h2>
                     </div>
+                    <div style="font-size:0.8rem;color:var(--accent-cyan);margin-bottom:0.35rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span>📍 <strong>@(string.IsNullOrEmpty(selectedTower.Area) ? "Sector Locality" : selectedTower.Area)</strong></span>
+                        @if (!string.IsNullOrEmpty(selectedTower.StreetAddress))
+                        {
+                            <span style="color:var(--text-secondary);">— @selectedTower.StreetAddress, @selectedTower.City @selectedTower.PostalCode</span>
+                        }
+                    </div>
                     <p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">
-                        Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedTower.CellId</span> • PCI: @(selectedTower.PhysicalCellId ?? "N/A") • Tech: <span style="color:var(--accent-amber);font-weight:700;">@selectedTower.RadioTechnology</span> • Distance: @Math.Round(selectedTower.DistanceMeters)m • Location: <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@selectedTower.Latitude.ToString("F4"), @selectedTower.Longitude.ToString("F4")</span>
+                        Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedTower.CellId</span> • PCI: @(selectedTower.PhysicalCellId ?? "N/A") • Tech: <span style="color:var(--accent-amber);font-weight:700;">@selectedTower.RadioTechnology</span> • Distance: @Math.Round(selectedTower.DistanceMeters)m • Coordinates: <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@selectedTower.Latitude.ToString("F4"), @selectedTower.Longitude.ToString("F4")</span>
                     </p>
                 </div>
                 <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">✕ Close</button>
@@ -434,6 +459,34 @@
                 @if (selectedTowerCapacity != null)
                 {
                     <div style="display:flex;flex-direction:column;gap:1rem;">
+                        <!-- Physical Site & Geographic Address Card -->
+                        <div style="background:var(--bg-secondary);padding:0.9rem 1rem;border-radius:8px;border:1px solid var(--border-color);display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:0.75rem;">
+                            <div>
+                                <span style="font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);font-weight:700;">Sector Neighborhood / Area</span>
+                                <div style="font-size:0.875rem;font-weight:700;color:var(--accent-cyan);margin-top:2px;">
+                                    📍 @(string.IsNullOrEmpty(selectedTower.Area) ? "Urban Sector" : selectedTower.Area)
+                                </div>
+                            </div>
+                            <div>
+                                <span style="font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);font-weight:700;">Physical Street Address</span>
+                                <div style="font-size:0.875rem;font-weight:600;color:var(--text-primary);margin-top:2px;">
+                                    @(string.IsNullOrEmpty(selectedTower.StreetAddress) ? "Macro Antenna Mast Site" : selectedTower.StreetAddress)
+                                </div>
+                            </div>
+                            <div>
+                                <span style="font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);font-weight:700;">City & Postal Code</span>
+                                <div style="font-size:0.875rem;font-weight:600;color:var(--text-primary);margin-top:2px;">
+                                    @selectedTower.City @selectedTower.PostalCode
+                                </div>
+                            </div>
+                            <div>
+                                <span style="font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);font-weight:700;">Geographic Coordinates</span>
+                                <div style="font-size:0.875rem;font-family:var(--font-mono);color:var(--accent-amber);margin-top:2px;">
+                                    @selectedTower.Latitude.ToString("F5"), @selectedTower.Longitude.ToString("F5")
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="grid-kpis">
                             <MetricCard Title="Estimated Cell Load" Value="@($"{selectedTowerCapacity.EstimatedLoadPercent:F1}%")" Unit="@selectedTowerCapacity.CongestionLevel" ValueColor="@selectedTowerCapacity.CongestionColor" Subtitle="Derived from RSRQ relation" />
                             <MetricCard Title="PRB Utilization" Value="@($"{selectedTowerCapacity.PrbUtilizationPercent:F1}%")" Unit="PRB" ValueColor="var(--accent-cyan)" Subtitle="Physical Resource Blocks in use" />
@@ -1018,7 +1071,10 @@
     private double currentCenterLon = -122.4194;
     private double currentRadiusMeters = 5000;
     private bool autoFetchOnMapMove = true;
+    public record AreaPreset(string Name, double Lat, double Lon);
+
     private string selectedPresetCity = "San Francisco";
+    private string selectedSubAreaName = "Financial District";
     private string coordinatesSearchInput = "";
     private string radiusFilterSelection = "Auto";
     private bool isScanningArea = false;
@@ -1026,20 +1082,151 @@
     private string? locationStatus;
     private DotNetObjectReference<CellMap>? dotNetRef;
 
-    private readonly Dictionary<string, (double Lat, double Lon)> cityPresets = new()
+    private readonly Dictionary<string, List<AreaPreset>> regionSubAreas = new()
     {
-        { "San Francisco", (37.7749, -122.4194) },
-        { "New York", (40.7128, -74.0060) },
-        { "London", (51.5074, -0.1278) },
-        { "Tokyo", (35.6762, 139.6503) },
-        { "Mumbai", (19.0760, 72.8777) },
-        { "Pune", (18.5204, 73.8567) },
-        { "Paris", (48.8566, 2.3522) },
-        { "Berlin", (52.5200, 13.4050) },
-        { "Sydney", (-33.8688, 151.2093) },
-        { "Dubai", (25.2048, 55.2708) },
-        { "Singapore", (1.3521, 103.8198) }
+        {
+            "San Francisco", new List<AreaPreset>
+            {
+                new("Financial District", 37.7946, -122.3999),
+                new("SoMa & Tech Corridor", 37.7785, -122.4056),
+                new("Mission District & 16th St", 37.7599, -122.4148),
+                new("Marina & Palace of Fine Arts", 37.8037, -122.4368),
+                new("Castro & Twin Peaks", 37.7609, -122.4350),
+                new("Sunset District", 37.7535, -122.4925),
+                new("Richmond & Presidio", 37.7797, -122.4820),
+                new("Nob Hill & Chinatown", 37.7932, -122.4162),
+                new("Fisherman's Wharf & Pier 39", 37.8080, -122.4177),
+                new("South Beach & Oracle Park", 37.7786, -122.3893)
+            }
+        },
+        {
+            "Mumbai", new List<AreaPreset>
+            {
+                new("BKC (Bandra Kurla Complex)", 19.0664, 72.8682),
+                new("Bandra West & Pali Hill", 19.0596, 72.8295),
+                new("Nariman Point & Marine Drive", 18.9256, 72.8242),
+                new("Andheri East / MIDC SEEPZ", 19.1136, 72.8697),
+                new("Andheri West & Lokhandwala", 19.1363, 72.8277),
+                new("Powai Hiranandani & IIT", 19.1176, 72.9060),
+                new("Lower Parel & Worli", 19.0016, 72.8306),
+                new("Dadar & Shivaji Park", 19.0205, 72.8427),
+                new("Thane West & Majiwada", 19.2183, 72.9781),
+                new("Navi Mumbai & Vashi", 19.0771, 72.9986)
+            }
+        },
+        {
+            "Pune", new List<AreaPreset>
+            {
+                new("Hinjewadi Phase 1-3 IT Park", 18.5913, 73.7389),
+                new("Shivajinagar & FC Road", 18.5314, 73.8446),
+                new("Koregaon Park & North Main Rd", 18.5362, 73.8940),
+                new("Viman Nagar & Airport Area", 18.5679, 73.9143),
+                new("Kothrud & Paud Road", 18.5074, 73.8077),
+                new("Baner & Balewadi High Street", 18.5590, 73.7868),
+                new("Magarpatta Cybercity & Hadapsar", 18.5158, 73.9272),
+                new("Kharadi EON IT Free Zone", 18.5529, 73.9532),
+                new("Aundh & SP Pune University", 18.5580, 73.8075),
+                new("Wakad & Pimple Saudagar", 18.5987, 73.7661)
+            }
+        },
+        {
+            "New York", new List<AreaPreset>
+            {
+                new("Midtown Manhattan & 5th Ave", 40.7549, -73.9840),
+                new("Wall Street Financial District", 40.7074, -74.0094),
+                new("Times Square & Theater District", 40.7580, -73.9855),
+                new("DUMBO & Brooklyn Bridge", 40.7033, -73.9890),
+                new("Williamsburg Brooklyn", 40.7081, -73.9571),
+                new("Upper East Side & Central Park", 40.7736, -73.9566),
+                new("Long Island City Queens", 40.7447, -73.9485)
+            }
+        },
+        {
+            "London", new List<AreaPreset>
+            {
+                new("City of London / Square Mile", 51.5155, -0.0922),
+                new("Canary Wharf Financial Center", 51.5054, -0.0235),
+                new("Westminster & Whitehall", 51.4995, -0.1332),
+                new("Soho & Oxford Circus", 51.5136, -0.1264),
+                new("Kensington & Chelsea", 51.4988, -0.1749),
+                new("Shoreditch Silicon Roundabout", 51.5235, -0.0772)
+            }
+        },
+        {
+            "Tokyo", new List<AreaPreset>
+            {
+                new("Shinjuku Skyscraper District", 35.6938, 139.7034),
+                new("Shibuya Crossing & Station", 35.6595, 139.7004),
+                new("Ginza & Chuo-dori", 35.6719, 139.7648),
+                new("Akihabara Electric Town", 35.7022, 139.7741),
+                new("Roppongi Hills & Minato", 35.6628, 139.7314),
+                new("Marunouchi & Tokyo Central", 35.6812, 139.7671)
+            }
+        },
+        {
+            "Paris", new List<AreaPreset>
+            {
+                new("La Défense Business District", 48.8924, 2.2361),
+                new("Champs-Élysées & 8th Arr.", 48.8698, 2.3075),
+                new("Le Marais Historical Quarter", 48.8575, 2.3592),
+                new("Montmartre & Sacré-Cœur", 48.8867, 2.3431),
+                new("Latin Quarter & Sorbonne", 48.8462, 2.3444)
+            }
+        },
+        {
+            "Berlin", new List<AreaPreset>
+            {
+                new("Alexanderplatz & TV Tower", 52.5219, 13.4132),
+                new("Potsdamer Platz & Tiergarten", 52.5096, 13.3759),
+                new("Kreuzberg Tech & Arts", 52.4990, 13.4034),
+                new("Charlottenburg & Kurfürstendamm", 52.5048, 13.3150),
+                new("Friedrichshain & Mediaspree", 52.5133, 13.4548)
+            }
+        },
+        {
+            "Sydney", new List<AreaPreset>
+            {
+                new("Circular Quay & Sydney Opera", -33.8614, 151.2108),
+                new("Darling Harbour & Barangaroo", -33.8732, 151.1994),
+                new("North Sydney Business District", -33.8390, 151.2072),
+                new("Bondi Beach & Coastal Sector", -33.8915, 151.2767),
+                new("Parramatta Tech Precinct", -33.8150, 151.0011)
+            }
+        },
+        {
+            "Dubai", new List<AreaPreset>
+            {
+                new("Downtown Dubai & Burj Khalifa", 25.1972, 55.2744),
+                new("Dubai Marina & JBR", 25.0772, 55.1333),
+                new("DIFC Financial Center", 25.2138, 55.2798),
+                new("Business Bay Canal District", 25.1860, 55.2631),
+                new("Palm Jumeirah", 25.1124, 55.1390),
+                new("Deira & Old Dubai Creek", 25.2697, 55.3095)
+            }
+        },
+        {
+            "Singapore", new List<AreaPreset>
+            {
+                new("Marina Bay Financial District", 1.2838, 103.8591),
+                new("Orchard Road Corridor", 1.3048, 103.8318),
+                new("Jurong Innovation District", 1.3329, 103.7436),
+                new("One-North Biopolis Tech Hub", 1.2995, 103.7874),
+                new("Changi Business & Aviation Park", 1.3347, 103.9625)
+            }
+        }
     };
+
+    private List<AreaPreset> CurrentRegionAreas
+    {
+        get
+        {
+            if (regionSubAreas.TryGetValue(selectedPresetCity, out var areas))
+            {
+                return areas;
+            }
+            return new List<AreaPreset> { new("Central Sector", currentCenterLat, currentCenterLon) };
+        }
+    }
 
     private IEnumerable<TowerConnectedDeviceDto> FilteredTowerDevices
     {
@@ -1201,6 +1388,17 @@
             currentRadiusMeters = km * 1000.0;
         }
 
+        var closest = regionSubAreas
+            .SelectMany(kv => kv.Value.Select(a => new { City = kv.Key, Area = a.Name, Distance = Math.Sqrt(Math.Pow(lat - a.Lat, 2) + Math.Pow(lon - a.Lon, 2)) }))
+            .OrderBy(x => x.Distance)
+            .FirstOrDefault();
+
+        if (closest != null && closest.Distance < 0.20)
+        {
+            selectedPresetCity = closest.City;
+            selectedSubAreaName = closest.Area;
+        }
+
         if (autoFetchOnMapMove)
         {
             await LoadTowersForAreaAsync(currentCenterLat, currentCenterLon, currentRadiusMeters);
@@ -1211,13 +1409,30 @@
 
     private async Task JumpToPresetCity(string cityName)
     {
-        if (cityPresets.TryGetValue(cityName, out var coords))
+        if (regionSubAreas.TryGetValue(cityName, out var areas) && areas.Count > 0)
         {
             selectedPresetCity = cityName;
-            currentCenterLat = coords.Lat;
-            currentCenterLon = coords.Lon;
-            await JS.InvokeVoidAsync("cellScopeMap.flyToLocation", "fullscreen-leaflet-map", coords.Lat, coords.Lon, 14);
-            await LoadTowersForAreaAsync(coords.Lat, coords.Lon, currentRadiusMeters);
+            var firstArea = areas[0];
+            selectedSubAreaName = firstArea.Name;
+            currentCenterLat = firstArea.Lat;
+            currentCenterLon = firstArea.Lon;
+            await JS.InvokeVoidAsync("cellScopeMap.flyToLocation", "fullscreen-leaflet-map", firstArea.Lat, firstArea.Lon, 14);
+            await LoadTowersForAreaAsync(firstArea.Lat, firstArea.Lon, currentRadiusMeters);
+            await UpdateMapAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task JumpToSubArea(string areaName)
+    {
+        var area = CurrentRegionAreas.FirstOrDefault(a => a.Name == areaName);
+        if (area != null)
+        {
+            selectedSubAreaName = area.Name;
+            currentCenterLat = area.Lat;
+            currentCenterLon = area.Lon;
+            await JS.InvokeVoidAsync("cellScopeMap.flyToLocation", "fullscreen-leaflet-map", area.Lat, area.Lon, 14);
+            await LoadTowersForAreaAsync(area.Lat, area.Lon, currentRadiusMeters);
             await UpdateMapAsync();
             StateHasChanged();
         }
