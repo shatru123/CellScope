@@ -37,4 +37,31 @@ public class GeodesyUtilsTests
         (maxLat - minLat).Should().BeGreaterThan(0);
         (maxLon - minLon).Should().BeGreaterThan(0);
     }
+
+    [Fact]
+    public void CalculateBearing_NorthDirection_ReturnsNearZero()
+    {
+        // Moving strictly North
+        double lat1 = 18.50, lon1 = 73.80;
+        double lat2 = 18.60, lon2 = 73.80;
+
+        double bearing = GeodesyUtils.CalculateBearing(lat1, lon1, lat2, lon2);
+        bearing.Should().BeApproximately(0.0, 1.0);
+    }
+
+    [Fact]
+    public void GetCompassDirection_CardinalDirections_ReturnsCorrectNames()
+    {
+        // Lat 18.5, Lon 73.8 to East:
+        string eastDir = GeodesyUtils.GetCompassDirection(18.5, 73.8, 18.5, 73.9);
+        eastDir.Should().Be("East");
+
+        // Lat 18.5, Lon 73.8 to South:
+        string southDir = GeodesyUtils.GetCompassDirection(18.5, 73.8, 18.4, 73.8);
+        southDir.Should().Be("South");
+
+        // Lat 18.5, Lon 73.8 to West:
+        string westDir = GeodesyUtils.GetCompassDirection(18.5, 73.8, 18.5, 73.7);
+        westDir.Should().Be("West");
+    }
 }

@@ -116,6 +116,31 @@ public static class GeodesyUtils
         return (outLat, outLon);
     }
 
+    /// <summary>
+    /// Computes the initial bearing from start coordinate to end coordinate in degrees (0..360).
+    /// </summary>
+    public static double CalculateBearing(double lat1, double lon1, double lat2, double lon2)
+    {
+        double dLon = ToRadians(lon2 - lon1);
+        double lat1Rad = ToRadians(lat1);
+        double lat2Rad = ToRadians(lat2);
+        double y = Math.Sin(dLon) * Math.Cos(lat2Rad);
+        double x = Math.Cos(lat1Rad) * Math.Sin(lat2Rad) - Math.Sin(lat1Rad) * Math.Cos(lat2Rad) * Math.Cos(dLon);
+        double bearingRad = Math.Atan2(y, x);
+        return (bearingRad * (180.0 / Math.PI) + 360.0) % 360.0;
+    }
+
+    /// <summary>
+    /// Returns 8-point compass direction (e.g. North, North-East, East) from start coordinate to end coordinate.
+    /// </summary>
+    public static string GetCompassDirection(double lat1, double lon1, double lat2, double lon2)
+    {
+        double bearing = CalculateBearing(lat1, lon1, lat2, lon2);
+        string[] directions = { "North", "North-East", "East", "South-East", "South", "South-West", "West", "North-West" };
+        int idx = (int)Math.Round(bearing / 45.0) % 8;
+        return directions[idx];
+    }
+
     private static double ToRadians(double degrees) => degrees * (Math.PI / 180.0);
 }
 

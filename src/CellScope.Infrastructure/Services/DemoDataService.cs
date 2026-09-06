@@ -237,174 +237,424 @@ public class DemoDataService : IDemoDataService
         return towers.OrderBy(t => t.DistanceMeters).ToList();
     }
 
+    private readonly record struct GeoAnchor(
+        double Lat,
+        double Lon,
+        string Area,
+        string Street,
+        string City,
+        string PostalCode);
+
+    private readonly record struct MetroRegion(
+        string RegionName,
+        double MinLat,
+        double MaxLat,
+        double MinLon,
+        double MaxLon,
+        GeoAnchor[] Anchors);
+
+    private static readonly MetroRegion[] DefinedMetroRegions = new[]
+    {
+        // San Francisco Bay Area & Silicon Valley (Lat 37.20 .. 38.10, Lon -122.65 .. -121.75)
+        new MetroRegion(
+            "San Francisco Bay Area", 37.20, 38.10, -122.65, -121.75,
+            new GeoAnchor[]
+            {
+                new(37.7946, -122.3999, "Financial District", "742 Market Street, Suite 400", "San Francisco", "CA 94103"),
+                new(37.7785, -122.4056, "SoMa Tech Corridor", "500 Howard Street / 1st St", "San Francisco", "CA 94105"),
+                new(37.7599, -122.4148, "Mission District", "2196 Mission Street", "San Francisco", "CA 94110"),
+                new(37.7609, -122.4350, "Castro & Twin Peaks", "400 Castro Street", "San Francisco", "CA 94114"),
+                new(37.8005, -122.4368, "Marina & Presidio", "1800 Chestnut Street", "San Francisco", "CA 94123"),
+                new(37.7535, -122.4925, "Sunset District", "1250 9th Avenue", "San Francisco", "CA 94122"),
+                new(37.7797, -122.4820, "Outer Richmond", "320 Geary Boulevard", "San Francisco", "CA 94118"),
+                new(37.8080, -122.4177, "Fisherman's Wharf", "Pier 39 The Embarcadero", "San Francisco", "CA 94133"),
+                new(37.7932, -122.4162, "Nob Hill Central", "1000 California Street", "San Francisco", "CA 94108"),
+                new(37.7620, -122.3900, "Dogpatch Waterfront", "2200 3rd Street", "San Francisco", "CA 94107"),
+                new(37.7780, -122.4200, "Civic Center / Hayes Valley", "450 Hayes Street", "San Francisco", "CA 94102"),
+                new(37.7680, -122.3920, "Mission Bay BioTech", "550 16th Street", "San Francisco", "CA 94158"),
+                new(37.7786, -122.3893, "South Beach & Oracle Park", "24 Willie Mays Plaza", "San Francisco", "CA 94107"),
+                new(37.7915, -122.4080, "Union Square", "333 Post Street", "San Francisco", "CA 94108"),
+                new(37.7955, -122.4070, "Chinatown Central", "700 Grant Avenue", "San Francisco", "CA 94108"),
+                new(37.8000, -122.4090, "North Beach", "550 Columbus Avenue", "San Francisco", "CA 94133"),
+                new(37.7930, -122.4350, "Pacific Heights", "2400 Broadway Street", "San Francisco", "CA 94115"),
+                new(37.4419, -122.1430, "Palo Alto Tech Hub", "250 University Avenue", "Palo Alto", "CA 94301"),
+                new(37.3861, -122.0839, "Mountain View Tech Corridor", "1600 Amphitheatre Pkwy", "Mountain View", "CA 94043"),
+                new(37.3688, -122.0363, "Sunnyvale & Cupertino", "1 Apple Park Way", "Cupertino", "CA 95014"),
+                new(37.3382, -121.8863, "Downtown San Jose", "100 S First Street", "San Jose", "CA 95113"),
+                new(37.8044, -122.2712, "Downtown Oakland", "1200 Broadway", "Oakland", "CA 94612")
+            }),
+
+        // Mumbai Metro (Lat 18.80 .. 19.45, Lon 72.70 .. 73.20)
+        new MetroRegion(
+            "Mumbai Metropolitan Region", 18.80, 19.45, 72.70, 73.20,
+            new GeoAnchor[]
+            {
+                new(19.0664, 72.8682, "BKC (Bandra Kurla Complex)", "G-Block, Bandra Kurla Complex Road", "Mumbai", "MH 400051"),
+                new(19.0596, 72.8295, "Bandra West", "Hill Road, Near Bandra Station", "Mumbai", "MH 400050"),
+                new(18.9256, 72.8242, "Nariman Point", "Marine Drive Financial Center", "Mumbai", "MH 400021"),
+                new(18.9067, 72.8147, "Colaba Heritage District", "Shahid Bhagat Singh Road", "Mumbai", "MH 400005"),
+                new(18.9322, 72.8315, "Fort / South Mumbai", "DN Road, Near CST Terminus", "Mumbai", "MH 400001"),
+                new(19.0016, 72.8306, "Lower Parel Commercial", "Senapati Bapat Marg, One World Center", "Mumbai", "MH 400013"),
+                new(19.0150, 72.8170, "Worli Sea Face", "Dr. Annie Besant Road", "Mumbai", "MH 400018"),
+                new(19.0205, 72.8427, "Dadar TT Circle", "Dr. Babasaheb Ambedkar Road", "Mumbai", "MH 400014"),
+                new(19.0830, 72.8830, "Kurla West", "LBS Marg, Near Phoenix Marketcity", "Mumbai", "MH 400070"),
+                new(19.1136, 72.8697, "Andheri East Tech Hub", "MIDC Central Road, Chakala", "Mumbai", "MH 400093"),
+                new(19.1363, 72.8277, "Andheri West Lokhandwala", "Link Road, Lokhandwala Complex", "Mumbai", "MH 400053"),
+                new(19.1000, 72.8270, "Juhu Beachfront", "Juhu Tara Road", "Mumbai", "MH 400049"),
+                new(19.1176, 72.9060, "Powai Cybercity", "Hiranandani Central Avenue", "Mumbai", "MH 400076"),
+                new(19.0980, 72.9280, "Vikhroli East", "Godrej One Commercial Hub", "Mumbai", "MH 400079"),
+                new(19.1550, 72.8550, "Goregaon East", "Nesco Complex, Western Express Hwy", "Mumbai", "MH 400063"),
+                new(19.1860, 72.8340, "Malad West Mindspace", "Mindspace IT Park, Link Road", "Mumbai", "MH 400064"),
+                new(19.2307, 72.8567, "Borivali West", "S.V. Road, Near Shimpoli", "Mumbai", "MH 400092"),
+                new(19.2183, 72.9781, "Thane West", "Ghodbunder Road Sector 2", "Thane", "MH 400607"),
+                new(19.0771, 72.9986, "Navi Mumbai Vashi", "Sector 30A, Near Vashi Station", "Navi Mumbai", "MH 400703"),
+                new(19.1579, 72.9984, "Navi Mumbai Airoli", "Mindspace Knowledge Park, Airoli", "Navi Mumbai", "MH 400708")
+            }),
+
+        // Pune Metro (Lat 18.35 .. 18.80, Lon 73.65 .. 74.15)
+        new MetroRegion(
+            "Pune Metropolitan Region", 18.35, 18.80, 73.65, 74.15,
+            new GeoAnchor[]
+            {
+                new(18.5913, 73.7389, "Hinjewadi IT Park Phase 1", "Rajiv Gandhi Infotech Park Main Rd", "Pune", "MH 411057"),
+                new(18.5975, 73.7150, "Hinjewadi Phase 3 Megapolis", "Megapolis Circle, Phase 3 Tech Zone", "Pune", "MH 411057"),
+                new(18.5987, 73.7661, "Wakad Telecom Corridor", "Dange Chowk Road, Wakad", "Pune", "MH 411057"),
+                new(18.5590, 73.7868, "Baner High Street", "Baner-Pashan Link Road", "Pune", "MH 411045"),
+                new(18.5740, 73.7720, "Balewadi Sports Corridor", "Balewadi High Street", "Pune", "MH 411045"),
+                new(18.5580, 73.8075, "Aundh", "ITI Road, Near Parihar Chowk", "Pune", "MH 411007"),
+                new(18.5314, 73.8446, "Shivajinagar Central", "Fergusson College Road", "Pune", "MH 411005"),
+                new(18.5362, 73.8940, "Koregaon Park", "North Main Road, Lane 5", "Pune", "MH 411001"),
+                new(18.5470, 73.9030, "Kalyani Nagar", "East Avenue, Near Bishop's School", "Pune", "MH 411006"),
+                new(18.5679, 73.9143, "Viman Nagar Airport Hub", "Symbiosis Road, Near Phoenix", "Pune", "MH 411014"),
+                new(18.5529, 73.9532, "Kharadi EON Free Zone", "EON IT Park Phase 2", "Pune", "MH 411014"),
+                new(18.5158, 73.9272, "Magarpatta Cybercity", "Tower 7 Cybercity Circle", "Pune", "MH 411028"),
+                new(18.5020, 73.9350, "Hadapsar Industrial", "Solapur Road Industrial Zone", "Pune", "MH 411028"),
+                new(18.5074, 73.8077, "Kothrud", "Paud Road, Near Vanaz Metro", "Pune", "MH 411038"),
+                new(18.5150, 73.7700, "Bavdhan Tech Node", "NDA-Pashan Road", "Pune", "MH 411021"),
+                new(18.5010, 73.8580, "Swargate Transport Hub", "Pune-Satara Road Chowk", "Pune", "MH 411042"),
+                new(18.5170, 73.8790, "Camp / MG Road", "Mahatma Gandhi Road", "Pune", "MH 411001"),
+                new(18.4550, 73.8580, "Katraj Tech Sector", "Near Bharati Vidyapeeth", "Pune", "MH 411046"),
+                new(18.6270, 73.8010, "Pimpri-Chinchwad (PCMC)", "Old Mumbai-Pune Highway", "Pune", "MH 411018"),
+                new(18.6550, 73.7710, "Nigdi Pradhikaran", "Sector 24, Spine Road", "Pune", "MH 411044")
+            }),
+
+        // Delhi NCR (Lat 28.30 .. 28.95, Lon 76.80 .. 77.60)
+        new MetroRegion(
+            "Delhi NCR", 28.30, 28.95, 76.80, 77.60,
+            new GeoAnchor[]
+            {
+                new(28.6315, 77.2167, "Connaught Place Central", "Barakhamba Road, Inner Circle", "New Delhi", "DL 110001"),
+                new(28.4950, 77.0890, "DLF Cyber City Gurugram", "DLF Phase 2, Building 10 Tower B", "Gurugram", "HR 122002"),
+                new(28.4550, 77.0980, "Golf Course Corridor", "One Horizon Center, Sector 43", "Gurugram", "HR 122002"),
+                new(28.6250, 77.3650, "Sector 62 Noida IT Zone", "Stellar IT Park, Sector 62", "Noida", "UP 201309"),
+                new(28.5700, 77.3210, "Sector 18 Noida Hub", "Atta Market Road, Sector 18", "Noida", "UP 201301"),
+                new(28.5490, 77.2520, "Nehru Place IT Market", "International Trade Tower, Nehru Place", "New Delhi", "DL 110019"),
+                new(28.5280, 77.2180, "Saket District Centre", "Press Enclave Marg, Saket", "New Delhi", "DL 110017"),
+                new(28.5520, 77.1210, "Aerocity Gateway", "Worldmark 1, Northern Access Rd", "New Delhi", "DL 110037"),
+                new(28.5520, 77.0580, "Dwarka Sub-City", "Sector 21 Metro Complex", "New Delhi", "DL 110077"),
+                new(28.5720, 77.2210, "South Extension / AIIMS", "Ring Road, South Extension Part 1", "New Delhi", "DL 110049"),
+                new(28.6510, 77.1900, "Karol Bagh Commercial", "Pusa Road, Near Metro Pillar 110", "New Delhi", "DL 110005"),
+                new(28.5350, 77.2730, "Okhla Industrial Area", "Phase 3 Industrial Area, Okhla", "New Delhi", "DL 110020")
+            }),
+
+        // Bengaluru (Lat 12.75 .. 13.25, Lon 77.40 .. 77.90)
+        new MetroRegion(
+            "Bengaluru", 12.75, 13.25, 77.40, 77.90,
+            new GeoAnchor[]
+            {
+                new(12.9352, 77.6245, "Koramangala Tech Hub", "80 Feet Road, 4th Block, Koramangala", "Bengaluru", "KA 560034"),
+                new(12.9784, 77.6408, "Indiranagar", "100 Feet Road, HAL 2nd Stage", "Bengaluru", "KA 560038"),
+                new(12.9121, 77.6446, "HSR Layout Sector 1", "27th Main Road, Sector 1, HSR", "Bengaluru", "KA 560102"),
+                new(12.9856, 77.7377, "Whitefield ITPL Corridor", "ITPL Main Road, International Tech Park", "Bengaluru", "KA 560066"),
+                new(12.8452, 77.6602, "Electronic City Phase 1", "Hosur Road, Infosys Gate 1", "Bengaluru", "KA 560100"),
+                new(12.9756, 77.6067, "MG Road & Brigade Rd", "Mahatma Gandhi Road, Craig Park", "Bengaluru", "KA 560001"),
+                new(12.9260, 77.6762, "Bellandur ORR Tech Corridor", "EcoSpace Business Park, Outer Ring Rd", "Bengaluru", "KA 560103"),
+                new(13.0489, 77.6200, "Manyata Embassy Tech Park", "Thanisandra Main Road, Hebbal", "Bengaluru", "KA 560045"),
+                new(12.8920, 77.5830, "JP Nagar", "Kanakapura Main Road, 7th Phase", "Bengaluru", "KA 560078"),
+                new(12.9560, 77.7010, "Marathahalli Junction", "Varthur Road, Near Multiplex", "Bengaluru", "KA 560037")
+            }),
+
+        // Hyderabad (Lat 17.20 .. 17.65, Lon 78.20 .. 78.70)
+        new MetroRegion(
+            "Hyderabad", 17.20, 17.65, 78.20, 78.70,
+            new GeoAnchor[]
+            {
+                new(17.4504, 78.3808, "HITEC City Cyber Towers", "Cyber Towers Road, Madhapur", "Hyderabad", "TG 500081"),
+                new(17.4399, 78.3489, "Gachibowli Financial District", "ISB Road, Nanakramguda", "Hyderabad", "TG 500032"),
+                new(17.4485, 78.3908, "Madhapur IT Hub", "Ayyappa Society Main Road", "Hyderabad", "TG 500081"),
+                new(17.4620, 78.3610, "Kondapur", "Botanical Garden Road, Kondapur", "Hyderabad", "TG 500084"),
+                new(17.4156, 78.4350, "Banjara Hills", "Road No. 12, Banjara Hills", "Hyderabad", "TG 500034"),
+                new(17.4320, 78.4070, "Jubilee Hills", "Road No. 36, Jubilee Hills", "Hyderabad", "TG 500033"),
+                new(17.4440, 78.4730, "Begumpet Central", "Sardar Patel Road, Begumpet", "Hyderabad", "TG 500016"),
+                new(17.3616, 78.4747, "Charminar Heritage Area", "Pathargatti Road, Charminar", "Hyderabad", "TG 500002")
+            }),
+
+        // Chennai (Lat 12.85 .. 13.25, Lon 80.05 .. 80.35)
+        new MetroRegion(
+            "Chennai", 12.85, 13.25, 80.05, 80.35,
+            new GeoAnchor[]
+            {
+                new(12.9890, 80.2470, "OMR IT Expressway / Tidel Park", "Rajiv Gandhi Salai, Taramani", "Chennai", "TN 600113"),
+                new(13.0067, 80.2025, "Guindy Industrial Estate", "GST Road, Guindy Estate", "Chennai", "TN 600032"),
+                new(13.0418, 80.2341, "T. Nagar Commercial Hub", "Usman Road, T. Nagar", "Chennai", "TN 600017"),
+                new(12.9750, 80.2210, "Velachery Hub", "Velachery Bypass Road", "Chennai", "TN 600042"),
+                new(13.0850, 80.2100, "Anna Nagar Roundtana", "2nd Avenue, Anna Nagar", "Chennai", "TN 600040"),
+                new(13.0010, 80.2560, "Adyar / Besant Nagar", "Sardar Patel Road, Adyar", "Chennai", "TN 600020")
+            }),
+
+        // Kolkata (Lat 22.40 .. 22.75, Lon 88.20 .. 88.55)
+        new MetroRegion(
+            "Kolkata", 22.40, 22.75, 88.20, 88.55,
+            new GeoAnchor[]
+            {
+                new(22.5800, 88.4320, "Salt Lake Sector V IT Zone", "EP Block, Ring Road, Bidhannagar", "Kolkata", "WB 700091"),
+                new(22.5920, 88.4680, "New Town Action Area 1", "Major Arterial Road, New Town", "Kolkata", "WB 700156"),
+                new(22.5510, 88.3520, "Park Street Commercial", "Mother Teresa Sarani, Park Street", "Kolkata", "WB 700016"),
+                new(22.5850, 88.3410, "Howrah Station District", "Station Road, Howrah", "Kolkata", "WB 711101")
+            }),
+
+        // Ahmedabad (Lat 22.90 .. 23.25, Lon 72.40 .. 72.80)
+        new MetroRegion(
+            "Ahmedabad", 22.90, 23.25, 72.40, 72.80,
+            new GeoAnchor[]
+            {
+                new(23.0500, 72.5050, "SG Highway Tech Corridor", "Sarkhej-Gandhinagar Highway, Bodakdev", "Ahmedabad", "GJ 380054"),
+                new(23.0120, 72.5100, "Prahlad Nagar Trade Center", "100 Feet Anand Nagar Rd", "Ahmedabad", "GJ 380015"),
+                new(23.1610, 72.6840, "GIFT City SEZ", "GIFT Boulevard, GIFT City", "Gandhinagar", "GJ 382355")
+            }),
+
+        // New York Metro (Lat 40.45 .. 41.00, Lon -74.30 .. -73.65)
+        new MetroRegion(
+            "New York", 40.45, 41.00, -74.30, -73.65,
+            new GeoAnchor[]
+            {
+                new(40.7549, -73.9840, "Midtown Manhattan", "350 5th Avenue (Empire State)", "New York", "NY 10118"),
+                new(40.7074, -74.0094, "Wall Street Financial District", "11 Wall Street / Broadway", "New York", "NY 10005"),
+                new(40.7538, -74.0022, "Hudson Yards Tech Center", "500 West 33rd Street", "New York", "NY 10001"),
+                new(40.7660, -73.9770, "Central Park South", "200 Central Park South", "New York", "NY 10019"),
+                new(40.7580, -73.9855, "Times Square / Theater District", "1500 Broadway / 43rd St", "New York", "NY 10036"),
+                new(40.7033, -73.9890, "DUMBO Tech Sector", "55 Water Street, DUMBO", "Brooklyn", "NY 11201"),
+                new(40.7081, -73.9571, "Williamsburg North", "250 Bedford Avenue", "Brooklyn", "NY 11211"),
+                new(40.7447, -73.9485, "Long Island City Tech Hub", "1 Court Square", "Queens", "NY 11101"),
+                new(40.7736, -73.9566, "Upper East Side", "1000 Madison Avenue", "New York", "NY 10075"),
+                new(40.7200, -74.0000, "SoHo Creative District", "450 Broadway", "New York", "NY 10013"),
+                new(40.7450, -74.0050, "Chelsea Arts District", "200 10th Avenue", "New York", "NY 10011"),
+                new(40.7300, -73.9950, "Greenwich Village", "70 Washington Square South", "New York", "NY 10012"),
+                new(40.8100, -73.9450, "Harlem Central", "200 West 125th Street", "New York", "NY 10027")
+            }),
+
+        // London Metro (Lat 51.25 .. 51.75, Lon -0.55 .. 0.25)
+        new MetroRegion(
+            "London", 51.25, 51.75, -0.55, 0.25,
+            new GeoAnchor[]
+            {
+                new(51.5155, -0.0922, "City of London / Square Mile", "100 Bishopsgate", "London", "EC2N 4AG"),
+                new(51.5054, -0.0235, "Canary Wharf Financial Hub", "1 Canada Square", "London", "E14 5AB"),
+                new(51.4995, -0.1332, "Westminster & Whitehall", "Parliament Square, Westminster", "London", "SW1A 2PW"),
+                new(51.5136, -0.1264, "Soho / Oxford Circus", "100 Oxford Street", "London", "W1D 1BS"),
+                new(51.5308, -0.1238, "King's Cross Tech Hub", "York Way / Pancras Square", "London", "N1C 4AX"),
+                new(51.5235, -0.0772, "Shoreditch Silicon Roundabout", "Great Eastern Street", "London", "EC2A 3NT"),
+                new(51.4988, -0.1749, "Kensington High Street", "220 Kensington High Street", "London", "W8 7RG"),
+                new(51.4820, -0.0050, "Greenwich Waterfront", "Greenwich High Road", "London", "SE10 8JA"),
+                new(51.5400, -0.1420, "Camden Town", "Camden High Street", "London", "NW1 7JE"),
+                new(51.5180, -0.1780, "Paddington Basin", "Merchant Square", "London", "W2 1AS"),
+                new(51.5050, -0.0860, "London Bridge & Southwark", "More London Riverside", "London", "SE1 2DB")
+            }),
+
+        // Tokyo Metro (Lat 35.40 .. 35.95, Lon 139.40 .. 140.05)
+        new MetroRegion(
+            "Tokyo", 35.40, 35.95, 139.40, 140.05,
+            new GeoAnchor[]
+            {
+                new(35.6595, 139.7004, "Shibuya Crossing", "1-1 Dogenzaka, Shibuya-ku", "Tokyo", "150-0043"),
+                new(35.6938, 139.7034, "Shinjuku Skyscraper District", "2-8 Nishi-Shinjuku, Shinjuku-ku", "Tokyo", "160-0023"),
+                new(35.6719, 139.7648, "Ginza District", "4-5 Ginza, Chuo-ku", "Tokyo", "104-0061"),
+                new(35.7022, 139.7741, "Akihabara Electric Town", "1-1 Soto-Kanda, Chiyoda-ku", "Tokyo", "101-0021"),
+                new(35.6628, 139.7314, "Roppongi Hills & Minato", "6-10 Roppongi, Minato-ku", "Tokyo", "106-0032"),
+                new(35.6812, 139.7671, "Marunouchi / Tokyo Station", "1-9 Marunouchi, Chiyoda-ku", "Tokyo", "100-0005"),
+                new(35.6284, 139.7387, "Shinagawa Tech Sector", "Konan 2-Chome, Minato-ku", "Tokyo", "108-0075"),
+                new(35.7300, 139.7120, "Ikebukuro", "Higashi-Ikebukuro, Toshima-ku", "Tokyo", "170-0013"),
+                new(35.6290, 139.7760, "Odaiba Waterfront", "Daiba 1-Chome, Minato-ku", "Tokyo", "135-0091")
+            }),
+
+        // Paris (Lat 48.75 .. 49.00, Lon 2.15 .. 2.50)
+        new MetroRegion(
+            "Paris", 48.75, 49.00, 2.15, 2.50,
+            new GeoAnchor[]
+            {
+                new(48.8924, 2.2361, "La Défense Business District", "1 Parvis de la Défense", "Paris", "92800"),
+                new(48.8698, 2.3075, "Champs-Élysées", "102 Avenue des Champs-Élysées", "Paris", "75008"),
+                new(48.8575, 2.3592, "Le Marais Historic District", "Rue de Rivoli", "Paris", "75004"),
+                new(48.8867, 2.3431, "Montmartre", "Place du Tertre", "Paris", "75018"),
+                new(48.8462, 2.3444, "Latin Quarter & Sorbonne", "Boulevard Saint-Michel", "Paris", "75005")
+            }),
+
+        // Berlin (Lat 52.35 .. 52.65, Lon 13.10 .. 13.70)
+        new MetroRegion(
+            "Berlin", 52.35, 52.65, 13.10, 13.70,
+            new GeoAnchor[]
+            {
+                new(52.5219, 13.4132, "Alexanderplatz & TV Tower", "Alexanderplatz 1, Mitte", "Berlin", "10178"),
+                new(52.5096, 13.3759, "Potsdamer Platz", "Potsdamer Platz 1, Tiergarten", "Berlin", "10785"),
+                new(52.4990, 13.4034, "Kreuzberg Tech Hub", "Oranienstraße 25, Kreuzberg", "Berlin", "10961"),
+                new(52.5048, 13.3150, "Charlottenburg", "Kurfürstendamm 110", "Berlin", "10707"),
+                new(52.5133, 13.4548, "Friedrichshain & Mediaspree", "Warschauer Straße 40", "Berlin", "10243")
+            }),
+
+        // Sydney (Lat -34.05 .. -33.65, Lon 150.90 .. 151.35)
+        new MetroRegion(
+            "Sydney", -34.05, -33.65, 150.90, 151.35,
+            new GeoAnchor[]
+            {
+                new(-33.8614, 151.2108, "Circular Quay & Opera", "1 Macquarie Street", "Sydney", "NSW 2000"),
+                new(-33.8732, 151.1994, "Darling Harbour & Barangaroo", "300 Barangaroo Avenue", "Sydney", "NSW 2000"),
+                new(-33.8390, 151.2072, "North Sydney CBD", "100 Miller Street", "Sydney", "NSW 2060"),
+                new(-33.8150, 151.0011, "Parramatta Tech Precinct", "100 Church Street", "Sydney", "NSW 2150"),
+                new(-33.8915, 151.2767, "Bondi Beach Coastal", "Campbell Parade", "Sydney", "NSW 2026")
+            }),
+
+        // Dubai (Lat 24.95 .. 25.35, Lon 55.00 .. 55.45)
+        new MetroRegion(
+            "Dubai", 24.95, 25.35, 55.00, 55.45,
+            new GeoAnchor[]
+            {
+                new(25.1972, 55.2744, "Downtown Dubai & Burj Khalifa", "Sheikh Mohammed bin Rashid Blvd", "Dubai", "Dubai"),
+                new(25.0772, 55.1333, "Dubai Marina & JBR", "Marina Promenade, Dubai Marina", "Dubai", "Dubai"),
+                new(25.2138, 55.2798, "DIFC Financial Center", "Gate Building, DIFC", "Dubai", "Dubai"),
+                new(25.1860, 55.2631, "Business Bay Canal District", "Marasi Drive, Business Bay", "Dubai", "Dubai"),
+                new(25.1124, 55.1390, "Palm Jumeirah", "The Crescent, Palm Jumeirah", "Dubai", "Dubai"),
+                new(25.2697, 55.3095, "Deira & Dubai Creek", "Baniyas Road, Deira", "Dubai", "Dubai")
+            }),
+
+        // Singapore (Lat 1.20 .. 1.48, Lon 103.60 .. 104.05)
+        new MetroRegion(
+            "Singapore", 1.20, 1.48, 103.60, 104.05,
+            new GeoAnchor[]
+            {
+                new(1.2838, 103.8591, "Marina Bay Financial District", "10 Marina Boulevard, MBFC", "Singapore", "018981"),
+                new(1.3048, 103.8318, "Orchard Road Corridor", "230 Orchard Road", "Singapore", "238897"),
+                new(1.2995, 103.7874, "One-North Biopolis Tech Hub", "1 Fusionopolis Way", "Singapore", "138632"),
+                new(1.3329, 103.7436, "Jurong Innovation District", "Jurong Gateway Road", "Singapore", "609916"),
+                new(1.3347, 103.9625, "Changi Business & Aviation Park", "Changi South Avenue 2", "Singapore", "486025")
+            })
+    };
+
+    // Regional country anchors for locations outside the primary metropolitan regions
+    private static readonly GeoAnchor[] BroadNationalAnchors = new[]
+    {
+        // India regional hubs
+        new GeoAnchor(18.5204, 73.8567, "Pune Central", "Shivajinagar Highway Zone", "Pune", "MH 411005"),
+        new GeoAnchor(19.0760, 72.8777, "Mumbai Metro Hub", "Eastern Express Highway", "Mumbai", "MH 400071"),
+        new GeoAnchor(19.9975, 73.7898, "Nashik Tech Hub", "Trimbak Road", "Nashik", "MH 422002"),
+        new GeoAnchor(21.1458, 79.0882, "Nagpur Metro Sector", "Wardha Road IT Park", "Nagpur", "MH 440015"),
+        new GeoAnchor(19.8762, 75.3433, "Chhatrapati Sambhaji Nagar", "Jalna Road", "Chhatrapati Sambhaji Nagar", "MH 431001"),
+        new GeoAnchor(28.6139, 77.2090, "Delhi National Capital", "Rajpath Avenue Sector", "New Delhi", "DL 110001"),
+        new GeoAnchor(12.9716, 77.5946, "Bengaluru South Corridor", "Hosur Main Road", "Bengaluru", "KA 560001"),
+        new GeoAnchor(17.3850, 78.4867, "Hyderabad Central Hub", "Inner Ring Road", "Hyderabad", "TG 500001"),
+        new GeoAnchor(13.0827, 80.2707, "Chennai Metro Node", "Anna Salai Arterial", "Chennai", "TN 600002"),
+        new GeoAnchor(22.5726, 88.3639, "Kolkata Central Zone", "Chittaranjan Avenue", "Kolkata", "WB 700012"),
+        new GeoAnchor(23.0225, 72.5714, "Ahmedabad Central", "Ashram Road", "Ahmedabad", "GJ 380009"),
+        new GeoAnchor(26.9124, 75.7873, "Jaipur Heritage Sector", "MI Road Commercial Zone", "Jaipur", "RJ 302001"),
+        new GeoAnchor(30.7333, 76.7794, "Chandigarh Tricity Node", "Madhya Marg Sector 17", "Chandigarh", "CH 160017"),
+        new GeoAnchor(26.8467, 80.9462, "Lucknow Gomti Nagar", "Vibhuti Khand", "Lucknow", "UP 226010"),
+        new GeoAnchor(22.7196, 75.8577, "Indore Super Corridor", "AB Road Tech Corridor", "Indore", "MP 452001"),
+        new GeoAnchor(9.9312, 76.2673, "Kochi Infopark Hub", "Kakkanad Express Corridor", "Kochi", "KL 682030"),
+        new GeoAnchor(17.6868, 83.2185, "Visakhapatnam Coastal Node", "VIP Road", "Visakhapatnam", "AP 530003"),
+
+        // North America
+        new GeoAnchor(34.0522, -118.2437, "Downtown Los Angeles", "Grand Avenue", "Los Angeles", "CA 90012"),
+        new GeoAnchor(47.6062, -122.3321, "Seattle Tech Corridor", "Westlake Avenue", "Seattle", "WA 98109"),
+        new GeoAnchor(41.8781, -87.6298, "Chicago Loop", "Michigan Avenue", "Chicago", "IL 60604"),
+        new GeoAnchor(30.2672, -97.7431, "Austin Silicon Hills", "Congress Avenue", "Austin", "TX 78701"),
+        new GeoAnchor(43.6532, -79.3832, "Downtown Toronto", "Bay Street Financial District", "Toronto", "ON M5H 2R2"),
+
+        // Europe & Middle East & Asia
+        new GeoAnchor(52.3676, 4.9041, "Amsterdam Zuidas", "Gustav Mahlerlaan", "Amsterdam", "1082 MK"),
+        new GeoAnchor(50.1109, 8.6821, "Frankfurt Financial", "Mainzer Landstraße", "Frankfurt", "60325"),
+        new GeoAnchor(47.3769, 8.5417, "Zurich Tech & Banking", "Bahnhofstrasse", "Zurich", "8001"),
+        new GeoAnchor(40.4168, -3.7038, "Madrid Paseo de la Castellana", "Paseo de la Castellana", "Madrid", "28046"),
+        new GeoAnchor(41.9028, 12.4964, "Rome Central", "Via del Corso", "Rome", "00187"),
+        new GeoAnchor(24.7136, 46.6753, "Riyadh Olaya District", "King Fahd Road", "Riyadh", "12211"),
+        new GeoAnchor(37.5665, 126.9780, "Seoul Gangnam Hub", "Teheran-ro", "Seoul", "06236"),
+        new GeoAnchor(22.3193, 114.1694, "Hong Kong Central", "Des Voeux Road Central", "Hong Kong", "999077"),
+        new GeoAnchor(-37.8136, 144.9631, "Melbourne CBD", "Collins Street", "Melbourne", "VIC 3000")
+    };
+
     public static (string Area, string StreetAddress, string City, string PostalCode) ResolveGeographicAddress(double lat, double lon, int index, string tech)
     {
-        // San Francisco Bay Area (Lat 37.65 .. 37.90, Lon -122.55 .. -122.30)
-        if (lat >= 37.65 && lat <= 37.90 && lon >= -122.55 && lon <= -122.30)
+        // 1. Check if the coordinate falls within any defined high-density metropolitan region
+        foreach (var region in DefinedMetroRegions)
         {
-            var sfLocations = new (string Area, string Address, string Zip)[]
+            if (lat >= region.MinLat && lat <= region.MaxLat && lon >= region.MinLon && lon <= region.MaxLon)
             {
-                ("Financial District", "742 Market Street, Suite 400", "CA 94103"),
-                ("SoMa Tech Corridor", "500 Howard Street / 1st St", "CA 94105"),
-                ("Mission District", "2196 Mission Street", "CA 94110"),
-                ("Castro & Twin Peaks", "400 Castro Street", "CA 94114"),
-                ("Marina & Presidio", "1800 Chestnut Street", "CA 94123"),
-                ("Sunset District", "1250 9th Avenue", "CA 94122"),
-                ("Fisherman's Wharf", "Pier 39 The Embarcadero", "CA 94133"),
-                ("Nob Hill Central", "1000 California Street", "CA 94108"),
-                ("Outer Richmond", "320 Geary Boulevard", "CA 94118"),
-                ("Potrero Hill", "800 16th Street", "CA 94107"),
-                ("Dogpatch Waterfront", "2200 3rd Street", "CA 94107"),
-                ("Hayes Valley", "450 Hayes Street", "CA 94102"),
-                ("Embarcadero Center", "4 Embarcadero Center", "CA 94111"),
-                ("Chinatown Central", "700 Grant Avenue", "CA 94108"),
-                ("North Beach", "550 Columbus Avenue", "CA 94133"),
-                ("Union Square", "333 Post Street", "CA 94108"),
-                ("Mission Bay BioTech", "550 16th Street", "CA 94158"),
-                ("Pacific Heights", "2400 Broadway Street", "CA 94115")
-            };
-            var pick = sfLocations[index % sfLocations.Length];
-            return (pick.Area, pick.Address, "San Francisco", pick.Zip);
+                // Nearest-Neighbor spatial matching: pick the anchor with the minimum physical distance to (lat, lon)
+                GeoAnchor bestAnchor = region.Anchors[0];
+                double bestDist = double.MaxValue;
+
+                foreach (var anchor in region.Anchors)
+                {
+                    double dist = GeodesyUtils.CalculateDistanceMeters(lat, lon, anchor.Lat, anchor.Lon);
+                    if (dist < bestDist)
+                    {
+                        bestDist = dist;
+                        bestAnchor = anchor;
+                    }
+                }
+
+                string street;
+                if (bestDist < 250.0)
+                {
+                    street = bestAnchor.Street;
+                }
+                else
+                {
+                    string dir = GeodesyUtils.GetCompassDirection(bestAnchor.Lat, bestAnchor.Lon, lat, lon);
+                    if (bestDist < 1200.0)
+                    {
+                        street = $"{dir} Sector, Near {bestAnchor.Street}";
+                    }
+                    else
+                    {
+                        street = $"{dir} Sector, {bestAnchor.Area}";
+                    }
+                }
+
+                return (bestAnchor.Area, street, bestAnchor.City, bestAnchor.PostalCode);
+            }
         }
 
-        // Mumbai Metro (Lat 18.85 .. 19.35, Lon 72.75 .. 73.10)
-        if (lat >= 18.85 && lat <= 19.35 && lon >= 72.75 && lon <= 73.10)
+        // 2. Check broader national/regional anchors (nearest-neighbor across world cities)
+        GeoAnchor closestBroad = BroadNationalAnchors[0];
+        double closestBroadDist = double.MaxValue;
+
+        foreach (var anchor in BroadNationalAnchors)
         {
-            var mumbaiLocations = new (string Area, string Address, string Zip)[]
+            double dist = GeodesyUtils.CalculateDistanceMeters(lat, lon, anchor.Lat, anchor.Lon);
+            if (dist < closestBroadDist)
             {
-                ("BKC (Bandra Kurla Complex)", "G-Block, Bandra Kurla Complex Road", "MH 400051"),
-                ("Bandra West", "Hill Road, Near Bandra Station", "MH 400050"),
-                ("Andheri East Tech Hub", "MIDC Central Road, Chakala", "MH 400093"),
-                ("Nariman Point", "Marine Drive Financial Center", "MH 400021"),
-                ("Dadar TT Circle", "Dr. Babasaheb Ambedkar Road", "MH 400014"),
-                ("Lower Parel Commercial", "Senapati Bapat Marg, One World Center", "MH 400013"),
-                ("Powai Cybercity", "Hiranandani Central Avenue", "MH 400076"),
-                ("Borivali West", "S.V. Road, Near Shimpoli", "MH 400092"),
-                ("Colaba Heritage District", "Shahid Bhagat Singh Road", "MH 400005"),
-                ("Malad West Mindspace", "Mindspace IT Park, Link Road", "MH 400064"),
-                ("Goregaon East", "Nesco Complex, Western Express Hwy", "MH 400063"),
-                ("Fort / South Mumbai", "DN Road, Near CST Terminus", "MH 400001"),
-                ("Kurla West", "LBS Marg, Near Phoenix Marketcity", "MH 400070"),
-                ("Vikhroli East", "Godrej One Commercial Hub", "MH 400079"),
-                ("Thane West", "Ghodbunder Road Sector 2", "MH 400607"),
-                ("Navi Mumbai Vashi", "Sector 30A, Near Vashi Station", "MH 400703"),
-                ("Worli Sea Face", "Dr. Annie Besant Road", "MH 400018"),
-                ("Juhu Beachfront", "Juhu Tara Road", "MH 400049")
-            };
-            var pick = mumbaiLocations[index % mumbaiLocations.Length];
-            return (pick.Area, pick.Address, "Mumbai", pick.Zip);
+                closestBroadDist = dist;
+                closestBroad = anchor;
+            }
         }
 
-        // Pune Metro (Lat 18.40 .. 18.75, Lon 73.70 .. 74.05)
-        if (lat >= 18.40 && lat <= 18.75 && lon >= 73.70 && lon <= 74.05)
+        // If within 150 km of a known major city/anchor, resolve to that city's regional sector
+        if (closestBroadDist <= 150000.0)
         {
-            var puneLocations = new (string Area, string Address, string Zip)[]
-            {
-                ("Hinjewadi IT Park Phase 1", "Rajiv Gandhi Infotech Park Main Rd", "MH 411057"),
-                ("Shivajinagar Central", "Fergusson College Road", "MH 411005"),
-                ("Koregaon Park", "North Main Road, Lane 5", "MH 411001"),
-                ("Kothrud", "Paud Road, Near Vanaz Metro", "MH 411038"),
-                ("Viman Nagar Airport Hub", "Symbiosis Road, Near Phoenix", "MH 411014"),
-                ("Magarpatta Cybercity", "Tower 7 Cybercity Circle", "MH 411028"),
-                ("Baner High Street", "Baner-Pashan Link Road", "MH 411045"),
-                ("Aundh", "ITI Road, Near Parihar Chowk", "MH 411007"),
-                ("Swargate Transport Hub", "Pune-Satara Road Chowk", "MH 411042"),
-                ("Wakad Telecom Corridor", "Dange Chowk Road", "MH 411057"),
-                ("Hadapsar Industrial", "Solapur Road Industrial Zone", "MH 411028"),
-                ("Pimpri-Chinchwad (PCMC)", "Old Mumbai-Pune Highway", "MH 411018"),
-                ("Kalyani Nagar", "East Avenue, Near Bishop's School", "MH 411006"),
-                ("Bavdhan Tech Node", "NDA-Pashan Road", "MH 411021"),
-                ("Kharadi EON Free Zone", "EON IT Park Phase 2", "MH 411014"),
-                ("Camp / MG Road", "Mahatma Gandhi Road", "MH 411001"),
-                ("Katraj Tech Sector", "Near Bharati Vidyapeeth", "MH 411046"),
-                ("Nigdi Pradhikaran", "Sector 24, Spine Road", "MH 411044")
-            };
-            var pick = puneLocations[index % puneLocations.Length];
-            return (pick.Area, pick.Address, "Pune", pick.Zip);
+            string dir = GeodesyUtils.GetCompassDirection(closestBroad.Lat, closestBroad.Lon, lat, lon);
+            string area = $"{closestBroad.City} {dir} Regional Sector";
+            string street = $"{dir} Bypass Corridor, Near {closestBroad.Area}";
+            return (area, street, closestBroad.City, closestBroad.PostalCode);
         }
 
-        // New York Metro (Lat 40.50 .. 40.95, Lon -74.25 .. -73.70)
-        if (lat >= 40.50 && lat <= 40.95 && lon >= -74.25 && lon <= -73.70)
-        {
-            var nyLocations = new (string Area, string Address, string Zip)[]
-            {
-                ("Midtown Manhattan", "350 5th Avenue (Empire State)", "NY 10118"),
-                ("Financial District", "11 Wall Street / Broadway", "NY 10005"),
-                ("Hudson Yards", "500 West 33rd Street", "NY 10001"),
-                ("Central Park South", "200 Central Park South", "NY 10019"),
-                ("Brooklyn Heights", "100 Montague Street", "NY 11201"),
-                ("Williamsburg", "250 Bedford Avenue", "NY 11211"),
-                ("DUMBO Tech Sector", "55 Water Street", "NY 11201"),
-                ("Astoria, Queens", "31-00 30th Avenue", "NY 11106"),
-                ("Upper East Side", "1000 Madison Avenue", "NY 10075"),
-                ("SoHo Creative District", "450 Broadway", "NY 10013"),
-                ("Chelsea Arts District", "200 10th Avenue", "NY 10011"),
-                ("Times Square", "1500 Broadway / 43rd St", "NY 10036"),
-                ("Long Island City", "1 Court Square", "NY 11101"),
-                ("Greenwich Village", "70 Washington Square South", "NY 10012"),
-                ("Harlem Central", "200 West 125th Street", "NY 10027"),
-                ("Flushing, Queens", "136-20 Roosevelt Avenue", "NY 11354"),
-                ("Downtown Brooklyn", "300 Jay Street", "NY 11201"),
-                ("Battery Park City", "250 Vesey Street", "NY 10281")
-            };
-            var pick = nyLocations[index % nyLocations.Length];
-            return (pick.Area, pick.Address, "New York", pick.Zip);
-        }
-
-        // London Metro (Lat 51.35 .. 51.65, Lon -0.45 .. 0.15)
-        if (lat >= 51.35 && lat <= 51.65 && lon >= -0.45 && lon <= 0.15)
-        {
-            var londonLocations = new (string Area, string Address, string Zip)[]
-            {
-                ("Westminster", "Parliament Square, Westminster", "SW1A 2PW"),
-                ("Canary Wharf Financial", "1 Canada Square", "E14 5AB"),
-                ("City of London", "100 Bishopsgate", "EC2N 4AG"),
-                ("King's Cross Tech Hub", "York Way / Pancras Square", "N1C 4AX"),
-                ("Soho / Oxford St", "100 Oxford Street", "W1D 1BS"),
-                ("Kensington High St", "220 Kensington High Street", "W8 7RG"),
-                ("Shoreditch High St", "Great Eastern Street", "EC2A 3NT"),
-                ("Greenwich", "Greenwich High Road", "SE10 8JA"),
-                ("Camden Town", "Camden High Street", "NW1 7JE"),
-                ("Paddington Basin", "Merchant Square", "W2 1AS"),
-                ("Southwark / London Bridge", "More London Riverside", "SE1 2DB"),
-                ("Stratford Olympic Park", "Westfield Avenue", "E20 1HZ"),
-                ("Clapham Junction", "St John's Hill", "SW11 1SA"),
-                ("Marylebone", "Baker Street 221B", "NW1 6XE"),
-                ("Whitechapel", "Commercial Road", "E1 1PX"),
-                ("Hammersmith", "King Street", "W6 9JU"),
-                ("Wimbledon", "The Broadway", "SW19 1QB"),
-                ("Richmond Riverside", "George Street", "TW9 1JY")
-            };
-            var pick = londonLocations[index % londonLocations.Length];
-            return (pick.Area, pick.Address, "London", pick.Zip);
-        }
-
-        // Tokyo Metro (Lat 35.50 .. 35.85, Lon 139.50 .. 139.90)
-        if (lat >= 35.50 && lat <= 35.85 && lon >= 139.50 && lon <= 139.90)
-        {
-            var tokyoLocations = new (string Area, string Address, string Zip)[]
-            {
-                ("Shibuya Crossing", "1-1 Dogenzaka, Shibuya-ku", "150-0043"),
-                ("Shinjuku Central", "2-8 Nishi-Shinjuku, Shinjuku-ku", "160-0023"),
-                ("Ginza District", "4-5 Ginza, Chuo-ku", "104-0061"),
-                ("Roppongi Hills", "6-10 Roppongi, Minato-ku", "106-0032"),
-                ("Akihabara Electric Town", "1-1 Soto-Kanda, Chiyoda-ku", "101-0021"),
-                ("Marunouchi / Tokyo Station", "1-9 Marunouchi, Chiyoda-ku", "100-0005"),
-                ("Shinagawa Station", "Konan 2-Chome, Minato-ku", "108-0075"),
-                ("Ikebukuro", "Higashi-Ikebukuro, Toshima-ku", "170-0013"),
-                ("Odaiba Waterfront", "Daiba 1-Chome, Minato-ku", "135-0091")
-            };
-            var pick = tokyoLocations[index % tokyoLocations.Length];
-            return (pick.Area, pick.Address, "Tokyo", pick.Zip);
-        }
-
-        // Generic / Custom Global Coordinates
-        string[] quadrantNames = { "North Commercial Sector", "North-East Gateway", "East Innovation Zone", "South-East Metro", "South Corridor", "South-West District", "West Tech Corridor", "North-West Industrial" };
-        string quad = quadrantNames[index % quadrantNames.Length];
-        string street = $"Telecom Sector Mast #{index + 101}, Cellular Ave";
-        string city = $"Metropolitan Area ({lat:F2}°, {lon:F2}°)";
+        // 3. Realistic global geographic sector fallback for arbitrary/remote coordinates
+        string ns = lat >= 0 ? "North" : "South";
+        string ew = lon >= 0 ? "East" : "West";
+        string quad = $"{ns}-{ew} Regional Sector";
+        string fallbackStreet = $"Cellular Mast #{index + 101}, Sector Grid Site";
+        string fallbackCity = $"Regional Telecom Grid ({Math.Abs(lat):F2}°{(lat >= 0 ? "N" : "S")}, {Math.Abs(lon):F2}°{(lon >= 0 ? "E" : "W")})";
         string zip = $"LOC-{(Math.Abs((int)(lat * 100)) + Math.Abs((int)(lon * 100))):D5}";
-        return (quad, street, city, zip);
+
+        return (quad, fallbackStreet, fallbackCity, zip);
     }
 
     public IReadOnlyList<TowerConnectedDeviceDto> GetDemoConnectedDevicesForTower(string cellId)

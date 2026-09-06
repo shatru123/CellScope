@@ -39,6 +39,21 @@ public class TowerService : ITowerService
                 double dist = GeodesyUtils.CalculateDistanceMeters(latitude, longitude, tower.Latitude, tower.Longitude);
                 if (dist <= radiusMeters)
                 {
+                    // Ensure the tower has an accurate spatial address if stored address was empty or a placeholder
+                    if (string.IsNullOrEmpty(tower.Area) ||
+                        string.IsNullOrEmpty(tower.StreetAddress) ||
+                        tower.City?.Contains("Metropolitan Area") == true ||
+                        tower.StreetAddress?.Contains("Cellular Ave") == true ||
+                        tower.Area.Contains("Commercial Sector") ||
+                        tower.PostalCode?.StartsWith("LOC-") == true)
+                    {
+                        var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(tower.Latitude, tower.Longitude, 0, tower.RadioTechnology);
+                        tower.Area = area;
+                        tower.StreetAddress = street;
+                        tower.City = city;
+                        tower.PostalCode = postal;
+                    }
+
                     result.Add(DtoMapper.ToDto(tower, dist));
                 }
             }
@@ -434,7 +449,23 @@ public class TowerService : ITowerService
             int idx = 0;
             foreach (var t in existingTowers)
             {
-                if (string.IsNullOrEmpty(t.Area) || string.IsNullOrEmpty(t.StreetAddress))
+                bool needsRefresh = string.IsNullOrEmpty(t.Area) ||
+                                    string.IsNullOrEmpty(t.StreetAddress) ||
+                                    t.City?.Contains("Metropolitan Area") == true ||
+                                    t.StreetAddress?.Contains("Cellular Ave") == true ||
+                                    t.Area.Contains("Commercial Sector") ||
+                                    t.PostalCode?.StartsWith("LOC-") == true;
+
+                if (!needsRefresh)
+                {
+                    var (expectedArea, _, expectedCity, _) = DemoDataService.ResolveGeographicAddress(t.Latitude, t.Longitude, idx, t.RadioTechnology);
+                    if (expectedCity != t.City || (expectedCity == "San Francisco" && t.Area == "Financial District" && t.Longitude < -122.415))
+                    {
+                        needsRefresh = true;
+                    }
+                }
+
+                if (needsRefresh)
                 {
                     var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(t.Latitude, t.Longitude, idx++, t.RadioTechnology);
                     t.Area = area;
@@ -465,10 +496,10 @@ public class TowerService : ITowerService
                 OperatorName = "Airtel / Global Telecom",
                 Latitude = 37.7749,
                 Longitude = -122.4194,
-                Area = "Financial District",
-                StreetAddress = "742 Market Street, Suite 400",
+                Area = "Civic Center / Hayes Valley",
+                StreetAddress = "1390 Market Street",
                 City = "San Francisco",
-                PostalCode = "CA 94103",
+                PostalCode = "CA 94102",
                 RangeMeters = 1200,
                 Samples = 1420,
                 Confidence = TowerConfidence.High,
@@ -553,10 +584,10 @@ public class TowerService : ITowerService
                 OperatorName = "Metro Wireless",
                 Latitude = 37.7760,
                 Longitude = -122.4080,
-                Area = "Potrero Hill / Dogpatch",
-                StreetAddress = "800 16th Street",
+                Area = "SoMa Tech Corridor",
+                StreetAddress = "500 Howard Street",
                 City = "San Francisco",
-                PostalCode = "CA 94107",
+                PostalCode = "CA 94105",
                 RangeMeters = 900,
                 Samples = 750,
                 Confidence = TowerConfidence.High,
