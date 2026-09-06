@@ -245,84 +245,90 @@
 <!-- Modal / Drawer: Detailed Connected Devices & Ongoing Calls Inspector for Selected Tower -->
 @if (selectedTower != null)
 {
-    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:0.5rem;backdrop-filter:blur(5px);">
-        <div class="noc-card tower-modal-dialog" style="width:100%;max-width:980px;max-height:92vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--accent-amber);box-shadow:0 24px 60px rgba(0,0,0,0.85);position:relative;display:flex;flex-direction:column;">
+    <div class="tower-modal-overlay" @onclick:self="@(() => selectedTower = null)">
+        <div class="noc-card tower-modal-dialog" role="dialog" aria-modal="true" aria-label="Tower Sector Telemetry">
             
-            <!-- Modal Header -->
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;">
-                <div>
-                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
-                        <span style="font-size:1.4rem;">🗼</span>
-                        <h2 style="font-size:1.25rem;font-weight:800;color:var(--text-primary);margin:0;">
-                            @(selectedTower.OperatorName ?? "Macro Base Station") — Sector Telemetry
-                        </h2>
+            <!-- Modal Fixed Header -->
+            <div class="tower-modal-header">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.75rem;">
+                    <div>
+                        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+                            <span style="font-size:1.4rem;">🗼</span>
+                            <h2 style="font-size:1.2rem;font-weight:800;color:var(--text-primary);margin:0;">
+                                @(selectedTower.OperatorName ?? "Macro Base Station") — Sector Telemetry
+                            </h2>
+                        </div>
+                        <div style="font-size:0.8rem;color:var(--accent-cyan);margin-bottom:0.25rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span>📍 <strong>@(string.IsNullOrEmpty(selectedTower.Area) ? "Sector Locality" : selectedTower.Area)</strong></span>
+                            @if (!string.IsNullOrEmpty(selectedTower.StreetAddress))
+                            {
+                                <span style="color:var(--text-secondary);">— @selectedTower.StreetAddress, @selectedTower.City @selectedTower.PostalCode</span>
+                            }
+                        </div>
+                        <p style="font-size:0.775rem;color:var(--text-secondary);margin:0;">
+                            Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedTower.CellId</span> • PCI: @(selectedTower.PhysicalCellId ?? "N/A") • Tech: <span style="color:var(--accent-amber);font-weight:700;">@selectedTower.RadioTechnology</span> • Distance: @Math.Round(selectedTower.DistanceMeters)m • Coordinates: <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@selectedTower.Latitude.ToString("F4"), @selectedTower.Longitude.ToString("F4")</span>
+                        </p>
                     </div>
-                    <div style="font-size:0.8rem;color:var(--accent-cyan);margin-bottom:0.35rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <span>📍 <strong>@(string.IsNullOrEmpty(selectedTower.Area) ? "Sector Locality" : selectedTower.Area)</strong></span>
-                        @if (!string.IsNullOrEmpty(selectedTower.StreetAddress))
-                        {
-                            <span style="color:var(--text-secondary);">— @selectedTower.StreetAddress, @selectedTower.City @selectedTower.PostalCode</span>
-                        }
-                    </div>
-                    <p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">
-                        Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedTower.CellId</span> • PCI: @(selectedTower.PhysicalCellId ?? "N/A") • Tech: <span style="color:var(--accent-amber);font-weight:700;">@selectedTower.RadioTechnology</span> • Distance: @Math.Round(selectedTower.DistanceMeters)m • Coordinates: <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@selectedTower.Latitude.ToString("F4"), @selectedTower.Longitude.ToString("F4")</span>
-                    </p>
+                    <button class="btn btn-outline btn-sm" style="flex-shrink:0;" @onclick="@(() => selectedTower = null)">✕ Close</button>
                 </div>
-                <button class="btn btn-outline btn-sm" @onclick="@(() => selectedTower = null)">✕ Close</button>
             </div>
 
             <!-- Sector High-Density Capacity KPIs -->
-            <div class="grid-kpis" style="margin-bottom:1rem;">
-                <MetricCard Title="Total Connected UEs" Value="@selectedTower.TotalConnectedDevices.ToString("N0")" Unit="Active" ValueColor="#10b981" Subtitle="Connected Devices in Sector" />
+            <div class="tower-modal-kpis">
+                <MetricCard Title="Total Connected UEs" Value="@selectedTower.TotalConnectedDevices.ToString("N0")" Unit="Active" ValueColor="#10b981" Subtitle="Connected Sector Nodes" />
                 <MetricCard Title="Active Voice & Video Calls" Value="@((selectedTower.ActiveCalls?.Count ?? selectedTower.VoLteVoiceChannels).ToString("N0"))" Unit="Calls" ValueColor="#f59e0b" Subtitle="VoNR / VoLTE Active Calls" />
                 <MetricCard Title="Active Data Bearers" Value="@selectedTower.ActiveDataSessions.ToString("N0")" Unit="Sessions" ValueColor="var(--accent-cyan)" Subtitle="5G/4G High-Speed Sessions" />
                 <MetricCard Title="Sector Throughput" Value="@($"{selectedTower.AggregateThroughputMbps}")" Unit="Mbps" ValueColor="#8b5cf6" Subtitle="@($"PRB Load: {selectedTower.PrbUtilizationPercent}%")" />
             </div>
 
-            <!-- Modal Sub-Tabs Navigation -->
-            <div class="mobile-scroll-tabs" style="display:flex;gap:0.5rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;margin-bottom:0.75rem;flex-wrap:nowrap;overflow-x:auto;">
-                <button class="btn btn-sm @(towerModalTab == "subscribers" ? "btn-primary" : "btn-outline")"
-                        style="font-size:0.8rem;font-weight:700;"
-                        @onclick="@(() => towerModalTab = "subscribers")">
-                    📱 Connected UEs (@(selectedTower.ConnectedDevices?.Count ?? 0) Nodes / @selectedTower.TotalConnectedDevices.ToString("N0") Sector UEs)
-                </button>
-                <button class="btn btn-sm @(towerModalTab == "capacity" ? "btn-primary" : "btn-outline")"
-                        style="font-size:0.8rem;font-weight:700;"
-                        @onclick="@(() => towerModalTab = "capacity")">
-                    ⚡ Cell Load & Capacity
-                </button>
-                <button class="btn btn-sm @(towerModalTab == "threat" ? "btn-primary" : "btn-outline")"
-                        style="font-size:0.8rem;font-weight:700;"
-                        @onclick="@(() => towerModalTab = "threat")">
-                    🛡️ Rogue Base Station Shield
-                </button>
-                <button class="btn btn-sm @(towerModalTab == "sib" ? "btn-primary" : "btn-outline")"
-                        style="font-size:0.8rem;font-weight:700;"
-                        @onclick="@(() => towerModalTab = "sib")">
-                    📡 SIB & Frequency
-                </button>
-                <button class="btn btn-sm @(towerModalTab == "propagation" ? "btn-primary" : "btn-outline")"
-                        style="font-size:0.8rem;font-weight:700;"
-                        @onclick="@(() => towerModalTab = "propagation")">
-                    🗺️ RF Sectors & Propagation
-                </button>
-                <button class="btn btn-sm @(towerModalTab == "calls" ? "btn-primary" : "btn-outline")"
-                        style="font-size:0.8rem;font-weight:700;"
-                        @onclick="@(() => towerModalTab = "calls")">
-                    📞 Voice & Video Calls (@(selectedTower.ActiveCalls?.Count ?? 0))
-                </button>
-                <button class="btn btn-sm @(towerModalTab == "bearers" ? "btn-primary" : "btn-outline")"
-                        style="font-size:0.8rem;font-weight:700;"
-                        @onclick="@(() => towerModalTab = "bearers")">
-                    📶 5G Bearers & 5QI
-                </button>
+            <!-- PINNED & STICKY SUB-TABS NAVIGATION (NEVER HIDDEN) -->
+            <div class="tower-modal-tabs-bar">
+                <div class="mobile-scroll-tabs" style="display:flex;gap:0.5rem;flex-wrap:nowrap;overflow-x:auto;">
+                    <button class="btn btn-sm @(towerModalTab == "subscribers" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.8rem;font-weight:700;white-space:nowrap;flex-shrink:0;"
+                            @onclick="@(() => towerModalTab = "subscribers")">
+                        📱 Connected UEs (@(selectedTower.ConnectedDevices?.Count ?? 0) Nodes / @selectedTower.TotalConnectedDevices.ToString("N0") Sector UEs)
+                    </button>
+                    <button class="btn btn-sm @(towerModalTab == "capacity" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.8rem;font-weight:700;white-space:nowrap;flex-shrink:0;"
+                            @onclick="@(() => towerModalTab = "capacity")">
+                        ⚡ Cell Load & Capacity
+                    </button>
+                    <button class="btn btn-sm @(towerModalTab == "threat" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.8rem;font-weight:700;white-space:nowrap;flex-shrink:0;"
+                            @onclick="@(() => towerModalTab = "threat")">
+                        🛡️ Rogue Base Station Shield
+                    </button>
+                    <button class="btn btn-sm @(towerModalTab == "sib" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.8rem;font-weight:700;white-space:nowrap;flex-shrink:0;"
+                            @onclick="@(() => towerModalTab = "sib")">
+                        📡 SIB & Frequency
+                    </button>
+                    <button class="btn btn-sm @(towerModalTab == "propagation" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.8rem;font-weight:700;white-space:nowrap;flex-shrink:0;"
+                            @onclick="@(() => towerModalTab = "propagation")">
+                        🗺️ RF Sectors & Propagation
+                    </button>
+                    <button class="btn btn-sm @(towerModalTab == "calls" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.8rem;font-weight:700;white-space:nowrap;flex-shrink:0;"
+                            @onclick="@(() => towerModalTab = "calls")">
+                        📞 Voice & Video Calls (@(selectedTower.ActiveCalls?.Count ?? 0))
+                    </button>
+                    <button class="btn btn-sm @(towerModalTab == "bearers" ? "btn-primary" : "btn-outline")"
+                            style="font-size:0.8rem;font-weight:700;white-space:nowrap;flex-shrink:0;"
+                            @onclick="@(() => towerModalTab = "bearers")">
+                        📶 5G Bearers & 5QI
+                    </button>
+                </div>
             </div>
 
-            <!-- SUB-TAB 1: Connected Subscriber Devices (50+ UEs) -->
-            @if (towerModalTab == "subscribers")
-            {
-                @if (!DemoService.IsDemoModeActive)
+            <!-- SCROLLABLE TAB BODY (INDEPENDENT CLEAN SCROLL CONTAINER) -->
+            <div class="tower-modal-body">
+                <!-- SUB-TAB 1: Connected Subscriber Devices (50+ UEs) -->
+                @if (towerModalTab == "subscribers")
                 {
+                    @if (!DemoService.IsDemoModeActive)
+                    {
                     <div style="margin-bottom:0.75rem;padding:0.75rem 1rem;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
                         <div style="display:flex;align-items:center;gap:0.6rem;">
                             <span style="font-size:1.2rem;">🔒</span>
@@ -978,6 +984,7 @@
                 </div>
             }
 
+            </div>
         </div>
     </div>
 }

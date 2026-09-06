@@ -958,3 +958,111 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   Tower Inspection Modal & Sticky Tabs Architecture
+   ========================================================================== */
+.tower-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.tower-modal-dialog {
+  width: 100%;
+  max-width: 1040px;
+  height: 90vh;
+  max-height: 920px;
+  background: var(--bg-card);
+  border: 1px solid var(--accent-amber);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Header and tabs stay locked at top, body scrolls */
+}
+
+.tower-modal-header {
+  flex-shrink: 0;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.tower-modal-kpis {
+  flex-shrink: 0;
+  padding: 0.75rem 1.25rem 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  background: var(--bg-card);
+}
+
+.tower-modal-tabs-bar {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.6rem 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.tower-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .tower-modal-overlay {
+    padding: 0;
+    align-items: flex-end; /* Slide up from bottom on mobile */
+  }
+
+  .tower-modal-dialog {
+    height: 94vh;
+    max-height: 94vh;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .tower-modal-header {
+    padding: 0.75rem 0.85rem 0.5rem;
+  }
+
+  .tower-modal-kpis {
+    padding: 0.5rem 0.85rem 0;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+  }
+
+  .tower-modal-tabs-bar {
+    padding: 0.5rem 0.85rem;
+  }
+
+  .tower-modal-body {
+    padding: 0.75rem 0.85rem;
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
+  }
+}
+
+@media (max-width: 480px) {
+  .tower-modal-kpis {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+  }
+}
