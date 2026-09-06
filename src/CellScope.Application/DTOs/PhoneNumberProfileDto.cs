@@ -24,4 +24,16 @@ public class PhoneNumberProfileDto
     public string Timezone { get; set; } = string.Empty;
     public string ConsensualTrackingUrl { get; set; } = string.Empty;
     public DateTimeOffset AnalyzedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    // Live Cellular Sector Attachment (if registered in current network deployment)
+    public bool IsAttachedToNetwork { get; set; } = false;
+    public string? ServingTowerName { get; set; }
+    public string? ServingCellId { get; set; }
+    public double? ServingLatitude { get; set; }
+    public double? ServingLongitude { get; set; }
+    public string? ServingArea { get; set; }
+    public string? ServingTechnology { get; set; }
+    public string? ServingBand { get; set; }
+    public int? ServingSignalDbm { get; set; }
+    public string? MatchedDeviceName { get; set; }
 }

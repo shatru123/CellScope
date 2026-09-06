@@ -7,6 +7,7 @@ namespace CellScope.UnitTests;
 public class PhoneNumberIntelligenceTests
 {
     private readonly PhoneNumberIntelligenceService _service = new();
+    private readonly PhoneNumberIntelligenceService _serviceWithDemo = new(new DemoDataService());
 
     [Fact]
     public async Task AnalyzePhoneNumberAsync_ValidIndiaJioNumber_ReturnsAccurateCircleAndCarrier()
@@ -24,6 +25,69 @@ public class PhoneNumberIntelligenceTests
         result.RiskScore.Should().BeLessThan(35);
         result.ConsensualTrackingUrl.Should().Contain("consent=prompt");
         result.ConsensualTrackingUrl.Should().Contain("919822012345");
+    }
+
+    [Fact]
+    public async Task AnalyzePhoneNumberAsync_IndiaNumberWithoutPlus_NormalizesCorrectly()
+    {
+        // 9604466334 without +91
+        var result = await _service.AnalyzePhoneNumberAsync("9604466334");
+
+        result.Should().NotBeNull();
+        result.IsValid.Should().BeTrue();
+        result.CountryName.Should().Be("India");
+        result.CountryCode.Should().Be("IN");
+        result.TelecomCircle.Should().Contain("Maharashtra");
+    }
+
+    [Fact]
+    public async Task AnalyzePhoneNumberAsync_IndiaNumberWith91Prefix_NormalizesCorrectly()
+    {
+        // 919604466334 without +
+        var result = await _service.AnalyzePhoneNumberAsync("919604466334");
+
+        result.Should().NotBeNull();
+        result.IsValid.Should().BeTrue();
+        result.CountryName.Should().Be("India");
+        result.TelecomCircle.Should().Contain("Maharashtra");
+    }
+
+    [Fact]
+    public async Task AnalyzePhoneNumberAsync_IndiaNumberWithLeadingZero_NormalizesCorrectly()
+    {
+        // 09604466334
+        var result = await _service.AnalyzePhoneNumberAsync("09604466334");
+
+        result.Should().NotBeNull();
+        result.IsValid.Should().BeTrue();
+        result.CountryName.Should().Be("India");
+        result.TelecomCircle.Should().Contain("Maharashtra");
+    }
+
+    [Fact]
+    public async Task AnalyzePhoneNumberAsync_PartialSeriesPrefix_MatchesCircleAndOperator()
+    {
+        // 9820 is Mumbai series
+        var result = await _service.AnalyzePhoneNumberAsync("9820");
+
+        result.Should().NotBeNull();
+        result.IsValid.Should().BeTrue();
+        result.TelecomCircle.Should().Contain("Mumbai");
+        result.OriginalCarrier.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task AnalyzePhoneNumberAsync_AttachedActiveSubscriber_DetectsServingSector()
+    {
+        // +91 96044 66334 is an active subscriber UE in DemoDataService
+        var result = await _serviceWithDemo.AnalyzePhoneNumberAsync("+91 96044 66334");
+
+        result.Should().NotBeNull();
+        result.IsAttachedToNetwork.Should().BeTrue();
+        result.ServingTowerName.Should().NotBeNullOrWhiteSpace();
+        result.ServingCellId.Should().NotBeNullOrWhiteSpace();
+        result.ServingLatitude.Should().NotBeNull();
+        result.ServingLongitude.Should().NotBeNull();
     }
 
     [Fact]

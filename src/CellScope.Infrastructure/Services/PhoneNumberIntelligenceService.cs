@@ -6,6 +6,13 @@ namespace CellScope.Infrastructure.Services;
 
 public class PhoneNumberIntelligenceService : IPhoneNumberIntelligenceService
 {
+    private readonly IDemoDataService? _demoService;
+
+    public PhoneNumberIntelligenceService(IDemoDataService? demoService = null)
+    {
+        _demoService = demoService;
+    }
+
     public Task<PhoneNumberProfileDto> AnalyzePhoneNumberAsync(string rawNumber, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(rawNumber))
@@ -35,9 +42,30 @@ public class PhoneNumberIntelligenceService : IPhoneNumberIntelligenceService
             });
         }
 
+        // Global Normalizations for seamless input handling
         if (digitsOnly.StartsWith("00"))
         {
             digitsOnly = "+" + digitsOnly[2..];
+        }
+        else if (digitsOnly.StartsWith("91") && digitsOnly.Length == 12 && digitsOnly[2] >= '6' && digitsOnly[2] <= '9')
+        {
+            digitsOnly = "+" + digitsOnly;
+        }
+        else if (digitsOnly.StartsWith("0") && digitsOnly.Length == 11 && digitsOnly[1] >= '6' && digitsOnly[1] <= '9')
+        {
+            digitsOnly = "+91" + digitsOnly[1..];
+        }
+        else if (digitsOnly.Length == 10 && digitsOnly[0] >= '6' && digitsOnly[0] <= '9' && !digitsOnly.StartsWith("+"))
+        {
+            digitsOnly = "+91" + digitsOnly;
+        }
+        else if (digitsOnly.StartsWith("1") && digitsOnly.Length == 11 && !digitsOnly.StartsWith("+"))
+        {
+            digitsOnly = "+" + digitsOnly;
+        }
+        else if (digitsOnly.StartsWith("44") && digitsOnly.Length == 12 && !digitsOnly.StartsWith("+"))
+        {
+            digitsOnly = "+" + digitsOnly;
         }
 
         var profile = new PhoneNumberProfileDto
@@ -47,7 +75,7 @@ public class PhoneNumberIntelligenceService : IPhoneNumberIntelligenceService
         };
 
         // Determine Country Dial Code & Base Routing
-        if (digitsOnly.StartsWith("+91") || (digitsOnly.Length == 10 && (digitsOnly[0] >= '6' && digitsOnly[0] <= '9')) || (digitsOnly.StartsWith("0") && digitsOnly.Length == 11 && digitsOnly[1] >= '6'))
+        if (digitsOnly.StartsWith("+91") || (digitsOnly.Length == 10 && (digitsOnly[0] >= '6' && digitsOnly[0] <= '9')) || (digitsOnly.StartsWith("0") && digitsOnly.Length == 11 && digitsOnly[1] >= '6') || (digitsOnly.Length is >= 4 and <= 9 && digitsOnly[0] >= '6' && digitsOnly[0] <= '9'))
         {
             AnalyzeIndiaNumber(digitsOnly, profile);
         }
@@ -64,11 +92,47 @@ public class PhoneNumberIntelligenceService : IPhoneNumberIntelligenceService
             AnalyzeGlobalInternationalNumber(digitsOnly, profile);
         }
 
+        // Check live macro network attachment
+        CheckNetworkAttachment(profile);
+
         // Generate Consensual Field Survey Link
         string cleanNum = Regex.Replace(profile.E164Number, @"[^\d]", "");
         profile.ConsensualTrackingUrl = $"/field-survey?dev={cleanNum}&session={Guid.NewGuid().ToString("N")[..8]}&consent=prompt";
 
         return Task.FromResult(profile);
+    }
+
+    private void CheckNetworkAttachment(PhoneNumberProfileDto profile)
+    {
+        if (_demoService == null) return;
+        try
+        {
+            string cleanTarget = Regex.Replace(profile.E164Number, @"[^\d]", "");
+            if (cleanTarget.Length < 10) return;
+            string last10 = cleanTarget[^10..];
+
+            var towers = _demoService.GetDemoTowers(18.5913, 73.7389);
+            foreach (var tower in towers)
+            {
+                var devices = _demoService.GetDemoConnectedDevicesForTower(tower.CellId);
+                var match = devices.FirstOrDefault(d => d.PhoneNumber != null && Regex.Replace(d.PhoneNumber, @"[^\d]", "").EndsWith(last10));
+                if (match != null)
+                {
+                    profile.IsAttachedToNetwork = true;
+                    profile.ServingTowerName = $"{tower.OperatorName} ({tower.Area})";
+                    profile.ServingCellId = tower.CellId;
+                    profile.ServingLatitude = tower.Latitude;
+                    profile.ServingLongitude = tower.Longitude;
+                    profile.ServingArea = $"{tower.Area}, {tower.City}";
+                    profile.ServingTechnology = tower.RadioTechnology;
+                    profile.ServingBand = match.Band;
+                    profile.ServingSignalDbm = match.SignalStrengthDbm;
+                    profile.MatchedDeviceName = $"{match.DeviceName} ({match.Model})";
+                    break;
+                }
+            }
+        }
+        catch { }
     }
 
     private static void AnalyzeIndiaNumber(string rawDigits, PhoneNumberProfileDto profile)
@@ -87,6 +151,26 @@ public class PhoneNumberIntelligenceService : IPhoneNumberIntelligenceService
 
         if (pureDigits.Length != 10)
         {
+            if (pureDigits.Length is >= 4 and <= 9)
+            {
+                int p4Partial = pureDigits.Length >= 4 && int.TryParse(pureDigits[..4], out int p4Val) ? p4Val : 
+                               (int.TryParse(pureDigits, out int pVal) ? pVal : 0);
+                int p2Partial = pureDigits.Length >= 2 && int.TryParse(pureDigits[..2], out int p2Val) ? p2Val : 0;
+                var (partialCircle, partialCarrier, partialMccMnc) = ResolveIndiaCircleAndCarrier(p4Partial, p2Partial, pureDigits);
+                
+                profile.E164Number = "+91 " + pureDigits + "...";
+                profile.NationalNumber = pureDigits;
+                profile.IsValid = true;
+                profile.LineType = "Mobile Allocation Prefix (Series Search)";
+                profile.TelecomCircle = partialCircle;
+                profile.OriginalCarrier = partialCarrier;
+                profile.MccMncHint = partialMccMnc;
+                profile.RiskLevel = "Low";
+                profile.RiskScore = 15;
+                profile.RiskFactors.Add($"DoT Licensed Allocation Series Match ({pureDigits.Length} digits)");
+                return;
+            }
+
             profile.E164Number = "+91" + pureDigits;
             profile.NationalNumber = pureDigits;
             profile.IsValid = false;
