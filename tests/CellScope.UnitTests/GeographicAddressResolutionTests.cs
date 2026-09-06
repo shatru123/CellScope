@@ -156,4 +156,28 @@ public class GeographicAddressResolutionTests
         city.Should().Contain("Regional Telecom Grid");
         postal.Should().StartWith("LOC-");
     }
+
+    [Fact]
+    public void ResolveGeographicAddress_SwitchingAcrossCities_MaintainsPreciseLocalIdentity()
+    {
+        var testLocations = new[]
+        {
+            (Lat: 18.5913, Lon: 73.7389, ExpectedCity: "Pune", ExpectedArea: "Hinjewadi"),
+            (Lat: 19.0657, Lon: 72.8682, ExpectedCity: "Mumbai", ExpectedArea: "Bandra Kurla Complex"),
+            (Lat: 12.9352, Lon: 77.6245, ExpectedCity: "Bengaluru", ExpectedArea: "Koramangala"),
+            (Lat: 28.4950, Lon: 77.0895, ExpectedCity: "Gurugram", ExpectedArea: "Cyber City"),
+            (Lat: 22.5800, Lon: 88.4320, ExpectedCity: "Kolkata", ExpectedArea: "Salt Lake"),
+            (Lat: 12.9750, Lon: 80.2500, ExpectedCity: "Chennai", ExpectedArea: "OMR"),
+            (Lat: 37.7749, Lon: -122.4194, ExpectedCity: "San Francisco", ExpectedArea: "Civic Center / Hayes Valley")
+        };
+
+        foreach (var loc in testLocations)
+        {
+            var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(loc.Lat, loc.Lon, 0, "5G NR");
+            city.Should().Be(loc.ExpectedCity);
+            area.Should().Contain(loc.ExpectedArea);
+            street.Should().NotBeNullOrWhiteSpace();
+            postal.Should().NotBeNullOrWhiteSpace();
+        }
+    }
 }

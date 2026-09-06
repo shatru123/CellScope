@@ -1454,11 +1454,30 @@
                 var towers = await TowerService.GetNearbyTowersAsync(lat, lon, radiusMeters);
                 towersList = towers.ToList();
             }
+
+            for (int i = 0; i < towersList.Count; i++)
+            {
+                var t = towersList[i];
+                var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(t.Latitude, t.Longitude, i, t.RadioTechnology);
+                t.Area = area;
+                t.StreetAddress = street;
+                t.City = city;
+                t.PostalCode = postal;
+            }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[CellMap] LoadTowersForArea notice: {ex.Message}");
             towersList = DemoService.GetDemoTowers(lat, lon, radiusMeters).ToList();
+            for (int i = 0; i < towersList.Count; i++)
+            {
+                var t = towersList[i];
+                var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(t.Latitude, t.Longitude, i, t.RadioTechnology);
+                t.Area = area;
+                t.StreetAddress = street;
+                t.City = city;
+                t.PostalCode = postal;
+            }
         }
     }
 
@@ -1467,6 +1486,11 @@
     {
         currentCenterLat = lat;
         currentCenterLon = lon;
+
+        if (selectedTower != null && GeodesyUtils.CalculateDistanceMeters(lat, lon, selectedTower.Latitude, selectedTower.Longitude) > radiusMeters)
+        {
+            selectedTower = null;
+        }
 
         if (radiusFilterSelection == "Auto")
         {
@@ -1500,6 +1524,7 @@
     {
         if (regionSubAreas.TryGetValue(cityName, out var areas) && areas.Count > 0)
         {
+            selectedTower = null;
             selectedPresetCity = cityName;
             var firstArea = areas[0];
             selectedSubAreaName = firstArea.Name;
@@ -1517,6 +1542,7 @@
         var area = CurrentRegionAreas.FirstOrDefault(a => a.Name == areaName);
         if (area != null)
         {
+            selectedTower = null;
             selectedSubAreaName = area.Name;
             currentCenterLat = area.Lat;
             currentCenterLon = area.Lon;
@@ -1534,6 +1560,7 @@
         var parts = coordinatesSearchInput.Split(new[] { ',', ' ', ';' }, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 2 && double.TryParse(parts[0], out double lat) && double.TryParse(parts[1], out double lon))
         {
+            selectedTower = null;
             currentCenterLat = lat;
             currentCenterLon = lon;
             await JS.InvokeVoidAsync("cellScopeMap.flyToLocation", "fullscreen-leaflet-map", lat, lon, 14);
@@ -1566,6 +1593,7 @@
     [JSInvokable]
     public async Task OnLocationUpdated(double lat, double lon)
     {
+        selectedTower = null;
         currentLat = lat;
         currentLon = lon;
         currentCenterLat = lat;
@@ -1603,18 +1631,25 @@
 
     public async Task SelectTowerAsync(string cellId)
     {
-        selectedTower = towersList.FirstOrDefault(t => t.CellId == cellId);
+        if (string.IsNullOrWhiteSpace(cellId)) return;
+
+        selectedTower = towersList.FirstOrDefault(t => string.Equals(t.CellId, cellId, StringComparison.OrdinalIgnoreCase));
         if (selectedTower == null)
         {
             selectedTower = await TowerService.GetTowerForCellAsync(cellId);
         }
         if (selectedTower == null && towersList.Count > 0)
         {
-            selectedTower = towersList[0];
+            selectedTower = towersList.FirstOrDefault(t => t.CellId.EndsWith(cellId, StringComparison.OrdinalIgnoreCase)) ?? towersList[0];
         }
 
         if (selectedTower != null)
         {
+            var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(selectedTower.Latitude, selectedTower.Longitude, 0, selectedTower.RadioTechnology);
+            selectedTower.Area = area;
+            selectedTower.StreetAddress = street;
+            selectedTower.City = city;
+            selectedTower.PostalCode = postal;
             if (selectedTower.ConnectedDevices == null || selectedTower.ConnectedDevices.Count == 0)
             {
                 var devs = await TowerService.GetConnectedDevicesForTowerAsync(selectedTower.CellId);

@@ -396,6 +396,13 @@ window.cellScopeMap = {
                 const streetAddr = t.streetAddress || t.StreetAddress || '';
                 const cityName = t.city || t.City || '';
                 const postalCode = t.postalCode || t.PostalCode || '';
+                const cellId = t.cellId || t.CellId || '';
+                const lat = t.latitude !== undefined ? t.latitude : (t.Latitude !== undefined ? t.Latitude : 0);
+                const lon = t.longitude !== undefined ? t.longitude : (t.Longitude !== undefined ? t.Longitude : 0);
+                const operatorName = t.operatorName || t.OperatorName || 'Telecom Carrier';
+                const radioTechnology = t.radioTechnology || t.RadioTechnology || '5G NR';
+                const physicalCellId = t.physicalCellId || t.PhysicalCellId || 'N/A';
+                const distVal = t.distanceMeters !== undefined ? t.distanceMeters : (t.DistanceMeters !== undefined ? t.DistanceMeters : null);
                 
                 let locationHtml = '';
                 if (areaName || streetAddr || cityName) {
@@ -417,25 +424,25 @@ window.cellScopeMap = {
                 const popupHtml = `
                     <div style="min-width:260px;">
                         <b>🗼 Macro Base Station / Cellular Tower</b><br>
-                        <b>Cell ID:</b> <span style="font-family:monospace;color:#06b6d4;">${t.cellId}</span><br>
+                        <b>Cell ID:</b> <span style="font-family:monospace;color:#06b6d4;">${cellId}</span><br>
                         ${locationHtml}
-                        <b>Operator:</b> ${t.operatorName || 'Telecom Carrier'}<br>
-                        <b>Radio Technology:</b> <span style="color:${isDemo ? '#f59e0b' : '#10b981'};font-weight:700;">${t.radioTechnology}</span><br>
-                        <b>Physical Cell ID (PCI):</b> ${t.physicalCellId || 'N/A'}<br>
-                        <b>Distance:</b> ${t.distanceMeters ? Math.round(t.distanceMeters) + ' meters' : 'Nearby'}<br>
+                        <b>Operator:</b> ${operatorName}<br>
+                        <b>Radio Technology:</b> <span style="color:${isDemo ? '#f59e0b' : '#10b981'};font-weight:700;">${radioTechnology}</span><br>
+                        <b>Physical Cell ID (PCI):</b> ${physicalCellId}<br>
+                        <b>Distance:</b> ${distVal ? Math.round(distVal) + ' meters' : 'Nearby'}<br>
                         ${devSnippet}
-                        <button onclick="window.cellScopeMap.selectTower('${elementId}', '${t.cellId}')" style="margin-top:8px;width:100%;background:${buttonBg};color:#0b0f19;border:none;border-radius:5px;padding:6px 8px;font-weight:800;font-size:11px;cursor:pointer;">
+                        <button onclick="window.cellScopeMap.selectTower('${elementId}', '${cellId}')" style="margin-top:8px;width:100%;background:${buttonBg};color:#0b0f19;border:none;border-radius:5px;padding:6px 8px;font-weight:800;font-size:11px;cursor:pointer;">
                             ${buttonText}
                         </button>
                     </div>
                 `;
 
-                const m = L.marker([t.latitude, t.longitude], { icon: towerIcon })
+                const m = L.marker([lat, lon], { icon: towerIcon })
                     .addTo(map)
                     .bindPopup(popupHtml, { maxWidth: 300 });
 
                 m.on('click', () => {
-                    window.cellScopeMap.selectTower(elementId, t.cellId);
+                    window.cellScopeMap.selectTower(elementId, cellId);
                 });
 
                 entry.towerMarkers.push(m);

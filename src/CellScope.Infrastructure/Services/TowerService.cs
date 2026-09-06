@@ -39,20 +39,12 @@ public class TowerService : ITowerService
                 double dist = GeodesyUtils.CalculateDistanceMeters(latitude, longitude, tower.Latitude, tower.Longitude);
                 if (dist <= radiusMeters)
                 {
-                    // Ensure the tower has an accurate spatial address if stored address was empty or a placeholder
-                    if (string.IsNullOrEmpty(tower.Area) ||
-                        string.IsNullOrEmpty(tower.StreetAddress) ||
-                        tower.City?.Contains("Metropolitan Area") == true ||
-                        tower.StreetAddress?.Contains("Cellular Ave") == true ||
-                        tower.Area.Contains("Commercial Sector") ||
-                        tower.PostalCode?.StartsWith("LOC-") == true)
-                    {
-                        var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(tower.Latitude, tower.Longitude, 0, tower.RadioTechnology);
-                        tower.Area = area;
-                        tower.StreetAddress = street;
-                        tower.City = city;
-                        tower.PostalCode = postal;
-                    }
+                    // Unconditionally ensure the tower has an accurate spatial address matching its coordinates
+                    var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(tower.Latitude, tower.Longitude, 0, tower.RadioTechnology);
+                    tower.Area = area;
+                    tower.StreetAddress = street;
+                    tower.City = city;
+                    tower.PostalCode = postal;
 
                     result.Add(DtoMapper.ToDto(tower, dist));
                 }
@@ -213,14 +205,14 @@ public class TowerService : ITowerService
             var tower = await query.FirstOrDefaultAsync(cancellationToken);
             if (tower == null)
             {
-                // If cell not found, return nearest matching or seed tower
-                var fallback = await _dbContext.TowerLocations.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
-                if (fallback == null) return null;
-                var dto = DtoMapper.ToDto(fallback);
-                dto.ConnectedDevices = (await GetConnectedDevicesForTowerAsync(fallback.CellId, cancellationToken)).ToList();
-                dto.ActiveCalls = (await GetActiveCallsForTowerAsync(fallback.CellId, cancellationToken)).ToList();
-                return dto;
+                return null;
             }
+
+            var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(tower.Latitude, tower.Longitude, 0, tower.RadioTechnology);
+            tower.Area = area;
+            tower.StreetAddress = street;
+            tower.City = city;
+            tower.PostalCode = postal;
 
             var resultDto = DtoMapper.ToDto(tower);
             resultDto.ConnectedDevices = (await GetConnectedDevicesForTowerAsync(tower.CellId, cancellationToken)).ToList();
@@ -449,25 +441,9 @@ public class TowerService : ITowerService
             int idx = 0;
             foreach (var t in existingTowers)
             {
-                bool needsRefresh = string.IsNullOrEmpty(t.Area) ||
-                                    string.IsNullOrEmpty(t.StreetAddress) ||
-                                    t.City?.Contains("Metropolitan Area") == true ||
-                                    t.StreetAddress?.Contains("Cellular Ave") == true ||
-                                    t.Area.Contains("Commercial Sector") ||
-                                    t.PostalCode?.StartsWith("LOC-") == true;
-
-                if (!needsRefresh)
+                var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(t.Latitude, t.Longitude, idx++, t.RadioTechnology);
+                if (t.Area != area || t.StreetAddress != street || t.City != city || t.PostalCode != postal)
                 {
-                    var (expectedArea, _, expectedCity, _) = DemoDataService.ResolveGeographicAddress(t.Latitude, t.Longitude, idx, t.RadioTechnology);
-                    if (expectedCity != t.City || (expectedCity == "San Francisco" && t.Area == "Financial District" && t.Longitude < -122.415))
-                    {
-                        needsRefresh = true;
-                    }
-                }
-
-                if (needsRefresh)
-                {
-                    var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(t.Latitude, t.Longitude, idx++, t.RadioTechnology);
                     t.Area = area;
                     t.StreetAddress = street;
                     t.City = city;
