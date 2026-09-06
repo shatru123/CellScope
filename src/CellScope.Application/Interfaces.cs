@@ -127,4 +127,37 @@ public interface IPrivate5gCoreService
     Task<Private5gSubscriberDto?> GetSubscriberBySupiAsync(string supi, CancellationToken cancellationToken = default);
 }
 
+public interface IPhoneNumberIntelligenceService
+{
+    Task<PhoneNumberProfileDto> AnalyzePhoneNumberAsync(string rawNumber, CancellationToken cancellationToken = default);
+}
+
+public interface INetworkIntelligenceService
+{
+    Task<NetworkIdentityDto> GetNetworkIdentityAsync(CancellationToken cancellationToken = default);
+}
+
+public interface ISpectrumMatrixService
+{
+    IReadOnlyList<SpectrumAllocationDto> GetSpectrumAllocations(string? circleName = null, string? generation = null);
+    IReadOnlyList<string> GetAvailableCircles();
+}
+
+public interface IOsmTowerService
+{
+    Task<IReadOnlyList<TowerLocationDto>> GetOsmTowersInBoundsAsync(double southLat, double westLon, double northLat, double eastLon, CancellationToken cancellationToken = default);
+}
+
+public interface IGisExportService
+{
+    string GenerateGeoJson(IReadOnlyList<TowerLocationDto> towers, CellularSnapshotDto? servingCell, IReadOnlyList<LocationPointDto>? trail);
+    string GenerateKml(IReadOnlyList<TowerLocationDto> towers, CellularSnapshotDto? servingCell, IReadOnlyList<LocationPointDto>? trail);
+    string GenerateCsv(IReadOnlyList<TowerLocationDto> towers);
+}
+
+public interface INetworkBenchmarkService
+{
+    Task<SpeedBenchmarkResultDto> RunBenchmarkAsync(CancellationToken cancellationToken = default);
+}
+
 

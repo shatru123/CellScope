@@ -82,8 +82,26 @@
                 <span>Collector Devices</span>
             </NavLink>
         </li>
+        <li class="nav-item" @onclick="CloseMenu">
+            <NavLink href="phone-intel">
+                <span class="nav-icon">🔍</span>
+                <span>Number Intelligence</span>
+            </NavLink>
+        </li>
 
         <li class="nav-section-title">System & Tools</li>
+        <li class="nav-item" @onclick="CloseMenu">
+            <NavLink href="speedtest">
+                <span class="nav-icon">⚡</span>
+                <span>Speed & Latency Test</span>
+            </NavLink>
+        </li>
+        <li class="nav-item" @onclick="CloseMenu">
+            <NavLink href="spectrum">
+                <span class="nav-icon">📶</span>
+                <span>Carrier Spectrum Matrix</span>
+            </NavLink>
+        </li>
         <li class="nav-item" @onclick="CloseMenu">
             <NavLink href="diagnostics">
                 <span class="nav-icon">🩺</span>

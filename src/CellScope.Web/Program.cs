@@ -57,9 +57,16 @@ builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IExportService, ExportService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDiagnosticsService, DiagnosticsService>();
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<ISecurityAnalysisService, SecurityAnalysisService>();
 builder.Services.AddScoped<ICellularRadioAnalysisService, CellularRadioAnalysisService>();
 builder.Services.AddScoped<IPrivate5gCoreService, Private5gCoreService>();
+builder.Services.AddScoped<IPhoneNumberIntelligenceService, PhoneNumberIntelligenceService>();
+builder.Services.AddScoped<INetworkIntelligenceService, NetworkIntelligenceService>();
+builder.Services.AddScoped<ISpectrumMatrixService, SpectrumMatrixService>();
+builder.Services.AddScoped<IOsmTowerService, OsmTowerService>();
+builder.Services.AddScoped<IGisExportService, GisExportService>();
+builder.Services.AddScoped<INetworkBenchmarkService, NetworkBenchmarkService>();
 builder.Services.AddSingleton<IDemoDataService, DemoDataService>();
 builder.Services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
 

@@ -1,0 +1,128 @@
+@page "/speedtest"
+@inject INetworkBenchmarkService BenchmarkService
+@inject INetworkIntelligenceService NetworkIntelService
+
+<div style="margin-bottom:1.25rem;">
+    <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.25rem;">
+        <span style="font-size:1.6rem;">⚡</span>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin:0;">Network Speed, Jitter & Latency Benchmark</h1>
+    </div>
+    <p style="font-size:0.875rem;color:var(--text-secondary);margin:0;">
+        Real-time in-browser latency, jitter variance, and downlink throughput benchmark over your active cellular or broadband link.
+    </p>
+</div>
+
+<!-- Active Network Identity Banner -->
+<div class="noc-card" style="padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+        <span style="font-size:1.5rem;">🌐</span>
+        <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Connected Network & ISP</div>
+            <div style="font-size:1rem;font-weight:700;color:var(--text-primary);">
+                @(networkIdentity?.IspName ?? "Detecting Carrier...") • <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@(networkIdentity?.AsNumber ?? "ASN")</span>
+            </div>
+        </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:1.5rem;">
+        <div>
+            <div style="font-size:0.7rem;color:var(--text-muted);">Public IP</div>
+            <div style="font-size:0.85rem;font-family:var(--font-mono);color:var(--text-secondary);">@(networkIdentity?.PublicIp ?? "...")</div>
+        </div>
+        <div>
+            <div style="font-size:0.7rem;color:var(--text-muted);">Gateway Location</div>
+            <div style="font-size:0.85rem;color:var(--text-secondary);">@(networkIdentity?.City ?? "Local"), @(networkIdentity?.CountryCode ?? "IN")</div>
+        </div>
+    </div>
+</div>
+
+<!-- Benchmark Action Center -->
+<div class="noc-card" style="padding:2rem;text-align:center;margin-bottom:1.5rem;">
+    <div style="max-width:480px;margin:0 auto;">
+        <!-- Circular Gauge / Metric Hero -->
+        <div style="width:200px;height:200px;border-radius:50%;border:4px solid @(isRunning ? "var(--accent-cyan)" : "var(--border-color)");margin:0 auto 1.5rem auto;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;box-shadow:@(isRunning ? "0 0 30px rgba(6,182,212,0.3)" : "none");transition:all 0.3s ease;">
+            <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">
+                @(isRunning ? "MEASURING..." : "DOWNLINK SPEED")
+            </div>
+            <div style="font-size:3rem;font-weight:800;color:var(--accent-cyan);line-height:1;margin:0.4rem 0;">
+                @(result != null ? result.DownloadSpeedMbps.ToString("F1") : "--")
+            </div>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--text-secondary);">
+                Mbps
+            </div>
+        </div>
+
+        <button class="btn btn-primary" style="padding:0.75rem 2.5rem;font-size:1rem;font-weight:800;border-radius:30px;box-shadow:0 0 15px rgba(6,182,212,0.4);" 
+                @onclick="RunBenchmark" disabled="@isRunning">
+            @(isRunning ? "⏳ Benchmarking Cellular Link..." : "⚡ START BENCHMARK")
+        </button>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.75rem;">
+            100% Free • Multi-sample edge round-trip delay & payload throughput
+        </div>
+    </div>
+</div>
+
+@if (result != null)
+{
+    <!-- Detailed Metrics Grid -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem;margin-bottom:1.5rem;">
+        <div class="noc-card" style="padding:1rem;">
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">⏱️ Ping Latency (Average)</div>
+            <div style="font-size:1.6rem;font-weight:800;color:#10b981;margin-top:0.25rem;">
+                @result.PingAvgMs <span style="font-size:0.9rem;color:var(--text-secondary);">ms</span>
+            </div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.25rem;">
+                Min: @result.PingMinMs ms • Max: @result.PingMaxMs ms
+            </div>
+        </div>
+
+        <div class="noc-card" style="padding:1rem;">
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">📊 Jitter (Delay Variation)</div>
+            <div style="font-size:1.6rem;font-weight:800;color:var(--accent-amber);margin-top:0.25rem;">
+                @result.JitterMs <span style="font-size:0.9rem;color:var(--text-secondary);">ms</span>
+            </div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.25rem;">
+                RFC 3550 standard statistical dispersion
+            </div>
+        </div>
+
+        <div class="noc-card" style="padding:1rem;">
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">⬆️ Estimated Uplink</div>
+            <div style="font-size:1.6rem;font-weight:800;color:#8b5cf6;margin-top:0.25rem;">
+                @result.UploadSpeedMbps <span style="font-size:0.9rem;color:var(--text-secondary);">Mbps</span>
+            </div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.25rem;">
+                Standard asymmetric cellular ratio
+            </div>
+        </div>
+
+        <div class="noc-card" style="padding:1rem;">
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">🏆 Bufferbloat & Quality Grade</div>
+            <div style="font-size:1.6rem;font-weight:800;color:#10b981;margin-top:0.25rem;">
+                Grade @result.BufferbloatGrade
+            </div>
+            <div style="font-size:0.7rem;color:var(--accent-cyan);margin-top:0.25rem;">
+                @result.ConnectionQualityRating
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isRunning = false;
+    private SpeedBenchmarkResultDto? result;
+    private NetworkIdentityDto? networkIdentity;
+
+    protected override async Task OnInitializedAsync()
+    {
+        networkIdentity = await NetworkIntelService.GetNetworkIdentityAsync();
+    }
+
+    private async Task RunBenchmark()
+    {
+        isRunning = true;
+        StateHasChanged();
+        result = await BenchmarkService.RunBenchmarkAsync();
+        isRunning = false;
+        StateHasChanged();
+    }
+}

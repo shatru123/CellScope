@@ -1,0 +1,235 @@
+@page "/phone-intel"
+@inject IPhoneNumberIntelligenceService PhoneService
+@inject IJSRuntime JS
+
+<div style="margin-bottom:1.25rem;">
+    <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.25rem;">
+        <span style="font-size:1.6rem;">🔍</span>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin:0;">Telecom Number Intelligence & OSINT Profiler</h1>
+    </div>
+    <p style="font-size:0.875rem;color:var(--text-secondary);margin:0;">
+        Deep-dive into telephone numbering plans, mobile licensed service areas (Telecom Circles), original carrier allocations, and line classifications.
+    </p>
+</div>
+
+<!-- Search Input & Quick Samples -->
+<div class="noc-card" style="padding:1.25rem;margin-bottom:1.5rem;">
+    <div style="font-size:0.8rem;font-weight:700;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.75rem;">
+        📱 Enter MSISDN / International Phone Number
+    </div>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
+        <input type="text" class="input-field" 
+               placeholder="e.g. +91 96044 66334 or +1 (415) 555-2671" 
+               style="flex:1;min-width:260px;font-family:var(--font-mono);font-size:1rem;padding:0.6rem 0.85rem;"
+               @bind="inputNumber" 
+               @bind:event="oninput" 
+               @onkeyup="HandleKeyUp" />
+        <button class="btn btn-primary" style="padding:0.6rem 1.5rem;font-weight:700;" @onclick="AnalyzeNumber" disabled="@isAnalyzing">
+            @(isAnalyzing ? "🔍 Analyzing..." : "⚡ Analyze Number")
+        </button>
+    </div>
+
+    <!-- Quick Preset Buttons -->
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.85rem;align-items:center;">
+        <span style="font-size:0.75rem;color:var(--text-muted);">Quick Samples:</span>
+        <button class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:2px 8px;" @onclick="@(() => SetSample("+91 96044 66334"))">
+            🇮🇳 +91 96044 66334 (Pune / MH)
+        </button>
+        <button class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:2px 8px;" @onclick="@(() => SetSample("+91 98200 98200"))">
+            🇮🇳 +91 98200 98200 (Mumbai)
+        </button>
+        <button class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:2px 8px;" @onclick="@(() => SetSample("+91 98100 12345"))">
+            🇮🇳 +91 98100 12345 (Delhi NCR)
+        </button>
+        <button class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:2px 8px;" @onclick="@(() => SetSample("+1 415 555 2671"))">
+            🇺🇸 +1 415 555 2671 (San Francisco)
+        </button>
+        <button class="btn btn-sm btn-outline" style="font-size:0.75rem;padding:2px 8px;" @onclick="@(() => SetSample("+44 7911 123456"))">
+            🇬🇧 +44 7911 123456 (UK Mobile)
+        </button>
+    </div>
+</div>
+
+@if (profile != null)
+{
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:1.25rem;margin-bottom:1.5rem;">
+        <!-- Core Profile Card -->
+        <div class="noc-card" style="padding:1.25rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;">
+                <div style="display:flex;align-items:center;gap:0.6rem;">
+                    <span style="font-size:2rem;">@profile.CountryFlag</span>
+                    <div>
+                        <div style="font-size:1.15rem;font-weight:800;color:var(--text-primary);font-family:var(--font-mono);">
+                            @profile.E164Number
+                        </div>
+                        <div style="font-size:0.75rem;color:var(--accent-cyan);">
+                            National Format: @profile.NationalNumber
+                        </div>
+                    </div>
+                </div>
+                <span class="badge" style="background:@(profile.IsValid ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)");color:@(profile.IsValid ? "#10b981" : "#ef4444");font-size:0.75rem;font-weight:700;">
+                    @(profile.IsValid ? "✓ Valid MSISDN" : "⚠ Invalid")
+                </span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:0.8rem;font-size:0.85rem;">
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--text-muted);">Country of Origin:</span>
+                    <span style="font-weight:700;color:var(--text-primary);">@profile.CountryName (@profile.CountryCode, @profile.DialCode)</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--text-muted);">Telecom Circle / Area:</span>
+                    <span style="font-weight:700;color:var(--accent-cyan);text-align:right;">📍 @profile.TelecomCircle</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--text-muted);">Original Carrier / Network:</span>
+                    <span style="font-weight:700;color:var(--accent-amber);text-align:right;">📶 @profile.OriginalCarrier</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--text-muted);">Line Classification:</span>
+                    <span style="font-weight:700;color:#10b981;">@profile.LineType</span>
+                </div>
+                @if (!string.IsNullOrEmpty(profile.MccMncHint))
+                {
+                    <div style="display:flex;justify-content:space-between;">
+                        <span style="color:var(--text-muted);">MCC-MNC Pair:</span>
+                        <span style="font-family:var(--font-mono);color:var(--text-primary);">@profile.MccMncHint</span>
+                    </div>
+                }
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--text-muted);">Local Timezone:</span>
+                    <span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);">@profile.Timezone</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Risk & Spoof Assessment Card -->
+        <div class="noc-card" style="padding:1.25rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;border-bottom:1px solid var(--border-color);padding-bottom:0.75rem;">
+                <span style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">🛡️ Fraud, Spam & Spoof Risk Assessment</span>
+                <span class="badge" style="background:@GetRiskBadgeBg(profile.RiskLevel);color:@GetRiskColor(profile.RiskLevel);font-weight:800;">
+                    @profile.RiskLevel Risk (@profile.RiskScore / 100)
+                </span>
+            </div>
+
+            <!-- Risk Meter Bar -->
+            <div style="background:rgba(255,255,255,0.06);height:8px;border-radius:4px;overflow:hidden;margin-bottom:1rem;">
+                <div style="background:@GetRiskColor(profile.RiskLevel);width:@(profile.RiskScore)%;height:100%;border-radius:4px;transition:width 0.3s ease;"></div>
+            </div>
+
+            <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;font-weight:600;">
+                Risk Indicators & Pattern Analysis:
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.4rem;">
+                @foreach (var factor in profile.RiskFactors)
+                {
+                    <div style="display:flex;align-items:flex-start;gap:0.4rem;font-size:0.775rem;color:var(--text-muted);">
+                        <span style="color:@(profile.RiskLevel == "Low" ? "#10b981" : "#f59e0b");">●</span>
+                        <span>@factor</span>
+                    </div>
+                }
+            </div>
+
+            <!-- Consensual Field Survey Link -->
+            <div style="margin-top:1.25rem;padding:0.75rem;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.25);border-radius:8px;">
+                <div style="font-size:0.75rem;font-weight:700;color:var(--accent-cyan);margin-bottom:0.25rem;">
+                    📍 Consensual Real-Time Field Survey Link
+                </div>
+                <div style="font-size:0.725rem;color:var(--text-secondary);margin-bottom:0.5rem;">
+                    Send this link to the device owner. When opened on mobile, high-precision GPS streams live coordinates to your NOC map.
+                </div>
+                <div style="display:flex;gap:0.4rem;">
+                    <input type="text" class="input-field" readonly value="@profile.ConsensualTrackingUrl" style="font-size:0.725rem;font-family:var(--font-mono);padding:4px 6px;flex:1;" />
+                    <button class="btn btn-outline btn-sm" style="font-size:0.725rem;padding:2px 8px;" @onclick="CopyTrackingUrl">
+                        @(copiedUrl ? "✓ Copied" : "📋 Copy")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Legal & Technical Information Banner -->
+<div class="noc-card" style="padding:1.25rem;background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.08);">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+        <span style="font-size:1.2rem;">⚖️</span>
+        <h2 style="font-size:0.95rem;font-weight:800;color:var(--text-primary);margin:0;">
+            Telecom Architecture & Privacy Regulatory Notice
+        </h2>
+    </div>
+    <div style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;">
+        <p style="margin-bottom:0.5rem;">
+            <strong>Why live personal home addresses cannot be queried by phone number:</strong>
+            Under 3GPP standards, customer KYC documents (full name, residential address, billing history) and live Home Location Register (HLR/HSS) subscriber locations are strictly sealed inside carrier core networks. National privacy legislation (such as the <em>Digital Personal Data Protection Act</em> in India, <em>GDPR</em> in Europe, and <em>FCC Communications Act</em> in the US) strictly criminalizes unauthorized disclosure of live subscriber location without judicial warrants or law enforcement subpoenas.
+        </p>
+        <p style="margin:0;">
+            CellScope provides 100% legal, non-intrusive telecom intelligence: ITU E.164 standardization, TRAI Licensed Service Area routing, original carrier assignment, and opt-in field collector GPS integration.
+        </p>
+    </div>
+</div>
+
+@code {
+    private string inputNumber = "+91 96044 66334";
+    private PhoneNumberProfileDto? profile;
+    private bool isAnalyzing = false;
+    private bool copiedUrl = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AnalyzeNumber();
+    }
+
+    private async Task AnalyzeNumber()
+    {
+        if (string.IsNullOrWhiteSpace(inputNumber)) return;
+        isAnalyzing = true;
+        profile = await PhoneService.AnalyzePhoneNumberAsync(inputNumber);
+        isAnalyzing = false;
+        copiedUrl = false;
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AnalyzeNumber();
+        }
+    }
+
+    private async Task SetSample(string number)
+    {
+        inputNumber = number;
+        await AnalyzeNumber();
+    }
+
+    private async Task CopyTrackingUrl()
+    {
+        if (profile != null)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("navigator.clipboard.writeText", profile.ConsensualTrackingUrl);
+                copiedUrl = true;
+                StateHasChanged();
+                await Task.Delay(2000);
+                copiedUrl = false;
+                StateHasChanged();
+            }
+            catch { }
+        }
+    }
+
+    private string GetRiskColor(string level) => level switch
+    {
+        "High" => "#ef4444",
+        "Medium" => "#f59e0b",
+        _ => "#10b981"
+    };
+
+    private string GetRiskBadgeBg(string level) => level switch
+    {
+        "High" => "rgba(239,68,68,0.15)",
+        "Medium" => "rgba(245,158,11,0.15)",
+        _ => "rgba(16,185,129,0.15)"
+    };
+}

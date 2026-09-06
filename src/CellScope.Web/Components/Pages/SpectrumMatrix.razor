@@ -1,0 +1,141 @@
+@page "/spectrum"
+@inject ISpectrumMatrixService SpectrumService
+
+<div style="margin-bottom:1.25rem;">
+    <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.25rem;">
+        <span style="font-size:1.6rem;">📶</span>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin:0;">3GPP Spectrum & Regulatory Carrier Band Matrix</h1>
+    </div>
+    <p style="font-size:0.875rem;color:var(--text-secondary);margin:0;">
+        Official regulatory frequency allocations (TRAI / DoT, FCC, 3GPP Rel 15–18), duplex modes, channel bandwidths, and licensed carrier holdings per circle.
+    </p>
+</div>
+
+<!-- Filter Toolbar -->
+<div class="noc-card" style="padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+        <div>
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:2px;">Filter by Telecom Circle:</label>
+            <select class="input-field" style="padding:5px 10px;font-size:0.85rem;" @onchange="OnCircleChanged">
+                @foreach (var c in circles)
+                {
+                    <option value="@c">@c</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:2px;">Technology Generation:</label>
+            <div style="display:inline-flex;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;padding:2px;">
+                <button class="btn btn-sm" style="font-size:0.75rem;padding:3px 10px;@(selectedGeneration == null ? "background:var(--accent-cyan);color:#0b0f19;font-weight:700;" : "background:transparent;color:var(--text-secondary);")"
+                        @onclick="@(() => SetGen(null))">
+                    All Bands
+                </button>
+                <button class="btn btn-sm" style="font-size:0.75rem;padding:3px 10px;@(selectedGeneration == "5G NR" ? "background:#10b981;color:#0b0f19;font-weight:700;" : "background:transparent;color:var(--text-secondary);")"
+                        @onclick="@(() => SetGen("5G NR"))">
+                    5G NR
+                </button>
+                <button class="btn btn-sm" style="font-size:0.75rem;padding:3px 10px;@(selectedGeneration == "4G LTE" ? "background:#f59e0b;color:#0b0f19;font-weight:700;" : "background:transparent;color:var(--text-secondary);")"
+                        @onclick="@(() => SetGen("4G LTE"))">
+                    4G LTE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div style="font-size:0.8rem;color:var(--accent-cyan);font-weight:700;">
+        Showing @allocations.Count Carrier Spectrum Bands
+    </div>
+</div>
+
+<!-- Bands Grid -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:1.25rem;">
+    @foreach (var band in allocations)
+    {
+        <div class="noc-card" style="padding:1.25rem;border-left:4px solid @(band.Generation == "5G NR" ? "#10b981" : "#f59e0b");">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem;">
+                <div>
+                    <div style="display:flex;align-items:center;gap:0.4rem;">
+                        <span style="font-size:1.15rem;font-weight:800;color:var(--text-primary);font-family:var(--font-mono);">
+                            @band.BandNumber
+                        </span>
+                        <span class="badge" style="background:@(band.Generation == "5G NR" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)");color:@(band.Generation == "5G NR" ? "#10b981" : "#f59e0b");font-size:0.7rem;font-weight:700;">
+                            @band.Generation
+                        </span>
+                    </div>
+                    <div style="font-size:0.85rem;color:var(--accent-cyan);font-weight:600;margin-top:2px;">
+                        @band.BandName
+                    </div>
+                </div>
+                <span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-secondary);font-size:0.7rem;font-family:var(--font-mono);">
+                    @band.DuplexMode
+                </span>
+            </div>
+
+            <p style="font-size:0.775rem;color:var(--text-muted);margin:0 0 0.75rem 0;line-height:1.4;">
+                @band.TechnicalDescription
+            </p>
+
+            <div style="background:var(--bg-secondary);padding:0.75rem;border-radius:6px;font-size:0.775rem;margin-bottom:0.75rem;display:flex;flex-direction:column;gap:0.35rem;">
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--text-muted);">Frequency Range:</span>
+                    <span style="font-family:var(--font-mono);color:var(--text-primary);font-weight:600;">@band.FrequencyRange</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--text-muted);">Channel Widths:</span>
+                    <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@band.TypicalBandwidthsMhz</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--text-muted);">Primary Use:</span>
+                    <span style="color:var(--accent-amber);font-weight:600;text-align:right;">@band.PrimaryUse</span>
+                </div>
+            </div>
+
+            <!-- Holdings per Circle -->
+            <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.04em;">
+                Carrier Spectrum Holdings:
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.35rem;">
+                @foreach (var kvp in band.CircleHoldings)
+                {
+                    <div style="background:rgba(255,255,255,0.03);padding:4px 8px;border-radius:4px;font-size:0.725rem;">
+                        <div style="font-weight:700;color:var(--text-primary);">📍 @kvp.Key</div>
+                        <div style="color:var(--text-muted);margin-top:2px;">
+                            @string.Join(" • ", kvp.Value)
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string selectedCircle = "All Circles";
+    private string? selectedGeneration = null;
+    private IReadOnlyList<string> circles = new List<string>();
+    private IReadOnlyList<SpectrumAllocationDto> allocations = new List<SpectrumAllocationDto>();
+
+    protected override void OnInitialized()
+    {
+        circles = SpectrumService.GetAvailableCircles();
+        RefreshAllocations();
+    }
+
+    private void OnCircleChanged(ChangeEventArgs e)
+    {
+        selectedCircle = e.Value?.ToString() ?? "All Circles";
+        RefreshAllocations();
+    }
+
+    private void SetGen(string? gen)
+    {
+        selectedGeneration = gen;
+        RefreshAllocations();
+    }
+
+    private void RefreshAllocations()
+    {
+        allocations = SpectrumService.GetSpectrumAllocations(selectedCircle, selectedGeneration);
+    }
+}

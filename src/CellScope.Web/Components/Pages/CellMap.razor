@@ -5,6 +5,9 @@
 @inject ILocalNetworkService NetworkService
 @inject IDemoDataService DemoService
 @inject ICellularRadioAnalysisService RadioService
+@inject IOsmTowerService OsmService
+@inject IGisExportService GisService
+@inject INetworkIntelligenceService NetworkIntelService
 @inject IJSRuntime JS
 
 <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
@@ -25,6 +28,29 @@
                     @onclick="@(() => ToggleMode(true))">
                 📡 NOC Simulation Mode
             </button>
+        </div>
+        <button class="btn btn-sm" style="font-size:0.75rem;padding:3px 9px;border-radius:16px;@(showOsmTowers ? "background:#8b5cf6;color:#ffffff;font-weight:700;box-shadow:0 0 10px rgba(139,92,246,0.5);" : "background:rgba(255,255,255,0.06);color:var(--text-secondary);")"
+                @onclick="ToggleOsmTowers" title="Toggle surveyed physical telecommunications masts from OpenStreetMap Overpass layer">
+            🛰️ OSM Real Towers (@(showOsmTowers ? "ON" : "OFF"))
+        </button>
+        <div style="position:relative;display:inline-block;">
+            <button class="btn btn-outline btn-sm" style="font-size:0.75rem;padding:3px 9px;" @onclick="@(() => showExportMenu = !showExportMenu)">
+                💾 Export GIS ▾
+            </button>
+            @if (showExportMenu)
+            {
+                <div class="noc-card" style="position:absolute;top:100%;right:0;z-index:1050;padding:6px;min-width:185px;margin-top:4px;box-shadow:0 10px 25px rgba(0,0,0,0.6);border:1px solid var(--border-color);">
+                    <button class="btn btn-sm btn-outline" style="width:100%;text-align:left;font-size:0.75rem;padding:5px 8px;margin-bottom:4px;display:flex;align-items:center;gap:6px;" @onclick="@(() => ExportFile("kml"))">
+                        <span>🌍</span> <span>Google Earth 3D (.kml)</span>
+                    </button>
+                    <button class="btn btn-sm btn-outline" style="width:100%;text-align:left;font-size:0.75rem;padding:5px 8px;margin-bottom:4px;display:flex;align-items:center;gap:6px;" @onclick="@(() => ExportFile("geojson"))">
+                        <span>🗺️</span> <span>QGIS / Mapbox (.geojson)</span>
+                    </button>
+                    <button class="btn btn-sm btn-outline" style="width:100%;text-align:left;font-size:0.75rem;padding:5px 8px;display:flex;align-items:center;gap:6px;" @onclick="@(() => ExportFile("csv"))">
+                        <span>📊</span> <span>Spreadsheet (.csv)</span>
+                    </button>
+                </div>
+            }
         </div>
         <button class="btn btn-outline btn-sm" @onclick="LocateMe" disabled="@isLocating">
             @(isLocating ? "🛰️ Locating..." : "📍 Locate Me")
@@ -47,6 +73,39 @@
                 <span class="badge" style="background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);cursor:pointer;white-space:nowrap;" @onclick="@(() => activeTab = "devices")">
                     💻 LAN Devices (@(localNetwork?.Devices?.Count ?? 0))
                 </span>
+                @if (showOsmTowers)
+                {
+                    <span class="badge" style="background:rgba(139,92,246,0.2);color:#c084fc;border:1px solid rgba(139,92,246,0.5);font-weight:700;white-space:nowrap;">
+                        🛰️ OSM Physical Layer
+                    </span>
+                }
+                @if (clientTelemetry != null)
+                {
+                    @if (clientTelemetry.DownlinkMbps != null)
+                    {
+                        <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-family:var(--font-mono);font-size:0.75rem;white-space:nowrap;" title="Real Downlink Throughput from navigator.connection">
+                            ⚡ @(clientTelemetry.DownlinkMbps.Value) Mbps
+                        </span>
+                    }
+                    @if (clientTelemetry.RttMs != null)
+                    {
+                        <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);font-family:var(--font-mono);font-size:0.75rem;white-space:nowrap;" title="Real Round-Trip Latency">
+                            ⏱️ @(clientTelemetry.RttMs.Value)ms
+                        </span>
+                    }
+                    @if (clientTelemetry.BatteryLevelPercent != null)
+                    {
+                        <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-family:var(--font-mono);font-size:0.75rem;white-space:nowrap;" title="Device Battery Level">
+                            🔋 @(clientTelemetry.BatteryLevelPercent)% @(clientTelemetry.IsCharging == true ? "⚡" : "")
+                        </span>
+                    }
+                }
+                @if (networkIdentity != null)
+                {
+                    <span class="badge" style="background:rgba(59,130,246,0.15);color:#60a5fa;font-size:0.75rem;white-space:nowrap;" title="Carrier / ISP & ASN">
+                        🌐 @networkIdentity.IspName (@networkIdentity.AsNumber)
+                    </span>
+                }
                 @if (!DemoService.IsDemoModeActive)
                 {
                     <span class="badge" style="background:rgba(16,185,129,0.2);color:#10b981;border:1px solid rgba(16,185,129,0.5);font-weight:700;white-space:nowrap;">
@@ -1088,6 +1147,10 @@
     private bool isLocating = false;
     private string? locationStatus;
     private DotNetObjectReference<CellMap>? dotNetRef;
+    private bool showOsmTowers = false;
+    private bool showExportMenu = false;
+    private ClientTelemetryDto? clientTelemetry;
+    private NetworkIdentityDto? networkIdentity;
 
     private readonly Dictionary<string, List<AreaPreset>> regionSubAreas = new()
     {
@@ -1366,7 +1429,18 @@
     {
         dotNetRef = DotNetObjectReference.Create(this);
         DemoService.OnModeChanged += HandleModeChanged;
+        _ = LoadNetworkIdentityAsync();
         await LoadDataAsync();
+    }
+
+    private async Task LoadNetworkIdentityAsync()
+    {
+        try
+        {
+            networkIdentity = await NetworkIntelService.GetNetworkIdentityAsync();
+            StateHasChanged();
+        }
+        catch { }
     }
 
     private void ToggleMode(bool isDemo)
@@ -1393,8 +1467,50 @@
         if (firstRender)
         {
             await JS.InvokeVoidAsync("cellScopeMap.initMap", "fullscreen-leaflet-map", currentLat, currentLon, 14, dotNetRef);
+            try
+            {
+                await JS.InvokeVoidAsync("cellScopeTelemetry.startMonitoring", dotNetRef);
+            }
+            catch { }
             await UpdateMapAsync();
         }
+    }
+
+    [JSInvokable]
+    public void OnClientTelemetryUpdated(ClientTelemetryDto telemetry)
+    {
+        clientTelemetry = telemetry;
+        StateHasChanged();
+    }
+
+    private async Task ToggleOsmTowers()
+    {
+        showOsmTowers = !showOsmTowers;
+        await LoadTowersForAreaAsync(currentCenterLat, currentCenterLon, currentRadiusMeters);
+        await UpdateMapAsync();
+        StateHasChanged();
+    }
+
+    private async Task ExportFile(string format)
+    {
+        showExportMenu = false;
+        var trail = DemoService.IsDemoModeActive ? DemoService.GetDemoTrail() : await CellularService.GetLocationTrailAsync();
+        string content = format switch
+        {
+            "kml" => GisService.GenerateKml(towersList, snapshot, trail),
+            "geojson" => GisService.GenerateGeoJson(towersList, snapshot, trail),
+            "csv" => GisService.GenerateCsv(towersList),
+            _ => ""
+        };
+        string mimeType = format switch
+        {
+            "kml" => "application/vnd.google-earth.kml+xml",
+            "geojson" => "application/geo+json",
+            "csv" => "text/csv",
+            _ => "text/plain"
+        };
+        string filename = $"cellscope_export_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{format}";
+        await JS.InvokeVoidAsync("cellScopeGis.downloadFile", filename, content, mimeType);
     }
 
     private async Task LoadDataAsync()
@@ -1463,6 +1579,29 @@
                 t.StreetAddress = street;
                 t.City = city;
                 t.PostalCode = postal;
+            }
+
+            if (showOsmTowers)
+            {
+                try
+                {
+                    var (minLat, maxLat, minLon, maxLon) = GeodesyUtils.GetBoundingBox(lat, lon, radiusMeters);
+                    var osmTowers = await OsmService.GetOsmTowersInBoundsAsync(minLat, minLon, maxLat, maxLon);
+                    if (osmTowers.Count > 0)
+                    {
+                        var existingIds = towersList.Select(t => t.CellId).ToHashSet();
+                        foreach (var ot in osmTowers)
+                        {
+                            if (!existingIds.Contains(ot.CellId))
+                            {
+                                ot.DistanceMeters = GeodesyUtils.CalculateDistanceMeters(lat, lon, ot.Latitude, ot.Longitude);
+                                towersList.Add(ot);
+                            }
+                        }
+                        towersList = towersList.OrderBy(t => t.DistanceMeters).ToList();
+                    }
+                }
+                catch { }
             }
         }
         catch (Exception ex)
