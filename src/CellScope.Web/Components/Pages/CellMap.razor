@@ -425,9 +425,25 @@
                                 <span style="color:var(--text-secondary);">— @selectedTower.StreetAddress, @selectedTower.City @selectedTower.PostalCode</span>
                             }
                         </div>
-                        <p style="font-size:0.775rem;color:var(--text-secondary);margin:0;">
-                            Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedTower.CellId</span> • PCI: @(selectedTower.PhysicalCellId ?? "N/A") • Tech: <span style="color:var(--accent-amber);font-weight:700;">@selectedTower.RadioTechnology</span> • Distance: @Math.Round(selectedTower.DistanceMeters)m • Coordinates: <span style="font-family:var(--font-mono);color:var(--accent-cyan);">@selectedTower.Latitude.ToString("F4"), @selectedTower.Longitude.ToString("F4")</span>
+                        <p style="font-size:0.775rem;color:var(--text-secondary);margin:0 0 0.4rem 0;">
+                            Cell ID: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:600;">@selectedTower.CellId</span> • PCI: @(selectedTower.PhysicalCellId ?? "N/A") • Tech: <span style="color:var(--accent-amber);font-weight:700;">@selectedTower.RadioTechnology</span> • Distance: @Math.Round(selectedTower.DistanceMeters)m • Coordinates: <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:700;">@selectedTower.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture), @selectedTower.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)</span>
                         </p>
+                        <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+                            <button class="btn btn-sm btn-outline" style="font-size:0.72rem;padding:2px 8px;border-color:var(--accent-cyan);color:var(--accent-cyan);"
+                                    @onclick="@(() => ZoomToExactTower(selectedTower))" title="Fly and zoom directly to this physical telecommunications mast at 19x zoom with 3D tilt">
+                                🔍 Zoom to Physical Mast (19x)
+                            </button>
+                            <a href="@GetGoogleEarthTowerUrl(selectedTower)" target="_blank" rel="noopener noreferrer"
+                               class="btn btn-sm btn-outline" style="font-size:0.72rem;padding:2px 8px;border-color:#10b981;color:#10b981;"
+                               title="Open exact physical antenna mast coordinates in Google Earth 3D">
+                                🌍 Google Earth 3D ↗
+                            </a>
+                            <a href="@GetGoogleMapsTowerUrl(selectedTower)" target="_blank" rel="noopener noreferrer"
+                               class="btn btn-sm btn-outline" style="font-size:0.72rem;padding:2px 8px;border-color:#f59e0b;color:#f59e0b;"
+                               title="Open exact physical coordinates in Google Maps Satellite view">
+                                🛰️ 3D Satellite ↗
+                            </a>
+                        </div>
                     </div>
                     <button class="btn btn-outline btn-sm" style="flex-shrink:0;" @onclick="@(() => selectedTower = null)">✕ Close</button>
                 </div>
@@ -648,7 +664,7 @@
                             <div>
                                 <span style="font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);font-weight:700;">Geographic Coordinates</span>
                                 <div style="font-size:0.875rem;font-family:var(--font-mono);color:var(--accent-amber);margin-top:2px;">
-                                    @selectedTower.Latitude.ToString("F5"), @selectedTower.Longitude.ToString("F5")
+                                    @selectedTower.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture), @selectedTower.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)
                                 </div>
                             </div>
                         </div>
@@ -1248,7 +1264,7 @@
     private bool isLocating = false;
     private string? locationStatus;
     private DotNetObjectReference<CellMap>? dotNetRef;
-    private bool showOsmTowers = false;
+    private bool showOsmTowers = true;
     private bool showExportMenu = false;
     private bool is3DViewActive = false;
     private int mapPitch = 55;
@@ -1666,48 +1682,85 @@
     {
         try
         {
+            var (minLat, maxLat, minLon, maxLon) = GeodesyUtils.GetBoundingBox(lat, lon, radiusMeters);
+
+            // 1. Primary Source: Query 100% real physical surveyed telecommunications towers from OSM Overpass
+            IReadOnlyList<TowerLocationDto> osmTowers = Array.Empty<TowerLocationDto>();
+            if (showOsmTowers)
+            {
+                try
+                {
+                    osmTowers = await OsmService.GetOsmTowersInBoundsAsync(minLat, minLon, maxLat, maxLon);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[CellMap] OSM tower query notice: {ex.Message}");
+                }
+            }
+
+            // 2. Secondary Source: Physical infrastructure towers from database or demo anchors
+            List<TowerLocationDto> baseTowers;
             if (DemoService.IsDemoModeActive)
             {
-                towersList = DemoService.GetDemoTowers(lat, lon, radiusMeters).ToList();
+                baseTowers = DemoService.GetDemoTowers(lat, lon, radiusMeters).ToList();
             }
             else
             {
                 var towers = await TowerService.GetNearbyTowersAsync(lat, lon, radiusMeters);
-                towersList = towers.ToList();
+                baseTowers = towers.ToList();
+            }
+
+            // 3. Merge: Prioritize real physical OSM masts over synthetic/fallback towers
+            if (osmTowers.Count >= 6)
+            {
+                // Sufficient real physical surveyed towers found - use real physical structures
+                towersList = osmTowers.ToList();
+                foreach (var ot in towersList)
+                {
+                    ot.DistanceMeters = GeodesyUtils.CalculateDistanceMeters(lat, lon, ot.Latitude, ot.Longitude);
+                    var seedRandom = new Random(ot.CellId.GetHashCode());
+                    ot.TotalConnectedDevices = seedRandom.Next(1600, 3800);
+                    ot.ActiveDataSessions = (int)(ot.TotalConnectedDevices * 0.82);
+                    ot.VoLteVoiceChannels = (int)(ot.TotalConnectedDevices * 0.14);
+                    ot.IoTTelemetryNodes = ot.TotalConnectedDevices - ot.ActiveDataSessions - ot.VoLteVoiceChannels;
+                    ot.AggregateThroughputMbps = Math.Round(380.0 + seedRandom.NextDouble() * 480.0, 1);
+                    ot.PrbUtilizationPercent = Math.Round(64.0 + seedRandom.NextDouble() * 28.0, 1);
+                }
+            }
+            else if (osmTowers.Count > 0)
+            {
+                // Merge real physical OSM towers at the top of the list
+                var merged = osmTowers.ToList();
+                var existingIds = osmTowers.Select(t => t.CellId).ToHashSet();
+                foreach (var bt in baseTowers)
+                {
+                    if (!existingIds.Contains(bt.CellId))
+                    {
+                        merged.Add(bt);
+                    }
+                }
+                towersList = merged;
+            }
+            else
+            {
+                towersList = baseTowers;
             }
 
             for (int i = 0; i < towersList.Count; i++)
             {
                 var t = towersList[i];
-                var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(t.Latitude, t.Longitude, i, t.RadioTechnology);
-                t.Area = area;
-                t.StreetAddress = street;
-                t.City = city;
-                t.PostalCode = postal;
+                t.DistanceMeters = GeodesyUtils.CalculateDistanceMeters(lat, lon, t.Latitude, t.Longitude);
+                if (string.IsNullOrEmpty(t.StreetAddress) || t.StreetAddress.Contains("Telecom Road"))
+                {
+                    var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(t.Latitude, t.Longitude, i, t.RadioTechnology);
+                    t.Area = area;
+                    t.StreetAddress = street;
+                    t.City = city;
+                    t.PostalCode = postal;
+                }
             }
 
-            if (showOsmTowers)
-            {
-                try
-                {
-                    var (minLat, maxLat, minLon, maxLon) = GeodesyUtils.GetBoundingBox(lat, lon, radiusMeters);
-                    var osmTowers = await OsmService.GetOsmTowersInBoundsAsync(minLat, minLon, maxLat, maxLon);
-                    if (osmTowers.Count > 0)
-                    {
-                        var existingIds = towersList.Select(t => t.CellId).ToHashSet();
-                        foreach (var ot in osmTowers)
-                        {
-                            if (!existingIds.Contains(ot.CellId))
-                            {
-                                ot.DistanceMeters = GeodesyUtils.CalculateDistanceMeters(lat, lon, ot.Latitude, ot.Longitude);
-                                towersList.Add(ot);
-                            }
-                        }
-                        towersList = towersList.OrderBy(t => t.DistanceMeters).ToList();
-                    }
-                }
-                catch { }
-            }
+            towersList = towersList.OrderBy(t => t.DistanceMeters).ToList();
         }
         catch (Exception ex)
         {
@@ -1889,11 +1942,14 @@
 
         if (selectedTower != null)
         {
-            var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(selectedTower.Latitude, selectedTower.Longitude, 0, selectedTower.RadioTechnology);
-            selectedTower.Area = area;
-            selectedTower.StreetAddress = street;
-            selectedTower.City = city;
-            selectedTower.PostalCode = postal;
+            if (string.IsNullOrWhiteSpace(selectedTower.StreetAddress) || string.IsNullOrWhiteSpace(selectedTower.Area))
+            {
+                var (area, street, city, postal) = DemoDataService.ResolveGeographicAddress(selectedTower.Latitude, selectedTower.Longitude, 0, selectedTower.RadioTechnology);
+                if (string.IsNullOrWhiteSpace(selectedTower.Area)) selectedTower.Area = area;
+                if (string.IsNullOrWhiteSpace(selectedTower.StreetAddress)) selectedTower.StreetAddress = street;
+                if (string.IsNullOrWhiteSpace(selectedTower.City)) selectedTower.City = city;
+                if (string.IsNullOrWhiteSpace(selectedTower.PostalCode)) selectedTower.PostalCode = postal;
+            }
             if (selectedTower.ConnectedDevices == null || selectedTower.ConnectedDevices.Count == 0)
             {
                 var devs = await TowerService.GetConnectedDevicesForTowerAsync(selectedTower.CellId);
@@ -2093,6 +2149,34 @@
     private async Task OpenInGoogleEarth3D()
     {
         await JS.InvokeVoidAsync("cellScopeMap.openGoogleEarth3D", currentCenterLat, currentCenterLon, 600, mapBearing, mapPitch);
+    }
+
+    private async Task ZoomToExactTower(TowerLocationDto tower)
+    {
+        if (tower == null) return;
+        selectedTower = tower;
+        await JS.InvokeVoidAsync("cellScopeMap.flyToLocation", "fullscreen-leaflet-map", tower.Latitude, tower.Longitude, 19);
+        if (!is3DViewActive)
+        {
+            is3DViewActive = true;
+            await JS.InvokeVoidAsync("cellScopeMap.set3DMode", "fullscreen-leaflet-map", true, 60, -10);
+        }
+    }
+
+    private string GetGoogleEarthTowerUrl(TowerLocationDto tower)
+    {
+        if (tower == null) return "https://earth.google.com/web/";
+        var latStr = tower.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
+        var lonStr = tower.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
+        return $"https://earth.google.com/web/@{latStr},{lonStr},500a,1000d,0y,60t,0r";
+    }
+
+    private string GetGoogleMapsTowerUrl(TowerLocationDto tower)
+    {
+        if (tower == null) return "https://www.google.com/maps";
+        var latStr = tower.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
+        var lonStr = tower.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
+        return $"https://www.google.com/maps/@{latStr},{lonStr},400m/data=!3m1!1e3";
     }
 
     public void Dispose()

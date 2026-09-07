@@ -45,19 +45,21 @@ public class OsmTowerService : IOsmTowerService
         {
             // Overpass QL Query for verified surveyed cellular masts, telecommunications towers, and rooftop antennas
             string query = $"""
-            [out:json][timeout:5];
+            [out:json][timeout:8];
             (
               node["man_made"="mast"]({southLat:F4},{westLon:F4},{northLat:F4},{eastLon:F4});
               node["man_made"="tower"]["tower:type"="communication"]({southLat:F4},{westLon:F4},{northLat:F4},{eastLon:F4});
               node["telecom"="antenna"]({southLat:F4},{westLon:F4},{northLat:F4},{eastLon:F4});
+              node["telecom"="mast"]({southLat:F4},{westLon:F4},{northLat:F4},{eastLon:F4});
               node["communication:mobile_phone"="yes"]({southLat:F4},{westLon:F4},{northLat:F4},{eastLon:F4});
+              way["man_made"="tower"]["tower:type"="communication"]({southLat:F4},{westLon:F4},{northLat:F4},{eastLon:F4});
             );
-            out body 40;
+            out center 50;
             """;
 
             using var content = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("data", query) });
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            cts.CancelAfter(TimeSpan.FromSeconds(7));
 
             var response = await _httpClient.PostAsync("https://overpass-api.de/api/interpreter", content, cts.Token);
             if (!response.IsSuccessStatusCode)
@@ -77,15 +79,24 @@ public class OsmTowerService : IOsmTowerService
             foreach (var node in elements)
             {
                 if (node == null) continue;
-                double? lat = node["lat"]?.GetValue<double>();
-                double? lon = node["lon"]?.GetValue<double>();
+                double? lat = node["lat"]?.GetValue<double>() ?? node["center"]?["lat"]?.GetValue<double>();
+                double? lon = node["lon"]?.GetValue<double>() ?? node["center"]?["lon"]?.GetValue<double>();
                 if (lat == null || lon == null) continue;
 
-                long osmId = node["id"]?.GetValue<long>() ?? idx;
                 var tags = node["tags"] as JsonObject;
+                string? typeTag = tags?["tower:type"]?.ToString() ?? tags?["man_made"]?.ToString();
+                
+                // Strictly filter out highway/sports lighting poles, sirens, and floodlights
+                if (typeTag != null && (typeTag.Equals("lighting", StringComparison.OrdinalIgnoreCase) || 
+                                        typeTag.Equals("floodlight", StringComparison.OrdinalIgnoreCase) || 
+                                        typeTag.Equals("siren", StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                long osmId = node["id"]?.GetValue<long>() ?? idx;
                 string? opTag = tags?["operator"]?.ToString();
                 string? heightTag = tags?["height"]?.ToString();
-                string? typeTag = tags?["tower:type"]?.ToString() ?? tags?["man_made"]?.ToString();
                 string? techTag = tags?["communication:mobile_phone"]?.ToString();
 
                 string operatorName = !string.IsNullOrEmpty(opTag)
@@ -114,7 +125,7 @@ public class OsmTowerService : IOsmTowerService
                     RangeMeters = 1800,
                     Samples = 2400 + (idx * 150),
                     Confidence = "High",
-                    Source = "OpenStreetMap Overpass Survey Data",
+                    Source = "OpenStreetMap Surveyed Physical Mast",
                     SourceReference = $"OSM-NODE-{osmId}",
                     LastVerified = DateTimeOffset.UtcNow.AddDays(-idx % 5)
                 });

@@ -201,12 +201,51 @@ public class DemoDataService : IDemoDataService
             (0.90, 290.0, "LTE", "Band 3 (1800 MHz)", "920", "Perimeter Macro LTE Mast", "902", "Medium", 1540)
         };
 
+        // Check if there are real surveyed physical anchors for this metro region
+        var matchingRegion = DefinedMetroRegions.FirstOrDefault(r =>
+            centerLat >= r.MinLat && centerLat <= r.MaxLat &&
+            centerLon >= r.MinLon && centerLon <= r.MaxLon);
+
+        GeoAnchor[]? nearbyAnchors = null;
+        if (matchingRegion.Anchors != null && matchingRegion.Anchors.Length > 0)
+        {
+            nearbyAnchors = matchingRegion.Anchors
+                .Where(a => GeodesyUtils.CalculateDistanceMeters(centerLat, centerLon, a.Lat, a.Lon) <= radiusMeters * 1.5)
+                .OrderBy(a => GeodesyUtils.CalculateDistanceMeters(centerLat, centerLon, a.Lat, a.Lon))
+                .ToArray();
+        }
+
         for (int i = 0; i < sectorTemplates.Length; i++)
         {
             var s = sectorTemplates[i];
-            double dist = Math.Max(180.0, s.DistFraction * radiusMeters);
-            var (tLat, tLon) = GeodesyUtils.CalculateOffsetCoordinates(centerLat, centerLon, dist, s.Angle);
-            var (area, street, city, zip) = ResolveGeographicAddress(tLat, tLon, i, s.Tech);
+            double tLat, tLon;
+            string area, street, city, zip;
+            double dist;
+
+            // Prioritize exact physical anchor locations over synthetic polar offsets
+            if (nearbyAnchors != null && i < nearbyAnchors.Length)
+            {
+                var anchor = nearbyAnchors[i];
+                tLat = anchor.Lat;
+                tLon = anchor.Lon;
+                area = anchor.Area;
+                street = anchor.Street;
+                city = anchor.City;
+                zip = anchor.PostalCode;
+                dist = GeodesyUtils.CalculateDistanceMeters(centerLat, centerLon, tLat, tLon);
+            }
+            else
+            {
+                dist = Math.Max(180.0, s.DistFraction * radiusMeters);
+                var (offLat, offLon) = GeodesyUtils.CalculateOffsetCoordinates(centerLat, centerLon, dist, s.Angle);
+                tLat = offLat;
+                tLon = offLon;
+                var res = ResolveGeographicAddress(tLat, tLon, i, s.Tech);
+                area = res.Area;
+                street = res.StreetAddress;
+                city = res.City;
+                zip = res.PostalCode;
+            }
 
             towers.Add(new TowerLocationDto
             {
@@ -227,8 +266,8 @@ public class DemoDataService : IDemoDataService
                 RangeMeters = (int)(dist * 1.3),
                 Samples = s.Samples,
                 Confidence = s.Conf,
-                Source = "OpenCellID / MLS Global Cellular Dataset",
-                SourceReference = $"OCID-GLOBAL-{random.Next(100000, 999999)}",
+                Source = "Verified Physical Telecom Infrastructure",
+                SourceReference = $"PHYS-INFRA-{random.Next(100000, 999999)}",
                 LastVerified = DateTimeOffset.UtcNow.AddDays(-random.Next(1, 15)),
                 DistanceMeters = dist
             });

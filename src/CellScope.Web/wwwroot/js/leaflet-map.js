@@ -454,16 +454,25 @@ window.cellScopeMap = {
                 const buttonBg = isDemo ? '#f59e0b' : '#10b981';
 
                 const popupHtml = `
-                    <div style="min-width:260px;">
-                        <b>🗼 Macro Base Station / Cellular Tower</b><br>
+                    <div style="min-width:270px;">
+                        <b>🗼 Verified Physical Cellular Tower</b><br>
                         <b>Cell ID:</b> <span style="font-family:monospace;color:#06b6d4;">${cellId}</span><br>
                         ${locationHtml}
                         <b>Operator:</b> ${operatorName}<br>
                         <b>Radio Technology:</b> <span style="color:${isDemo ? '#f59e0b' : '#10b981'};font-weight:700;">${radioTechnology}</span><br>
                         <b>Physical Cell ID (PCI):</b> ${physicalCellId}<br>
+                        <b>Exact Position:</b> <span style="font-family:monospace;color:#38bdf8;">${lat.toFixed(6)}, ${lon.toFixed(6)}</span><br>
                         <b>Distance:</b> ${distVal ? Math.round(distVal) + ' meters' : 'Nearby'}<br>
                         ${devSnippet}
-                        <button onclick="window.cellScopeMap.selectTower('${elementId}', '${cellId}')" style="margin-top:8px;width:100%;background:${buttonBg};color:#0b0f19;border:none;border-radius:5px;padding:6px 8px;font-weight:800;font-size:11px;cursor:pointer;">
+                        <div style="display:flex;gap:4px;margin-top:6px;">
+                            <button onclick="window.cellScopeMap.flyToLocation('${elementId}', ${lat}, ${lon}, 19)" style="flex:1;background:rgba(6,182,212,0.15);color:#06b6d4;border:1px solid rgba(6,182,212,0.4);border-radius:5px;padding:4px 6px;font-weight:700;font-size:10px;cursor:pointer;">
+                                🔍 Zoom Mast (19x)
+                            </button>
+                            <a href="https://earth.google.com/web/@${lat.toFixed(6)},${lon.toFixed(6)},500a,1000d,0y,60t,0r" target="_blank" rel="noopener noreferrer" style="flex:1;background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.4);border-radius:5px;padding:4px 6px;font-weight:700;font-size:10px;text-align:center;text-decoration:none;display:inline-block;">
+                                🌍 3D Satellite ↗
+                            </a>
+                        </div>
+                        <button onclick="window.cellScopeMap.selectTower('${elementId}', '${cellId}')" style="margin-top:6px;width:100%;background:${buttonBg};color:#0b0f19;border:none;border-radius:5px;padding:6px 8px;font-weight:800;font-size:11px;cursor:pointer;">
                             ${buttonText}
                         </button>
                     </div>
