@@ -588,6 +588,59 @@ a {
   filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%) !important;
 }
 
+/* Leaflet Layer Switcher Control Styling (Dark NOC Themed) */
+.leaflet-control-layers {
+  background: rgba(15, 23, 42, 0.94) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(6, 182, 212, 0.5) !important;
+  border-radius: 10px !important;
+  color: #f8fafc !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75), 0 0 15px rgba(6, 182, 212, 0.25) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.8rem !important;
+  padding: 8px 12px !important;
+}
+
+.leaflet-control-layers-toggle {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2306b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>') !important;
+  background-size: 20px 20px !important;
+  background-position: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  background-color: rgba(15, 23, 42, 0.92) !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(6, 182, 212, 0.4) !important;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 10px 14px !important;
+  min-width: 210px !important;
+}
+
+.leaflet-control-layers-base label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 7px !important;
+  cursor: pointer !important;
+  color: #e2e8f0 !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  transition: color 0.15s ease;
+}
+
+.leaflet-control-layers-base label:hover {
+  color: var(--accent-cyan) !important;
+}
+
+.leaflet-control-layers-base input[type="radio"] {
+  accent-color: var(--accent-cyan) !important;
+  cursor: pointer !important;
+  width: 15px;
+  height: 15px;
+}
+
 .leaflet-tile-pane {
   background-color: #0b0f19;
 }

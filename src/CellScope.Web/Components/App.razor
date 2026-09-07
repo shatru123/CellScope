@@ -9,7 +9,7 @@
     <title>CellScope — See your cellular world</title>
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#06b6d4" />
-    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/app.css?v=2.1" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,13 +21,15 @@
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/leaflet-map.js"></script>
-    <script src="js/chart-interop.js"></script>
-    <script src="js/client-telemetry.js"></script>
-    <script src="js/gis-download.js"></script>
+    <script src="js/leaflet-map.js?v=2.1"></script>
+    <script src="js/chart-interop.js?v=2.1"></script>
+    <script src="js/client-telemetry.js?v=2.1"></script>
+    <script src="js/gis-download.js?v=2.1"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
+            navigator.serviceWorker.register('/sw.js').then((reg) => {
+                reg.update();
+            }).catch(() => {});
         }
     </script>
 </body>

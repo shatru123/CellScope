@@ -1,11 +1,7 @@
 // CellScope PWA Service Worker (Offline Resilience & Caching)
-const CACHE_NAME = 'cellscope-v1.0';
+const CACHE_NAME = 'cellscope-v2.1';
 const ASSETS_TO_CACHE = [
   '/',
-  '/css/app.css',
-  '/js/leaflet-map.js',
-  '/js/client-telemetry.js',
-  '/js/gis-download.js',
   '/manifest.json'
 ];
 
@@ -28,20 +24,35 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests, bypass for API / SignalR / WebSocket
+  // Only handle GET requests; ignore WebSocket, Blazor SignalR, and API calls
   if (event.request.method !== 'GET' || event.request.url.includes('/_blazor') || event.request.url.includes('/api/')) {
     return;
   }
 
+  // Network-First Strategy for JS and CSS assets to ensure live updates are immediately visible
+  const isScriptOrStyle = event.request.url.includes('.js') || event.request.url.includes('.css');
+  if (isScriptOrStyle) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first fallback for static shell assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).catch(() => {
-        // Fallback gracefully if offline
-        return caches.match('/');
-      });
+      return fetch(event.request).catch(() => caches.match('/'));
     })
   );
 });

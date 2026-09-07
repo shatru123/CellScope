@@ -137,6 +137,13 @@ window.cellScopeMap = {
             attributionControl: true
         });
 
+        const baseLayers = {
+            dark: osmDark,
+            satellite: esriSatellite,
+            standard: osmStandard,
+            topo: topoMap
+        };
+
         const baseMaps = {
             "🌙 Dark NOC Mode (Free OSM)": osmDark,
             "🛰️ Satellite 3D Imagery (Free Esri)": esriSatellite,
@@ -144,11 +151,18 @@ window.cellScopeMap = {
             "🏔️ Topo & Elevation (Free)": topoMap
         };
 
-        L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+        const isMobileScreen = window.innerWidth <= 768;
+        const layersControl = L.control.layers(baseMaps, null, {
+            position: 'topright',
+            collapsed: isMobileScreen
+        }).addTo(map);
 
         this.mapInstances[elementId] = {
             map: map,
             dotNetHelper: dotNetHelper,
+            baseLayers: baseLayers,
+            layersControl: layersControl,
+            currentBaseLayer: osmDark,
             userMarker: null,
             servingMarker: null,
             towerMarkers: [],
@@ -156,6 +170,18 @@ window.cellScopeMap = {
             propagationLayers: [],
             trailPolyline: null
         };
+
+        // Listen for base layer changes to keep UI controls synchronized
+        map.on('baselayerchange', (e) => {
+            let key = "dark";
+            if (e.name && e.name.includes("Satellite")) key = "satellite";
+            else if (e.name && e.name.includes("Standard")) key = "standard";
+            else if (e.name && e.name.includes("Topo")) key = "topo";
+
+            if (dotNetHelper) {
+                dotNetHelper.invokeMethodAsync('OnBaseMapChangedFromMap', key).catch(() => {});
+            }
+        });
 
         // Listen for Pan & Zoom (Viewport Movement) to dynamically load visible towers anywhere on Earth
         let moveDebounceTimer = null;
@@ -677,9 +703,38 @@ window.cellScopeMap = {
         }
     },
 
-    openGoogleEarth3D: function (lat, lon, altitude = 800, heading = 0, tilt = 60) {
-        const url = `https://earth.google.com/web/@${lat.toFixed(5)},${lon.toFixed(5)},${Math.round(altitude)}a,1000d,35y,${Math.round(heading)}h,${Math.round(tilt)}t,0r`;
-        window.open(url, '_blank');
+    setBaseMap: function (elementId, layerKey) {
+        const entry = this.mapInstances[elementId];
+        if (!entry || !entry.map || !entry.baseLayers) return;
+
+        const targetLayer = entry.baseLayers[layerKey];
+        if (!targetLayer) return;
+
+        Object.values(entry.baseLayers).forEach(l => {
+            if (entry.map.hasLayer(l)) {
+                entry.map.removeLayer(l);
+            }
+        });
+
+        targetLayer.addTo(entry.map);
+        if (targetLayer.bringToBack) {
+            targetLayer.bringToBack();
+        }
+        entry.currentBaseLayer = targetLayer;
+    },
+
+    openGoogleEarth3D: function (lat, lon, altitude = 600, heading = 0, tilt = 55) {
+        const h = Math.round((heading % 360 + 360) % 360);
+        const t = Math.round(Math.max(0, Math.min(85, tilt)));
+        const url = `https://earth.google.com/web/@${lat.toFixed(6)},${lon.toFixed(6)},${Math.round(altitude)}a,1000d,${h}y,${t}t,0r`;
+        try {
+            const win = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!win || win.closed || typeof win.closed === 'undefined') {
+                window.location.href = url;
+            }
+        } catch (e) {
+            window.location.href = url;
+        }
     }
 };
 
