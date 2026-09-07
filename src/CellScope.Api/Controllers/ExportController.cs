@@ -29,4 +29,26 @@ public class ExportController : ControllerBase
         byte[] bytes = System.Text.Encoding.UTF8.GetBytes(json);
         return File(bytes, "application/json", $"cellscope_export_{type}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json");
     }
+
+    [HttpGet("kml")]
+    public async Task<IActionResult> ExportKml([FromServices] ITowerService towerService, [FromServices] ICellularService cellService, [FromServices] IGisExportService gisService, CancellationToken cancellationToken = default)
+    {
+        var towers = await towerService.GetNearbyTowersAsync(18.5204, 73.8567, 50000, cancellationToken);
+        var snapshot = await cellService.GetCurrentSnapshotAsync(cancellationToken: cancellationToken);
+        var trail = await cellService.GetLocationTrailAsync(cancellationToken: cancellationToken);
+        string kml = gisService.GenerateKml(towers, snapshot, trail);
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(kml);
+        return File(bytes, "application/vnd.google-earth.kml+xml", $"cellscope_export_3d_{DateTime.UtcNow:yyyyMMdd_HHmmss}.kml");
+    }
+
+    [HttpGet("geojson")]
+    public async Task<IActionResult> ExportGeoJson([FromServices] ITowerService towerService, [FromServices] ICellularService cellService, [FromServices] IGisExportService gisService, CancellationToken cancellationToken = default)
+    {
+        var towers = await towerService.GetNearbyTowersAsync(18.5204, 73.8567, 50000, cancellationToken);
+        var snapshot = await cellService.GetCurrentSnapshotAsync(cancellationToken: cancellationToken);
+        var trail = await cellService.GetLocationTrailAsync(cancellationToken: cancellationToken);
+        string geojson = gisService.GenerateGeoJson(towers, snapshot, trail);
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(geojson);
+        return File(bytes, "application/geo+json", $"cellscope_export_{DateTime.UtcNow:yyyyMMdd_HHmmss}.geojson");
+    }
 }

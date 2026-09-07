@@ -60,6 +60,14 @@
                     <input type="radio" name="format" value="json" checked="@(selectedFormat == "json")" @onchange='() => selectedFormat = "json"' />
                     <span>JSON (Structured Objects)</span>
                 </label>
+                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                    <input type="radio" name="format" value="kml" checked="@(selectedFormat == "kml")" @onchange='() => selectedFormat = "kml"' />
+                    <span>Google Earth 3D KML (.kml)</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                    <input type="radio" name="format" value="geojson" checked="@(selectedFormat == "geojson")" @onchange='() => selectedFormat = "geojson"' />
+                    <span>GIS / QGIS GeoJSON (.geojson)</span>
+                </label>
             </div>
         </div>
 

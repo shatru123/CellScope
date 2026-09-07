@@ -52,6 +52,12 @@
                 </div>
             }
         </div>
+        <a href="/phone-intel" class="btn btn-outline btn-sm" style="font-size:0.75rem;padding:3px 9px;display:inline-flex;align-items:center;gap:4px;" title="Analyze phone numbers, circles, operators and spoof risk">
+            <span>🔍</span> <span>Number Intel</span>
+        </a>
+        <a href="/speedtest" class="btn btn-outline btn-sm" style="font-size:0.75rem;padding:3px 9px;display:inline-flex;align-items:center;gap:4px;" title="Real-time latency, jitter and speed benchmark">
+            <span>⚡</span> <span>Speedtest</span>
+        </a>
         <button class="btn btn-outline btn-sm" @onclick="LocateMe" disabled="@isLocating">
             @(isLocating ? "🛰️ Locating..." : "📍 Locate Me")
         </button>
