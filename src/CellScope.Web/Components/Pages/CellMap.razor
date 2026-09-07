@@ -58,6 +58,12 @@
         <a href="/speedtest" class="btn btn-outline btn-sm" style="font-size:0.75rem;padding:3px 9px;display:inline-flex;align-items:center;gap:4px;" title="Real-time latency, jitter and speed benchmark">
             <span>⚡</span> <span>Speedtest</span>
         </a>
+        <button class="btn @(is3DViewActive ? "btn-primary" : "btn-outline") btn-sm"
+                @onclick="Toggle3DView"
+                style="font-size:0.75rem;padding:3px 9px;display:inline-flex;align-items:center;gap:4px;"
+                title="Toggle 3D perspective view with tilt, rotation and mast heights">
+            <span>📐</span> <span>@(is3DViewActive ? "3D Mode ON" : "3D Mode")</span>
+        </button>
         <button class="btn btn-outline btn-sm" @onclick="LocateMe" disabled="@isLocating">
             @(isLocating ? "🛰️ Locating..." : "📍 Locate Me")
         </button>
@@ -83,6 +89,12 @@
                 {
                     <span class="badge" style="background:rgba(139,92,246,0.2);color:#c084fc;border:1px solid rgba(139,92,246,0.5);font-weight:700;white-space:nowrap;">
                         🛰️ OSM Physical Layer
+                    </span>
+                }
+                @if (is3DViewActive)
+                {
+                    <span class="badge" style="background:rgba(6,182,212,0.25);color:var(--accent-cyan);border:1px solid rgba(6,182,212,0.6);font-weight:700;white-space:nowrap;">
+                        📐 3D Perspective (@(mapPitch)° / @(mapBearing)°)
                     </span>
                 }
                 @if (clientTelemetry != null)
@@ -204,9 +216,54 @@
         </div>
     </div>
 
-    <!-- Map Viewport with Floating Interactive Overlay Drawer -->
-    <div style="position:relative;">
-        <div id="fullscreen-leaflet-map" style="width:100%;height:calc(100vh - 270px);background:#111827;"></div>
+    <!-- Map Viewport with Floating Interactive Overlay Drawer and 3D Tactical HUD -->
+    <div style="position:relative;overflow:hidden;perspective:1100px;">
+        <div id="fullscreen-leaflet-map" class="leaflet-map-fullscreen" style="width:100%;height:calc(100vh - 270px);background:#111827;"></div>
+
+        <!-- 3D Tactical Perspective Control HUD -->
+        @if (is3DViewActive)
+        {
+            <div class="map-3d-hud animate-fade-in">
+                <div class="map-3d-hud-header">
+                    <span>📐 3D Tactical Mode</span>
+                    <button class="btn btn-outline btn-sm" style="padding:1px 6px;font-size:0.65rem;line-height:1;border-color:rgba(255,255,255,0.2);" @onclick="Toggle3DView" title="Exit 3D Mode">✕</button>
+                </div>
+
+                <!-- Tilt / Pitch Slider -->
+                <div class="map-3d-hud-row">
+                    <div class="map-3d-hud-label">
+                        <span>Pitch (Tilt):</span>
+                        <span class="map-3d-hud-val">@(mapPitch)°</span>
+                    </div>
+                    <input type="range" class="map-3d-hud-slider" min="0" max="75" step="1" value="@mapPitch" @oninput="OnPitchChanged" />
+                </div>
+
+                <!-- Bearing / Heading Slider -->
+                <div class="map-3d-hud-row">
+                    <div class="map-3d-hud-label">
+                        <span>Heading (Compass):</span>
+                        <span class="map-3d-hud-val">@(mapBearing)°</span>
+                    </div>
+                    <input type="range" class="map-3d-hud-slider" min="-180" max="180" step="1" value="@mapBearing" @oninput="OnBearingChanged" />
+                </div>
+
+                <!-- Presets Bar -->
+                <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" style="font-size:0.65rem;padding:2px 6px;flex:1;" @onclick="@(() => Set3DPreset(0, 0))">2D Flat</button>
+                    <button class="btn btn-outline btn-sm" style="font-size:0.65rem;padding:2px 6px;flex:1;" @onclick="@(() => Set3DPreset(45, -15))">Tactical 45°</button>
+                    <button class="btn btn-outline btn-sm" style="font-size:0.65rem;padding:2px 6px;flex:1;" @onclick="@(() => Set3DPreset(65, 30))">Drone 65°</button>
+                    <button class="btn btn-outline btn-sm" style="font-size:0.65rem;padding:2px 5px;" @onclick="Reset3DCamera" title="Reset North orientation">🧭 0°</button>
+                </div>
+
+                <!-- External 3D Viewer Bridge -->
+                <div style="display:flex;gap:6px;border-top:1px solid rgba(255,255,255,0.08);padding-top:6px;">
+                    <button class="btn btn-outline btn-sm" style="width:100%;font-size:0.7rem;padding:3px 6px;color:#60a5fa;border-color:rgba(96,165,250,0.4);display:flex;align-items:center;justify-content:center;gap:4px;"
+                            @onclick="OpenInGoogleEarth3D" title="Open this exact viewport with 3D photorealistic buildings in Google Earth">
+                        <span>🌍</span> <span>Open in Google Earth 3D</span>
+                    </button>
+                </div>
+            </div>
+        }
 
         <!-- Floating Multi-Tab Overlay Card -->
         <div style="position:absolute;bottom:20px;right:20px;z-index:999;width:360px;max-height:340px;background:rgba(22,32,50,0.95);backdrop-filter:blur(10px);border:1px solid var(--border-color);border-radius:12px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:10px;">
@@ -1155,6 +1212,9 @@
     private DotNetObjectReference<CellMap>? dotNetRef;
     private bool showOsmTowers = false;
     private bool showExportMenu = false;
+    private bool is3DViewActive = false;
+    private int mapPitch = 55;
+    private int mapBearing = -10;
     private ClientTelemetryDto? clientTelemetry;
     private NetworkIdentityDto? networkIdentity;
 
@@ -1907,6 +1967,53 @@
         "Printer" => "🖨️",
         _ => "💻"
     };
+
+    private async Task Toggle3DView()
+    {
+        is3DViewActive = !is3DViewActive;
+        await JS.InvokeVoidAsync("cellScopeMap.set3DMode", "fullscreen-leaflet-map", is3DViewActive, mapPitch, mapBearing);
+    }
+
+    private async Task OnPitchChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var pitch))
+        {
+            mapPitch = pitch;
+            await JS.InvokeVoidAsync("cellScopeMap.setPitch", "fullscreen-leaflet-map", mapPitch);
+        }
+    }
+
+    private async Task OnBearingChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var bearing))
+        {
+            mapBearing = bearing;
+            await JS.InvokeVoidAsync("cellScopeMap.setBearing", "fullscreen-leaflet-map", mapBearing);
+        }
+    }
+
+    private async Task Set3DPreset(int pitch, int bearing)
+    {
+        mapPitch = pitch;
+        mapBearing = bearing;
+        if (!is3DViewActive && pitch > 0)
+        {
+            is3DViewActive = true;
+        }
+        await JS.InvokeVoidAsync("cellScopeMap.set3DMode", "fullscreen-leaflet-map", is3DViewActive, mapPitch, mapBearing);
+    }
+
+    private async Task Reset3DCamera()
+    {
+        mapBearing = 0;
+        mapPitch = 55;
+        await JS.InvokeVoidAsync("cellScopeMap.resetCamera", "fullscreen-leaflet-map");
+    }
+
+    private async Task OpenInGoogleEarth3D()
+    {
+        await JS.InvokeVoidAsync("cellScopeMap.openGoogleEarth3D", currentCenterLat, currentCenterLon, 600, mapBearing, mapPitch);
+    }
 
     public void Dispose()
     {

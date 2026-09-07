@@ -450,6 +450,137 @@ a {
   height: calc(100vh - 180px);
   border-radius: 12px;
   border: 1px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+  perspective: 1100px;
+}
+
+/* 3D Perspective Tactical NOC View Engine */
+.map-3d-active .leaflet-map-pane {
+  transform: rotateX(var(--map-pitch, 55deg)) rotateZ(var(--map-bearing, 0deg)) scale(1.18);
+  transform-origin: 50% 50%;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+/* Elevate 3D Tower Antennas above the terrain */
+.map-3d-active .tower-marker {
+  transform-style: preserve-3d;
+}
+
+.map-3d-active .tower-marker::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  height: 36px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.2), #06b6d4);
+  transform: rotateX(calc(-1 * var(--map-pitch, 55deg))) translateZ(8px);
+  transform-origin: bottom center;
+  box-shadow: 0 0 8px #06b6d4;
+  pointer-events: none;
+}
+
+.map-3d-active .tower-marker::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: calc(50% - 10px);
+  width: 20px;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.map-3d-active .tower-marker > div {
+  transform: rotateX(calc(-1 * var(--map-pitch, 55deg))) translateZ(34px);
+  transform-origin: bottom center;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), 0 0 16px rgba(6, 182, 212, 0.5) !important;
+}
+
+.map-3d-active .custom-user-marker > div {
+  transform: rotateX(calc(-1 * var(--map-pitch, 55deg))) translateZ(24px);
+  transform-origin: bottom center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.7), 0 0 20px #06b6d4 !important;
+}
+
+.map-3d-active .serving-cell-marker > div {
+  transform: rotateX(calc(-1 * var(--map-pitch, 55deg))) translateZ(32px);
+  transform-origin: bottom center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.7), 0 0 18px rgba(16,185,129,0.8) !important;
+}
+
+/* 3D Map Floating HUD Control Widget */
+.map-3d-hud {
+  position: absolute;
+  bottom: 24px;
+  left: 20px;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(6, 182, 212, 0.2);
+  color: var(--text-primary);
+  width: 250px;
+}
+
+.map-3d-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.map-3d-hud-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+.map-3d-hud-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.725rem;
+  color: var(--text-secondary);
+}
+
+.map-3d-hud-val {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.map-3d-hud-slider {
+  width: 100%;
+  height: 5px;
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .map-3d-hud {
+    bottom: auto;
+    top: 12px;
+    left: 12px;
+    width: calc(100% - 24px);
+    max-width: 280px;
+    padding: 8px 10px;
+  }
 }
 
 /* 100% Free OpenStreetMap Dark Mode Tile Filter */

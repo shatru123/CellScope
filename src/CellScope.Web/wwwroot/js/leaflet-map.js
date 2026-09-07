@@ -124,6 +124,11 @@ window.cellScopeMap = {
             maxZoom: 17
         });
 
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            maxZoom: 19
+        });
+
         const map = L.map(elementId, {
             center: [initialLat, initialLon],
             zoom: zoom,
@@ -134,6 +139,7 @@ window.cellScopeMap = {
 
         const baseMaps = {
             "🌙 Dark NOC Mode (Free OSM)": osmDark,
+            "🛰️ Satellite 3D Imagery (Free Esri)": esriSatellite,
             "🗺️ Standard OpenStreetMap (Free)": osmStandard,
             "🏔️ Topo & Elevation (Free)": topoMap
         };
@@ -612,6 +618,68 @@ window.cellScopeMap = {
         if (!entry || !entry.propagationLayers) return;
         entry.propagationLayers.forEach(l => l.remove());
         entry.propagationLayers = [];
+    },
+
+    set3DMode: function (elementId, is3D, pitch = 55, bearing = -10) {
+        const entry = this.mapInstances[elementId];
+        const container = document.getElementById(elementId);
+        if (!container) return;
+
+        if (entry) {
+            entry.is3D = !!is3D;
+            entry.pitch = pitch;
+            entry.bearing = bearing;
+        }
+
+        if (is3D) {
+            container.classList.add('map-3d-active');
+            container.style.setProperty('--map-pitch', `${pitch}deg`);
+            container.style.setProperty('--map-bearing', `${bearing}deg`);
+        } else {
+            container.classList.remove('map-3d-active');
+            container.style.removeProperty('--map-pitch');
+            container.style.removeProperty('--map-bearing');
+        }
+
+        if (entry && entry.map) {
+            setTimeout(() => entry.map.invalidateSize(), 350);
+        }
+    },
+
+    setPitch: function (elementId, pitch) {
+        const entry = this.mapInstances[elementId];
+        if (entry) entry.pitch = pitch;
+        const container = document.getElementById(elementId);
+        if (container) {
+            container.style.setProperty('--map-pitch', `${pitch}deg`);
+        }
+    },
+
+    setBearing: function (elementId, bearing) {
+        const entry = this.mapInstances[elementId];
+        if (entry) entry.bearing = bearing;
+        const container = document.getElementById(elementId);
+        if (container) {
+            container.style.setProperty('--map-bearing', `${bearing}deg`);
+        }
+    },
+
+    resetCamera: function (elementId) {
+        const entry = this.mapInstances[elementId];
+        if (entry) {
+            entry.bearing = 0;
+            entry.pitch = 55;
+        }
+        const container = document.getElementById(elementId);
+        if (container) {
+            container.style.setProperty('--map-pitch', '55deg');
+            container.style.setProperty('--map-bearing', '0deg');
+        }
+    },
+
+    openGoogleEarth3D: function (lat, lon, altitude = 800, heading = 0, tilt = 60) {
+        const url = `https://earth.google.com/web/@${lat.toFixed(5)},${lon.toFixed(5)},${Math.round(altitude)}a,1000d,35y,${Math.round(heading)}h,${Math.round(tilt)}t,0r`;
+        window.open(url, '_blank');
     }
 };
 
